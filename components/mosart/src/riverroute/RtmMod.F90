@@ -21,7 +21,8 @@ module RtmMod
                                nsrContinue, nsrBranch, nsrStartup, nsrest, &
                                inst_index, inst_suffix, inst_name, wrmflag, inundflag, &
                                smat_option, decomp_option, barrier_timers, heatflag, sediflag, &
-                               isgrid2d, data_bgc_fluxes_to_ocean_flag, use_lnd_rof_two_way, use_ocn_rof_two_way
+                               isgrid2d, data_bgc_fluxes_to_ocean_flag, use_lnd_rof_two_way, &
+                               use_ocn_rof_two_way, use_linear_inund
   use RtmFileUtils    , only : getfil, getavu, relavu
   use RtmTimeManager  , only : timemgr_init, get_nstep, get_curr_date, advance_timestep
   use RtmTimeManager  , only : get_curr_date, is_end_curr_day, is_end_curr_month, is_first_step, is_first_restart_step, is_last_step
@@ -273,7 +274,7 @@ contains
          rtmhist_fincl1,  rtmhist_fincl2, rtmhist_fincl3, &
          rtmhist_fexcl1,  rtmhist_fexcl2, rtmhist_fexcl3, &
          rtmhist_avgflag_pertape, decomp_option, wrmflag,rstraflag,ngeom,nlayers,rinittemp, &
-         inundflag, smat_option, delt_mosart, barrier_timers,          &
+         inundflag, use_linear_inund, smat_option, delt_mosart, barrier_timers, &
          RoutingMethod, DLevelH2R, DLevelR, sediflag, heatflag, data_bgc_fluxes_to_ocean_flag
 
     namelist /inund_inparm / opt_inund, &
@@ -292,6 +293,7 @@ contains
     ngeom       = 50  
     nlayers     = 30                  
     inundflag   = .false.
+    use_linear_inund = .false.
     sediflag    = .false.
     heatflag    = .false.
     barrier_timers = .false.
@@ -341,7 +343,7 @@ contains
           endif
        end do
        call relavu( unitn )
-       if (inundflag) then
+       if (inundflag .or. use_linear_inund) then
           unitn = getavu()
           write(iulog,*) 'Read in inund_inparm namelist from: ', trim(nlfilename_rof)
           open( unitn, file=trim(nlfilename_rof), status='old' )
@@ -390,6 +392,7 @@ contains
     call mpi_bcast (nlayers,        1, MPI_INTEGER, 0, mpicom_rof, ier)
     call mpi_bcast (inundflag,      1, MPI_LOGICAL, 0, mpicom_rof, ier)
     call mpi_bcast (use_lnd_rof_two_way, 1, MPI_LOGICAL, 0, mpicom_rof, ier)
+    call mpi_bcast (use_linear_inund, 1, MPI_LOGICAL, 0, mpicom_rof, ier)
     call mpi_bcast (heatflag,       1, MPI_LOGICAL, 0, mpicom_rof, ier)
     call mpi_bcast (use_ocn_rof_two_way, 1, MPI_LOGICAL, 0, mpicom_rof, ier)
     call mpi_bcast (barrier_timers, 1, MPI_LOGICAL, 0, mpicom_rof, ier)
@@ -408,7 +411,7 @@ contains
 
     call mpi_bcast (rtmhist_avgflag_pertape, size(rtmhist_avgflag_pertape), MPI_CHARACTER, 0, mpicom_rof, ier)
 
-    if (inundflag) then
+    if (inundflag .or. use_linear_inund) then
        call mpi_bcast (OPT_inund,          1, MPI_INTEGER, 0, mpicom_rof, ier)
        call mpi_bcast (OPT_trueDW,         1, MPI_INTEGER, 0, mpicom_rof, ier)
        call mpi_bcast (OPT_calcNr,         1, MPI_INTEGER, 0, mpicom_rof, ier)
@@ -442,7 +445,7 @@ contains
        call shr_sys_abort('Error in routing method setup! There are only 2 options available: 1==KW, 2==DW')
     end if
 
-    if (inundflag) then
+    if (inundflag  .or. use_linear_inund) then
        Tctl%OPT_inund = OPT_inund     !
        Tctl%OPT_trueDW = OPT_trueDW   ! diffusion wave method
        Tctl%OPT_calcNr = OPT_calcNr   ! method to calculate channel Manning
@@ -483,7 +486,7 @@ contains
        if (nsrest == nsrStartup .and. finidat_rtm /= ' ') then
           write(iulog,*) '   MOSART initial data   = ',trim(finidat_rtm)
        end if
-       if (inundflag) then
+       if (inundflag .or. use_linear_inund) then
           write(iulog,*) ' '
           write(iulog,*) 'inundation settings:'
           write(iulog,*) '  OPT_inund          = ',Tctl%OPT_inund
@@ -1867,7 +1870,7 @@ contains
        TRunoff%rr   = rtmCTL%rr
        TRunoff%erout= rtmCTL%erout
 
-       if (inundflag) then
+       if (inundflag .or. use_linear_inund) then
           ! If inundation scheme is turned on :
           if ( Tctl%OPT_inund .eq. 1 ) then
              !TRunoff%wf_ini(:) = rtmCTL%wf(:, 1)
@@ -2296,7 +2299,7 @@ contains
        enddo
 
        ! If inundation scheme is turned on :
-       if (inundflag .and. Tctl%OPT_inund .eq. 1 ) then
+       if ( (inundflag .and. Tctl%OPT_inund .eq. 1) .or. (use_linear_inund) ) then
          do nr = rtmCTL%begr, rtmCTL%endr
 
            !if ( TUnit%mask( nr ) .gt. 0 ) then      ! 0--Ocean; 1--Land; 2--Basin outlet.
@@ -2771,6 +2774,14 @@ contains
       rtmCTL%inundffunit(:) = TRunoff%ffunit_ini(:)
     end if
 
+    if (use_linear_inund ) then
+      !rtmCTL%wf(:, 1) = TRunoff%wf_ini(:)
+      rtmCTL%inundwf(:) = TRunoff%wf_ini(:)
+      rtmCTL%inundhf(:) = TRunoff%hf_ini(:)
+      rtmCTL%inundff(:) = TRunoff%ff_ini(:)
+      rtmCTL%inundffunit(:) = TRunoff%ffunit_ini(:)
+    end if
+
     if (heatflag) then
       rtmCTL%Tqsur   = THeat%Tqsur
       rtmCTL%Tqsub   = THeat%Tqsub
@@ -2806,7 +2817,8 @@ contains
                                 TRunoff%wh(nr,nt)*rtmCTL%area(nr)) * TUnit%frac(nr)
        end if  
 
-       if (inundflag .and. Tctl%OPT_inund == 1 .and. nt == 1) then
+       if ( (inundflag        .and. Tctl%OPT_inund == 1 .and. nt == 1)   .or.  &
+            (use_linear_inund .and. Tctl%OPT_inund == 1 .and. nt == 1) ) then
           rtmCTL%volr(nr,nt) = rtmCTL%volr(nr,nt) + TRunoff%wf_ini(nr)
        endif
 
@@ -3814,7 +3826,7 @@ contains
      if (masterproc) write(iulog,FORMR) trim(subname),' read rwidth ',minval(Tunit%rwidth),maxval(Tunit%rwidth)
      call shr_sys_flush(iulog)
 
-     if (inundflag) then
+     if (inundflag .or. use_linear_inund) then
         do n = rtmCtl%begr, rtmCTL%endr
            if ( rtmCTL%mask(n) .eq. 1 .or. rtmCTL%mask(n) .eq. 3 ) then   ! 1--Land; 3--Basin outlet (downstream is ocean).
 
@@ -3890,8 +3902,16 @@ contains
      allocate(TUnit%nr(begr:endr))
 
      if (inundflag) then
-        ! Calculate channel Manning roughness coefficients :
-        call calc_chnlMannCoe ( )
+        if (use_linear_inund) then
+            !!allocate(TUnit%nr(begr:endr))   !(Repetitive, removed on 6-1-17. --Inund.)
+            ier = pio_inq_varid(ncid, name='nr', vardesc=vardesc)
+            call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%nr, ier)
+            if (masterproc) write(iulog,FORMR) trim(subname),' read nr ',minval(Tunit%nr),maxval(Tunit%nr)
+            call shr_sys_flush(iulog)
+        else
+            ! Calculate channel Manning roughness coefficients :
+            call calc_chnlMannCoe ( )
+        endif
      else
         !!allocate(TUnit%nr(begr:endr))   !(Repetitive, removed on 6-1-17. --Inund.)
         ier = pio_inq_varid(ncid, 'nr', vardesc)
@@ -3900,7 +3920,7 @@ contains
         call shr_sys_flush(iulog)
      endif
 
-     if (inundflag) then
+     if (inundflag .or. use_linear_inund) then
 
         !----------------------------------   
         ! Check input parameters :
@@ -3981,7 +4001,7 @@ contains
 
      end if
 
-     if (inundflag) then
+     if (inundflag .or. use_linear_inund) then
        if ( Tctl%RoutingMethod == DW ) then       ! Use diffusion wave method in channel routing computation.
           allocate (TUnit%rlen_dstrm(begr:endr))
           allocate (TUnit%rslp_dstrm(begr:endr))
@@ -4071,6 +4091,27 @@ contains
 
           ! Pre-process elevation-profile parameters :
           call preprocess_elevProf ( )
+       endif
+
+       ! Read linear inundation model parameters 
+       if (use_linear_inund) then
+          allocate(TUnit%linear_a(begr:endr))  
+          ier = pio_inq_varid(ncid, name='a', vardesc=vardesc)
+          call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%linear_a, ier)
+          if (masterproc) write(iulog,FORMR) trim(subname),' read linear inundation scheme a',minval(Tunit%linear_a),maxval(Tunit%linear_a)
+          call shr_sys_flush(iulog)
+
+          allocate(TUnit%linear_b(begr:endr))  
+          ier = pio_inq_varid(ncid, name='b', vardesc=vardesc)
+          call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%linear_b, ier)
+          if (masterproc) write(iulog,FORMR) trim(subname),' read linear inundation scheme b',minval(Tunit%linear_b),maxval(Tunit%linear_b)
+          call shr_sys_flush(iulog)
+
+          allocate(TUnit%linear_vcri(begr:endr))  
+          ier = pio_inq_varid(ncid, name='vcri', vardesc=vardesc)
+          call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%linear_vcri, ier)
+          if (masterproc) write(iulog,FORMR) trim(subname),' read linear inundation scheme v',minval(Tunit%linear_vcri),maxval(Tunit%linear_vcri)
+          call shr_sys_flush(iulog)
        endif
 
      end if  ! inundflag
@@ -4277,7 +4318,7 @@ contains
         enddo
      end if
    
-     if (inundflag) then
+     if (inundflag .or. use_linear_inund) then
         !allocate (TRunoff%wr_ini(begr:endr))
         !TRunoff%wr_ini = 0.0
 
@@ -4438,10 +4479,10 @@ contains
      call pio_freedecomp(ncid, iodesc_int)
      call pio_closefile(ncid)
 
-     ! control parameters and some other derived parameters
-     ! estimate derived input variables
-     ! TODO: Main channel storage capacity should be moved after rlen is modified
-     if (inundflag .and. Tctl%OPT_inund == 1) then
+   ! control parameters and some other derived parameters
+   ! estimate derived input variables
+
+     if ( (inundflag .and. Tctl%OPT_inund == 1) .or. use_linear_inund ) then
         do iunit = rtmCTL%begr, rtmCTL%endr
           if ( rtmCTL%mask(iunit) .eq. 1 .or. rtmCTL%mask(iunit) .eq. 3 ) then   ! 1--Land; 3--Basin outlet (downstream is ocean).
 
