@@ -46,7 +46,7 @@ contains
     use netcdf
 
     ! modules for performance/memory checking
-    use perf_mod         , only : t_startf, t_stopf
+    use perf_mod       , only : t_startf, t_stopf
     !
     ! !ARGUMENTS:
     type(bounds_type)  , intent(in)    :: bounds   ! bounds
@@ -84,7 +84,8 @@ contains
     integer  :: swrad_period_len, swrad_period_start, thishr, thismin
     real(r8) :: timetemp(2)
     real(r8) :: latixy(500000), longxy(500000)
-    integer ::  ierr, varid, dimid, yr, mon, day, tod, nindex(2), caldaym(13)
+    integer ::  ierr, varid, dimid, yr, mon, day, tod, caldaym(13)
+    integer ::  nindex(2), findex(2), cindex(2)
     integer ::  ncid, met_ncids(14), mask_ncid, thisncid, ng, tm
     integer ::  aindex(2), tindex(14,2), starti(3), counti(3)
     integer ::  grid_map(500000), zone_map(500000)
@@ -757,13 +758,13 @@ contains
 
   !------------------------------------Fire data -------------------------------------------------------
  
-        nindex(1) = yr-1848
-        nindex(2) = nindex(1)+1
-        if (yr .lt. 1850 .or. const_climate_hist) nindex(1:2) = 2
-        if (yr .ge. 2010 .and. .not. const_climate_hist) nindex(1:2) = 161
+        findex(1) = max(1, yr-1849)
+        findex(2) = findex(1)+1
+        if (const_climate_hist) findex(1:2) = 1
       
         model_filter: if (use_cn .or. use_fates) then 
-          if (atm2lnd_vars%loaded_bypassdata == 0 .or. (mon .eq. 1 .and. day .eq. 1 .and. tod .eq. 0)) then  
+          ! reading at start or annually
+          if (atm2lnd_vars%loaded_bypassdata == 0 .or. (mon .eq. 1 .and. day .eq. 1 .and. tod .eq. 0)) then
             if (masterproc .and. i .eq. 1) then 
               ! Read pop_dens streams namelist to get filename
               nu_nml = getavu()
@@ -783,16 +784,20 @@ contains
               ierr = nf90_get_var(ncid, varid, smap05_lat)
               ierr = nf90_inq_varid(ncid, 'lon', varid)
               ierr = nf90_get_var(ncid, varid, smap05_lon)
-              ierr = nf90_inq_varid(ncid, 'hdm', varid)
-
               starti(1:2) = 1 
-              starti(3)   = nindex(1)
-              counti(1) = 720
-              counti(2) = 360
-              counti(3) = 1       
+              counti(1)   = 720  ! hard-wired
+              counti(2)   = 360
+
+              ierr = nf90_inq_varid(ncid, 'time', varid)
+              ierr = nf90_Inquire_Dimension(ncid, dimid, len = thistimelen)
+              findex(1)   = min(findex(1), thistimelen) ! upper limit from time length
+              findex(2)   = min(findex(2), thistimelen) ! upper limit from time length
+              starti(3)   = findex(1)
+              counti(3)   = 1
+              ierr = nf90_inq_varid(ncid, 'hdm', varid)
               ierr = nf90_get_var(ncid, varid, atm2lnd_vars%hdm1, starti, counti)
-              starti(3) = nindex(2)
-              if (nindex(1) .ne. nindex(2)) then 
+              starti(3)   = findex(2)
+              if (findex(1) .ne. findex(2)) then
                   ierr = nf90_get_var(ncid, varid, atm2lnd_vars%hdm2, starti, counti)
               else
                   atm2lnd_vars%hdm2 = atm2lnd_vars%hdm1 
@@ -806,10 +811,9 @@ contains
               call mpi_bcast (atm2lnd_vars%hdm2, 360*720, MPI_REAL8, 0, mpicom, ier)
               call mpi_bcast (smap05_lon, 720, MPI_REAL8, 0, mpicom, ier)
               call mpi_bcast (smap05_lat, 360, MPI_REAL8, 0, mpicom, ier)
-              call mpi_bcast (nindex, 2, MPI_INT, 0, mpicom, ier)
             end if
           end if
-        !end if
+
 
           !figure out which point to get
           if (atm2lnd_vars%loaded_bypassdata == 0) then 
@@ -837,6 +841,7 @@ contains
           atm2lnd_vars%forc_hdm(g) = atm2lnd_vars%hdm1(atm2lnd_vars%hdmind(g,1),atm2lnd_vars%hdmind(g,2),1)*wt1(1) + &
                                      atm2lnd_vars%hdm2(atm2lnd_vars%hdmind(g,1),atm2lnd_vars%hdmind(g,2),1)*wt2(1)
 
+          !Get all of the data (master processor only)
           if (atm2lnd_vars%loaded_bypassdata .eq. 0 .and. masterproc .and. i .eq. 1) then 
             ! Read light_streams namelist to get filename
             nu_nml = getavu()
@@ -851,7 +856,6 @@ contains
             close(nu_nml)
             call relavu( nu_nml )
 
-            !Get all of the data (master processor only)
             allocate(atm2lnd_vars%lnfm_all       (192,94,2920))
 
             ierr = nf90_open(trim(stream_fldFileName_lightng), NF90_NOWRITE, ncid)
@@ -911,11 +915,12 @@ contains
 
    !------------------------------------Nitrogen deposition----------------------------------------------
 
-          !DMR note - ndep will NOT be correct if more than 1850 years of model
+          !DMR note - ndep will NOT be correct if more than 1850 years of model - now OK
           !spinup (model year > 1850)
-          nindex(1) = min(max(yr-1848,2), 168)
-          nindex(2) = min(nindex(1)+1, 168)
+          nindex(1) = max(yr-1848,1)  ! assuming starting year of 1849
+          nindex(2) = nindex(1)+1
 
+          ! reading at start or annually
           if (atm2lnd_vars%loaded_bypassdata .eq. 0 .or. (mon .eq. 1 .and. day .eq. 1 .and. tod .eq. 0)) then 
             if (masterproc .and. i .eq. 1) then 
               nu_nml = getavu()
@@ -933,14 +938,19 @@ contains
               ierr = nf90_open(trim(stream_fldFileName_ndep), nf90_nowrite, ncid)
               ierr = nf90_inq_varid(ncid, 'lat', varid)
               ierr = nf90_get_var(ncid, varid, smap2_lat)
-              ierr = nf90_inq_varid(ncid, 'lon', varid)      
+              ierr = nf90_inq_varid(ncid, 'lon', varid)
               ierr = nf90_get_var(ncid, varid, smap2_lon)
-              ierr = nf90_inq_varid(ncid, 'NDEP_year', varid)
               starti(1:2) = 1
-              starti(3)   = nindex(1)
-              counti(1)   = 144
+              counti(1)   = 144   ! 1.9x2.5-deg resolution assumed
               counti(2)   = 96
+
+              ierr = nf90_inq_varid(ncid, 'YEAR', varid)
+              ierr = nf90_Inquire_Dimension(ncid, dimid, len = thistimelen)
+              nindex(1)   = min(nindex(1), thistimelen) ! upper limit from YEAR length
+              nindex(2)   = min(nindex(2), thistimelen) ! upper limit from YEAR length
+              starti(3)   = nindex(1)
               counti(3)   = 1
+              ierr = nf90_inq_varid(ncid, 'NDEP_year', varid)
               ierr = nf90_get_var(ncid, varid, atm2lnd_vars%ndep1, starti, counti)
               if (nindex(1) .ne. nindex(2)) then 
                 starti(3) = nindex(2)
@@ -989,6 +999,7 @@ contains
        end if model_filter
 
    !------------------------------------Aerosol forcing--------------------------------------------------
+        !reading at start or annually (master processor only)
         if (atm2lnd_vars%loaded_bypassdata .eq. 0 .or. (mon .eq. 1 .and. day .eq. 1 .and. tod .eq. 0)) then 
           if (masterproc .and. i .eq. 1) then 
             aerovars(1) = 'BCDEPWET'
@@ -1009,13 +1020,17 @@ contains
             ierr = nf90_open(trim(aero_file), nf90_nowrite, ncid)
             ierr = nf90_inq_varid(ncid, 'lat', varid)
             ierr = nf90_get_var(ncid, varid, smap2_lat)
-            ierr = nf90_inq_varid(ncid, 'lon', varid)      
+            ierr = nf90_inq_varid(ncid, 'lon', varid)
             ierr = nf90_get_var(ncid, varid, smap2_lon)
             starti(1:2) = 1
-            starti(3)   = max((min(yr,2100)-1849)*12+1, 13)-1
             counti(1)   = 144
             counti(2)   = 96
-            counti(3)   = 14
+
+            ierr = nf90_inq_varid(ncid, 'time', varid)
+            ierr = nf90_Inquire_Dimension(ncid, dimid, len = thistimelen)
+            thistimelen = thistimelen/12
+            starti(3)   = max((min(yr,thistimelen)-1849)*12+1, 13)-1
+            counti(3)   = 14  ! read 14 months data for interpolating
             do av=1,14
               ierr = nf90_inq_varid(ncid, trim(aerovars(av)), varid)
               ierr = nf90_get_var(ncid, varid, atm2lnd_vars%aerodata(av,:,:,:), starti, counti)
@@ -1155,19 +1170,20 @@ contains
         end if
 
         !get weights/indices for interpolation (assume values represent annual averages)
-        nindex(1) = min(max(yr,1850),2100)-1764
+        !cindex(1) = min(max(yr,1850),2100)-1764   ! starting from yr 1765, and max 2100 assummed
+        cindex(1) = min(max(yr,1850),thistimelen+1764)-1764   ! starting from yr 1765 assummed
         if (thiscalday .le. 182.5) then
-          nindex(2) = nindex(1)-1
+          cindex(2) = cindex(1)-1
         else
-          nindex(2) = nindex(1)+1
+          cindex(2) = cindex(1)+1
         end if
         wt1(1) = 1._r8 - abs((182.5 - (thiscalday -1._r8))/365._r8)
         wt2(1) = 1._r8 - wt1(1)
 
-        co2_ppmv_val = atm2lnd_vars%co2_input(1,1,nindex(1))*wt1(1) + atm2lnd_vars%co2_input(1,1,nindex(2))*wt2(1)
+        co2_ppmv_val = atm2lnd_vars%co2_input(1,1,cindex(1))*wt1(1) + atm2lnd_vars%co2_input(1,1,cindex(2))*wt2(1)
         if (use_c13) then
-          atm2lnd_vars%forc_pc13o2_grc(g) = (atm2lnd_vars%c13o2_input(1,1,nindex(1))*wt1(1) + &
-             atm2lnd_vars%c13o2_input(1,1,nindex(2))*wt2(1)) * 1.e-6_r8 * atm2lnd_vars%forc_pbot_not_downscaled_grc(g)
+          atm2lnd_vars%forc_pc13o2_grc(g) = (atm2lnd_vars%c13o2_input(1,1,cindex(1))*wt1(1) + &
+             atm2lnd_vars%c13o2_input(1,1,cindex(2))*wt2(1)) * 1.e-6_r8 * atm2lnd_vars%forc_pbot_not_downscaled_grc(g)
         end if
         !TEST (FACE-like experiment begins in 2010)
         !if (yr .ge. 2010) atm2lnd_vars%co2_input = 550.
