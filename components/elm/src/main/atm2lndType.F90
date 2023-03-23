@@ -53,6 +53,7 @@ module atm2lndType
       integer,  pointer :: tindex                      (:,:,:) => null()  !current index for meteorolgoical data
       integer,  pointer :: metsource                           => null()  !Meteorogical source (0=Qian, 1=cruncep)
       real(r8), pointer :: npf                            (:)  => null()  !number of model timesteps per forcing timestep
+      integer,  pointer :: co2_tlen                            => null()  !annual CO2 input data time-length
       real(r8), pointer :: co2_input                   (:,:,:) => null()  !annual CO2 input data
       real(r8), pointer :: c13o2_input                 (:,:,:) => null()  !annual C13O2 input data
       integer, pointer :: ndepind                        (:,:) => null()  !annual nitrogen deposition data
@@ -208,7 +209,8 @@ contains
     allocate(this%timeres                            (1:14))        ; this%timeres                       (:)   = ival
     allocate(this%var_offset              (14,begg:endg,12))        ; this%var_offset                (:,:,:)   = ival
     allocate(this%var_mult                (14,begg:endg,12))        ; this%var_mult                  (:,:,:)   = ival
-    allocate(this%co2_input                      (1,1,3000))        ; this%co2_input                 (:,:,:)   = ival    
+    allocate(this%co2_tlen                                 )        ; this%co2_tlen                            = ival_int
+    allocate(this%co2_input                      (1,1,3000))        ; this%co2_input                 (:,:,:)   = ival
     allocate(this%c13o2_input                    (1,1,3000))        ; this%c13o2_input               (:,:,:)   = ival
     allocate(this%ndepind                     (begg:endg,2))        ; this%ndepind                     (:,:)   = ival_int
     allocate(this%hdmind                      (begg:endg,2))        ; this%hdmind                      (:,:)   = ival_int

@@ -793,7 +793,7 @@ contains
               counti(1)   = 720  ! hard-wired
               counti(2)   = 360
 
-              ierr = nf90_inq_varid(ncid, 'time', varid)
+              ierr = nf90_inq_dimid(ncid, 'time', dimid)  ! days-since-1850-01-01, and mid-of-year annually
               ierr = nf90_Inquire_Dimension(ncid, dimid, len = thistimelen)
               findex(1)   = min(findex(1), thistimelen) ! upper limit from time length
               findex(2)   = min(findex(2), thistimelen) ! upper limit from time length
@@ -846,7 +846,7 @@ contains
           atm2lnd_vars%forc_hdm(g) = atm2lnd_vars%hdm1(atm2lnd_vars%hdmind(g,1),atm2lnd_vars%hdmind(g,2),1)*wt1(1) + &
                                      atm2lnd_vars%hdm2(atm2lnd_vars%hdmind(g,1),atm2lnd_vars%hdmind(g,2),1)*wt2(1)
 
-          !Get all of the data (master processor only)
+          !Get all of the data, spatially and temporally (master processor only)
           if (atm2lnd_vars%loaded_bypassdata .eq. 0 .and. masterproc .and. i .eq. 1) then 
             ! Read light_streams namelist to get filename
             nu_nml = getavu()
@@ -949,10 +949,11 @@ contains
               counti(1)   = 144   ! 1.9x2.5-deg resolution assumed
               counti(2)   = 96
 
-              ierr = nf90_inq_varid(ncid, 'YEAR', varid)
+              ierr = nf90_inq_dimid(ncid, 'time', dimid) ! days-since-0000-01-01, and mid-of-year annually
               ierr = nf90_Inquire_Dimension(ncid, dimid, len = thistimelen)
               nindex(1)   = min(nindex(1), thistimelen) ! upper limit from YEAR length
               nindex(2)   = min(nindex(2), thistimelen) ! upper limit from YEAR length
+
               starti(3)   = nindex(1)
               counti(3)   = 1
               ierr = nf90_inq_varid(ncid, 'NDEP_year', varid)
@@ -1031,7 +1032,7 @@ contains
             counti(1)   = 144
             counti(2)   = 96
 
-            ierr = nf90_inq_varid(ncid, 'time', varid)
+            ierr = nf90_inq_dimid(ncid, 'time', dimid) ! days-since-1849-01-01, and mid-of-month monthly
             ierr = nf90_Inquire_Dimension(ncid, dimid, len = thistimelen)
             thistimelen = thistimelen/12
             starti(3)   = max((min(yr,thistimelen)-1849)*12+1, 13)-1
@@ -1176,12 +1177,13 @@ contains
           ierr = nf90_inq_varid(ncid, 'C13O2', varid)
           ierr = nf90_get_var(ncid, varid, atm2lnd_vars%c13o2_input(:,:,1:thistimelen))
           ierr = nf90_close(ncid)
-
+          atm2lnd_vars%co2_tlen = thistimelen ! save this for flexible-length CO2 dataset
         end if
 
         !get weights/indices for interpolation (assume values represent annual averages)
         !cindex(1) = min(max(yr,1850),2100)-1764   ! starting from yr 1765, and max 2100 assummed
-        cindex(1) = min(max(yr,1850),thistimelen+1764)-1764   ! starting from yr 1765 assummed
+        cindex(1) = min(max(yr,1850),atm2lnd_vars%co2_tlen+1763)-1764   ! starting from yr 1765 assummed, but index(1) only till the second-last one
+
         if (thiscalday .le. 182.5) then
           cindex(2) = cindex(1)-1
         else
