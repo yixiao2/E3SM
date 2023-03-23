@@ -1157,6 +1157,11 @@ contains
        end do
      
 !---------------------------------- CO2 -------------------------------------------------------------------
+     if (yr>=1850) then
+       co2_type_idx = 2
+     else
+       co2_type_idx = 0
+     endif
 
      if (co2_type_idx /= 0) then
         !atmospheric CO2 (to be used for transient simulations only)
@@ -1348,8 +1353,6 @@ contains
             top_as%pc13o2bot(topo) = top_as%pco2bot(topo) * c13ratio;
          end if
        end do
-       atm2lnd_vars%forc_pco2_grc(g)   = co2_ppmv_val * 1.e-6_r8 &
-                * atm2lnd_vars%forc_pbot_not_downscaled_grc(g)
 
        ! CH4
        if (index_x2l_Sa_methane /= 0) then
@@ -1400,24 +1403,16 @@ contains
           co2_ppmv_val = co2_ppmv_prog
        else if (co2_type_idx == 2) then
           co2_ppmv_val = co2_ppmv_diag 
-           if (use_c13) then
-             atm2lnd_vars%forc_pc13o2_grc(g) = co2_ppmv_val * c13ratio * 1.e-6_r8 * forc_pbot
-           end if
        else
           co2_ppmv_val = co2_ppmv
-          if (use_c13) then
-            atm2lnd_vars%forc_pc13o2_grc(g) = co2_ppmv_val * c13ratio * 1.e-6_r8 * forc_pbot
-          end if
        end if
        atm2lnd_vars%forc_pco2_grc(g)   = co2_ppmv_val * 1.e-6_r8 * forc_pbot 
 
-#ifdef CPL_BYPASS
-       do topo = grc_pp%topi(g), grc_pp%topf(g)
-         top_as%pco2bot(topo) = atm2lnd_vars%forc_pco2_grc(g)
-         if (use_c13) then
-            top_as%pc13o2bot(topo) = atm2lnd_vars%forc_pc13o2_grc(g)
-         end if
-       end do
+#ifndef CPL_BYPASS
+       ! not assigned above
+       if (use_c13) then
+          atm2lnd_vars%forc_pc13o2_grc(g) = co2_ppmv_val * c13ratio * 1.e-6_r8 * forc_pbot
+       end if
 #endif
       
        ! glc coupling 
