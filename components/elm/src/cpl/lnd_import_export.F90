@@ -326,11 +326,13 @@ contains
               atm2lnd_vars%endyear_met_spinup = 1969
           else if (use_daymet) then 
               atm2lnd_vars%startyear_met      = 1980
-              atm2lnd_vars%endyear_met_spinup = min(1999, atm2lnd_vars%endyear_met_trans)
-              if (yr>2019) then
+              if (index(metdata_type, 'ESM').gt.0 .and. yr>2019) then
                 ! with offline spss data, just let model runs like trans with extended data
                 atm2lnd_vars%startyear_met = 2020
               end if
+              ! first 20-yr data cycling for spinup
+              atm2lnd_vars%endyear_met_spinup = min(atm2lnd_vars%startyear_met+19, &
+                          atm2lnd_vars%endyear_met_trans)
           end if
 
           nyears_spinup = atm2lnd_vars%endyear_met_spinup - &
