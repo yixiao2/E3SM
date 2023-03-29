@@ -1496,11 +1496,11 @@ end function chem_is_active
 ! get tropopause level
 !-----------------------------------------------------------------------
     e90_ndx = get_spc_ndx('E90')
-    if (e90_ndx <= 0) then
+    !if (e90_ndx <= 0) then
       call tropopause_find(state, tropLev, primary=TROP_ALG_HYBSTOB, backup=TROP_ALG_CLIMATE)
-    else
-      call tropopause_e90_3d(state, tmp_tropLev, tropLev, tropFlag, tropFlagInt)
-    end if
+    !else
+    !  call tropopause_e90_3d(state, tmp_tropLev, tropLev, tropFlag, tropFlagInt)
+    !end if
 
     tim_ndx = pbuf_old_tim_idx()
     call pbuf_get_field(pbuf, ndx_pblh,       pblh)
