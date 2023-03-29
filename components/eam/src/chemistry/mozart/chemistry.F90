@@ -1499,7 +1499,7 @@ end function chem_is_active
     if (e90_ndx <= 0) then
       call tropopause_find(state, tropLev, primary=TROP_ALG_HYBSTOB, backup=TROP_ALG_CLIMATE)
     else
-      call tropopause_e90_3d(state, tmp_tropLev, tropLev, tropFlag, tropFlagInt)
+      call tropopause_e90_3d(state, tmp_tropLev, tropLev, tropFlag, tropFlagInt=tropFlagInt)
     end if
 
     tim_ndx = pbuf_old_tim_idx()
