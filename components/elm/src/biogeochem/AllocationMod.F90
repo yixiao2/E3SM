@@ -334,6 +334,7 @@ contains
     use elm_varctl      , only : carbonphosphorus_only!
     use pftvarcon        , only: npcropmin, declfact, bfact, aleaff, arootf, astemf, noveg
     use pftvarcon        , only: arooti, fleafi, allconsl, allconss, grperc, grpnow, nsoybean
+    use pftvarcon        , only: nwcereal, nwcerealirrig
     use pftvarcon        , only: percrop
     use elm_varpar       , only: nlevdecomp
     use elm_varcon       , only: nitrif_n2o_loss_frac, secspday
@@ -404,6 +405,8 @@ contains
 
          hui                          => crop_vars%gddplant_patch                              , & ! Input:  [real(r8) (:)   ]  =gdd since planting (gddplant)
          leafout                      => crop_vars%gddtsoi_patch                               , & ! Input:  [real(r8) (:)   ]  =gdd from top soil layer temperature
+         vf                           => crop_vars%vf_patch                                    , & ! Output: [real(r8) (:)   ]  vernalization factor
+         cphase                       => crop_vars%cphase_patch                                , & ! Output: [real(r8) (:)   ]  phenology phase
 
          xsmrpool                     => veg_cs%xsmrpool                       , & ! Input:  [real(r8) (:)   ]  (gC/m2) temporary photosynthate C pool
          leafc                        => veg_cs%leafc                          , & ! Input:  [real(r8) (:)   ]
@@ -726,6 +729,12 @@ contains
                   end if
 
                   arepr(p) = 1._r8 - aroot(p) - astem(p) - aleaf(p)
+
+                  ! Added based on Yaqiong Lu et al., 2017 in Geosci. Model Dev.
+                  if(cphase(p) == 3 .and. (ivt(p) == nwcereal .or. ivt(p) == nwcerealirrig)) then
+                     arepr(p) = arepr(p) * vf(p)
+                     aroot(p) = 1._r8 - aleaf(p) - astem(p) - arepr(p)
+                  end if
 
                else                   ! pre emergence
                   aleaf(p) = 1.e-5_r8 ! allocation coefficients should be irrelevant
