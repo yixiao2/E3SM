@@ -707,8 +707,8 @@ _TESTS = {
         #"share"   : True,
         "time"    : "00:30:00",
         "tests"   : (
-            "ERS_Ld3.T62_EC30to60E2r2.CMPASO-NYF.pemod-ompfull",
-            "PET_Lh3.T62_EC30to60E2r2.CMPASO-NYF.pemod-omp2",
+            "ERS_Ld3.T62_EC30to60E2r2.CMPASO-NYF.pemod-omp2",
+            "PET_Lh3.T62_EC30to60E2r2.CMPASO-NYF.pemod-ompfull",
         )
     },
 
@@ -716,8 +716,8 @@ _TESTS = {
         #"share"   : True,
         "time"    : "01:00:00",
         "tests"   : (
-            "ERS_Ld3_D.T62_EC30to60E2r2.CMPASO-NYF.pemod-ompfull",
-            "PET_Lh3_D.T62_EC30to60E2r2.CMPASO-NYF.pemod-omp2",
+            "ERS_Ld3_D.T62_EC30to60E2r2.CMPASO-NYF.pemod-omp2",
+            "PET_Lh3_D.T62_EC30to60E2r2.CMPASO-NYF.pemod-ompfull",
         )
     },
 
