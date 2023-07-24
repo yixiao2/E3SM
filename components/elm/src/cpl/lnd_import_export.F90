@@ -326,10 +326,10 @@ contains
               atm2lnd_vars%endyear_met_spinup = 1969
           else if (use_daymet) then 
               atm2lnd_vars%startyear_met      = 1980
-              if (index(metdata_type, 'ESM').gt.0 .and. yr>2019) then
-                ! with offline spss data, just let model runs like trans with extended data
-                atm2lnd_vars%startyear_met = 2020
-              end if
+              !if (index(metdata_type, 'ESM').gt.0 .and. yr>2019) then
+              !  ! with offline spss data, just let model runs like trans with extended data
+              !  atm2lnd_vars%startyear_met = 2020
+              !end if
               ! first 20-yr data cycling for spinup
               atm2lnd_vars%endyear_met_spinup = min(atm2lnd_vars%startyear_met+19, &
                           atm2lnd_vars%endyear_met_trans)
@@ -433,11 +433,11 @@ contains
                     metdata_fname = 'GSWP3_daymet4_' // trim(metvars(v)) // '_1980-2014_z' // zst(2:3) // '.nc'
                     if (use_daymet .and. (index(metdata_type, 'ESM') .gt. 0) ) then
                         !daymet v4 with GSWP3 format, but forcing extending from CMIP6 ESMs
-                        metdata_fname = 'ESM_daymet4_' // trim(metvars(v)) // '_1980-2019_z' // zst(2:3) // '.nc'
-                        if (yr>2019) then
-                          ! with offline spss data, just let model runs like trans with extended data
-                          metdata_fname = 'ESM_daymet4_' // trim(metvars(v)) // '_2020-2099_z' // zst(2:3) // '.nc'
-                        endif
+                        metdata_fname = 'ESM_daymet4_' // trim(metvars(v)) // '_1980-1980_z' // zst(2:3) // '.nc'
+                        !if (yr>2019) then
+                        !  ! with offline spss data, just let model runs like trans with extended data
+                        !  metdata_fname = 'ESM_daymet4_' // trim(metvars(v)) // '_2020-2099_z' // zst(2:3) // '.nc'
+                        !endif
                    end if
                 else if (use_daymet .and. ztoget .ge. 16 .and. ztoget .le. 20) then 
                     metdata_fname = 'GSWP3v1_Daymet_' // trim(metvars(v)) // '_1980-2010_z' // zst(2:3) // '.nc'
