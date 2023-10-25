@@ -152,7 +152,7 @@ contains
       real(kind=RKIND)                 :: sumRi, RiTopOfEdge, zEdge, zMLD, sfcTaper
       real(kind=RKIND) :: dcEdgeInv, drhoDx, drhoDT, drhoDS, dTdx, dSdx
       real(kind=RKIND) :: slopeTaperUp, slopeTaperDown, sfcTaperUp, sfcTaperDown, invAreaCell
-      real(kind=RKIND) :: lt1, lt2, c_min
+      real(kind=RKIND) :: pi, bvfAv, sum_invTime, slopeAv, lt1, lt2, c_min
       real(kind=RKIND) :: sigma, Lr, Length, L_rhines, shearEdgeInv
       real (kind=RKIND) :: eddyLength, eddyTime
       real(kind=RKIND), dimension(:), allocatable :: dzTop, dTdzTop, dSdzTop, k33Norm
@@ -166,6 +166,7 @@ contains
 
       type(mpas_pool_type), pointer :: tracersPool
       real(kind=RKIND), dimension(:, :, :), pointer :: activeTracers
+      real(kind=RKIND), dimension(:), pointer :: latEdge
       integer, pointer :: indexTemperaturePtr, indexSalinityPtr
       integer :: indexTemperature, indexSalinity
       integer :: timeLevel
@@ -176,6 +177,7 @@ contains
          timeLevel = 1
       end if
 
+      pi = 2.0_RKIND*asin(1.0_RKIND)
       call mpas_timer_start('gm bolus velocity')
 
       call mpas_pool_get_array(statePool, 'normalVelocity', normalVelocity, timeLevel)
@@ -188,6 +190,7 @@ contains
       indexTemperature = indexTemperaturePtr
       indexSalinity    = indexSalinityPtr
 
+      call mpas_pool_get_array(meshPool, 'latEdge', latEdge)
       call mpas_pool_get_array(meshPool, 'minLevelEdgeBot', minLevelEdgeBot)
       call mpas_pool_get_array(meshPool, 'minLevelCell', minLevelCell)
       call mpas_pool_get_array(meshPool, 'maxLevelEdgeTop', maxLevelEdgeTop)
@@ -505,27 +508,36 @@ contains
          if (local_config_GM_compute_Visbeck) then
            call mpas_pool_get_array(meshPool, 'fEdge', fEdge)
            !$omp parallel
-           !$omp do schedule(runtime) private(k, cell1, cell2, sum_hN, ltSum, sumRi, countN2, &
+           !$omp do schedule(runtime) private(k, cell1, cell2, sum_hN, ltSum, countN2, &
            !$omp             zEdge, RiTopOfEdge, BruntVaisalaFreqTopEdge, lt1, lt2, c_Visbeck, &
-           !$omp             eddyLength, eddyTime)
+           !$omp             eddyLength, eddyTime, sum_invTime)
            do iEdge = 1, nEdges
               k=minLevelEdgeBot(iEdge)
               sum_hN = 0.0_RKIND
+              sum_invTime = 0.0_RKIND
               ltSum = 0.0_RKIND
               sumRi = 0.0_RKIND
               countN2 = 0
               cell1 = cellsOnEdge(1, iEdge)
               cell2 = cellsOnEdge(2, iEdge)
 
+              !The calculation of eddyTime and Length follows the Visbeck updates in 
+              ! Impact of Mesoscale Eddy Transfer on Heat Uptake in an Eddy-Parameterizing Ocean Model
+              ! Oleg A. Saenko, Duo Yang, and Jonathan M. Gregory
+              ! https://doi.org/10.1175/JCLI-D-18-0186.1
+              ! see their equations 2-6
               k = minLevelEdgeBot(iEdge)+1
               zEdge = -layerThickEdgeMean(k-1,iEdge)
               do while(zEdge > -config_GM_Visbeck_max_depth .and. k < maxLevelEdgeTop(iEdge))
                 lt1 = 0.5_RKIND*(layerThickness(k,cell1) + layerThickness(k-1,cell1))
                 lt2 = 0.5_RKIND*(layerThickness(k,cell2) + layerThickness(k-1,cell2))
-                sum_hN = sum_hN + 0.5_RKIND*(lt1*max(BruntVaisalaFreqTop(k,cell1),0.0_RKIND) + &
-                                lt2*max(BruntVaisalaFreqTop(k,cell2),0.0_RKIND))
-                sumRi = sumRi + 0.5_RKIND*(lt1*max(RiTopOfCell(k,cell1),0.0_RKIND) + &
-                                    lt2*max(RiTopOfCell(k,cell2),0.0_RKIND))
+                bvfAv = 0.5_RKIND*(max(BruntVaisalaFreqTop(k,cell1),0.0_RKIND) + &
+                                   max(BruntVaisalaFreqTop(k,cell2),0.0_RKIND))
+                slopeAv = 0.5_RKIND*(sqrt(k33(k,cell1)) + sqrt(k33(k,cell2)))
+                sum_invTime = sum_invTime + 0.5_RKIND*(lt1+lt2)*sqrt(bvfAv)*slopeAv
+
+                sum_hN = sum_hN + 0.5_RKIND*(lt1*sqrt(max(BruntVaisalaFreqTop(k,cell1),0.0_RKIND)) + &
+                                lt2*sqrt(max(BruntVaisalaFreqTop(k,cell2),0.0_RKIND)))
                 ltsum = ltsum + 0.5_RKIND*(lt1+lt2)
                 countN2 = countN2 + 1
 
@@ -534,14 +546,13 @@ contains
               end do
 
               if (countN2 > 0) then
-                c_Visbeck = sqrt(sum_hN*ltsum)
-                sumRi = sumRi / (ltsum + 1.0E-11_RKIND)
+                c_Visbeck = sum_hN / pi
 
-                eddyLength = max(dcEdge(iEdge), min(c_Visbeck/(1.0E-15_RKIND + abs(fEdge(iEdge))), &
-                                sqrt(c_Visbeck/ (2.0_RKIND*betaEdge(iEdge)))))
-                eddyTime = 1.0_RKIND / (1.0E-11_RKIND + max(abs(fEdge(iEdge)), sqrt(2.0_RKIND*c_Visbeck*betaEdge(iEdge))) /  &
-                                      (1.0E-11_RKIND + sqrt(sumRi)))
-                gmBolusKappa(iEdge) = config_GM_Visbeck_alpha * eddyLength**2.0_RKIND / (1.0E-15 + eddyTime)
+                eddyLength = min(c_Visbeck/(1.0E-15_RKIND + abs(fEdge(iEdge))), &
+                                sqrt(c_Visbeck/ (2.0_RKIND*betaEdge(iEdge))))
+                eddyTime = sum_invTime / ltsum
+
+                gmBolusKappa(iEdge) = config_GM_Visbeck_alpha * eddyLength * eddyTime
                 gmBolusKappa(iEdge) = max(config_GM_spatially_variable_min_kappa, min(gmBolusKappa(iEdge),  &
                                           config_GM_spatially_variable_max_kappa))
              else !for really shallow columns use min bolus kappa
@@ -615,7 +626,7 @@ contains
                ! for the first-mode (m=1) baroclinic gravity wave speed in m/s
                ! c_m = 1/pi integral(N dz )
 
-               c_mode1 = max(1.0E-5_RKIND, sum_hN/3.141592_RKIND)
+               c_mode1 = max(1.0E-5_RKIND, sum_hN/pi)
 
                ! See Hallberg (2013) https://doi.org/10.1016/j.ocemod.2013.08.007
                ! just after eqn 4 the defines the deformation

@@ -397,9 +397,9 @@
 					description="baroclinic wave mode chosen for the Ferrari et al 2010 calculation. Used for all choices of config_GM_closure other than 'constant'."
 					possible_values="small positive numbers"
 		/>
-		<nml_option name="config_GM_Visbeck_alpha" type="real" default_value="0.005"
-					description="scaling factor on the Visbeck diffusivity parameterization"
-					possible_values="small positive numbers"
+		<nml_option name="config_GM_Visbeck_alpha" type="real" default_value="50000"
+					description="scaling factor on the Visbeck diffusivity parameterization, it is functionally like a length scale so should be chosen roughly as an average deformation radius"
+					possible_values="positive reals"
 		/>
 		<nml_option name="config_GM_Visbeck_max_depth" type="real" default_value="1000.0" units="m"
 					description="minimum depth for calculation of vertical average"
