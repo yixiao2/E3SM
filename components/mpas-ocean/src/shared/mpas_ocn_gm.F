@@ -1000,6 +1000,12 @@ contains
             local_config_GM_compute_Visbeck = .true.
             local_config_GM_compute_EdenGreatbatch = .false.
 
+            if(config_use_redi = .false.) then
+               call mpas_log_write('Visbeck GM parameterization requires Redi Mixing to be active. Resubmit with config_use_redi = .true.', MPAS_LOG_CRIT)
+               err = 1
+               call mpas_dmpar_finalize(domain%dminfo)
+            end if
+
             call mpas_pool_get_array(meshPool, 'latEdge', latEdge)
             call mpas_pool_get_config(meshPool, 'sphere_radius', sphere_radius)
             !$omp parallel
