@@ -149,7 +149,7 @@ contains
       integer                          :: i, k, iEdge, cell1, cell2, iCell, N, iCellSelf, maxLocation
       real(kind=RKIND)                 :: h1, h2, areaEdge, BruntVaisalaFreqTopEdge, rtmp
       real(kind=RKIND)                 :: sum_hN, countN2, maxN, ltSum
-      real(kind=RKIND)                 :: sumRi, RiTopOfEdge, zEdge, zMLD, sfcTaper
+      real(kind=RKIND)                 :: RiTopOfEdge, zEdge, zMLD, sfcTaper
       real(kind=RKIND) :: dcEdgeInv, drhoDx, drhoDT, drhoDS, dTdx, dSdx
       real(kind=RKIND) :: slopeTaperUp, slopeTaperDown, sfcTaperUp, sfcTaperDown, invAreaCell
       real(kind=RKIND) :: pi, bvfAv, sum_invTime, slopeAv, lt1, lt2, c_min
@@ -510,13 +510,12 @@ contains
            !$omp parallel
            !$omp do schedule(runtime) private(k, cell1, cell2, sum_hN, ltSum, countN2, &
            !$omp             zEdge, RiTopOfEdge, BruntVaisalaFreqTopEdge, lt1, lt2, c_Visbeck, &
-           !$omp             eddyLength, eddyTime, sum_invTime)
+           !$omp             eddyLength, eddyTime, sum_invTime, slopeAv, bvfAv)
            do iEdge = 1, nEdges
               k=minLevelEdgeBot(iEdge)
               sum_hN = 0.0_RKIND
               sum_invTime = 0.0_RKIND
               ltSum = 0.0_RKIND
-              sumRi = 0.0_RKIND
               countN2 = 0
               cell1 = cellsOnEdge(1, iEdge)
               cell2 = cellsOnEdge(2, iEdge)
@@ -1000,7 +999,7 @@ contains
             local_config_GM_compute_Visbeck = .true.
             local_config_GM_compute_EdenGreatbatch = .false.
 
-            if(config_use_redi = .false.) then
+            if(config_use_redi == .false.) then
                call mpas_log_write('Visbeck GM parameterization requires Redi Mixing to be active. Resubmit with config_use_redi = .true.', MPAS_LOG_CRIT)
                err = 1
                call mpas_dmpar_finalize(domain%dminfo)
