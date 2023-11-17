@@ -369,6 +369,18 @@ contains
                   limiterUp(k,iCellSelf,iEdge) = slopeTaperUp*sfcTaperUp
                   limiterDown(k,iCellSelf,iEdge) = slopeTaperDown*sfcTaperDown
 
+                  if (abs(slopeTriadUp(k,iCellSelf,iEdge)) > 1e-6) then
+                     limiterUp(k,iCellSelf,iEdge) = slopeTaperUp*sfcTaperUp
+                  else
+                     limiterUp(k,iCellSelf,iEdge) = 0.0_RKIND
+                  end if
+
+                  if (abs(slopeTriadDown(k,iCellSelf,iEdge)) > 1e-6) then
+                     limiterDown(k,iCellSelf,iEdge) = slopeTaperDown*sfcTaperDown
+                  else
+                     limiterDown(k,iCellSelf,iEdge) = 0.0_RKIND
+                  end if
+
                   slopeTriadUp(k, iCellSelf, iEdge) = &
                      slopeTaperUp*sfcTaperUp*slopeTriadUp(k, iCellSelf, iEdge)
                   slopeTriadDown(k, iCellSelf, iEdge) = &
