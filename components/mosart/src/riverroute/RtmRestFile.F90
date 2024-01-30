@@ -9,26 +9,24 @@ module RtmRestFile
 ! Reads from or writes to/ the RTM restart file.
 !
 ! !USES:
-  use shr_kind_mod      , only : r8 => shr_kind_r8
-  use shr_sys_mod       , only : shr_sys_abort
-  use RtmSpmd           , only : masterproc 
-  use RtmVar            , only : rtmlon, rtmlat, iulog, inst_suffix, rpntfil, &
+  use shr_kind_mod  , only : r8 => shr_kind_r8
+  use shr_sys_mod   , only : shr_sys_abort
+  use RtmSpmd       , only : masterproc 
+  use RtmVar        , only : rtmlon, rtmlat, iulog, inst_suffix, rpntfil, &
                              caseid, nsrest, brnch_retain_casename, &
                              finidat_rtm, nrevsn_rtm, wrmflag, inundflag, &
                              nsrContinue, nsrBranch, nsrStartup, &
                              ctitle, version, username, hostname, conventions, source
-  use RtmHistFile       , only : RtmHistRestart
-  use RtmFileUtils      , only : relavu, getavu, opnfil, getfil
-  use RtmTimeManager    , only : timemgr_restart, get_nstep, get_curr_date, is_last_step
-  use RunoffMod         , only : rtmCTL
-  use MOSART_Budgets_mod, only : rof_budg_stateG_1D, rof_budg_fluxG_1D, rof_budg_fluxN_1D, &
-                                 MOSART_WaterBudget_Restart_Write, MOSART_WaterBudget_Restart_Read, &
-                                 f_size, p_size, s_size, o_size
+  use RtmHistFile   , only : RtmHistRestart
+  use RtmFileUtils  , only : relavu, getavu, opnfil, getfil
+  use RtmTimeManager, only : timemgr_restart, get_nstep, get_curr_date, is_last_step
+  use RunoffMod     , only : rtmCTL
   use RtmIO       
   use RtmDateTime
-  use WRM_type_mod      , only : ctlSubwWRM, WRMUnit, StorWater
-  use WRM_subw_io_mod   , only : WRM_computeRelease
-  use rof_cpl_indices   , only : nt_rtm, rtm_tracers 
+  use WRM_type_mod  , only : ctlSubwWRM, WRMUnit, StorWater
+  use WRM_subw_io_mod, only : WRM_computeRelease
+
+  use rof_cpl_indices , only : nt_rtm, rtm_tracers 
 
 ! !PUBLIC TYPES:
   implicit none
@@ -91,7 +89,6 @@ contains
     call ncd_enddef(ncid)
 
     ! Write restart file variables
-    call MOSART_WaterBudget_Restart_Write()
     call RtmRestart( ncid, flag='write' )
     call RtmHistRestart ( ncid, flag='write' )
     call timemgr_restart( ncid, flag='write' )
@@ -137,7 +134,7 @@ contains
     call RtmRestart( ncid, flag='read' )
     call RtmHistRestart(ncid, flag='read')
     call ncd_pio_closefile(ncid)
-    call MOSART_WaterBudget_Restart_Read()
+
     ! Write out diagnostic info
     if (masterproc) then
        write(iulog,'(72a1)') ("-",i=1,60)
@@ -347,9 +344,6 @@ contains
     call ncd_defdim(ncid, 'rtmlon'  , rtmlon         , dimid)
     call ncd_defdim(ncid, 'rtmlat'  , rtmlat         , dimid)
     call ncd_defdim(ncid, 'string_length', 64        , dimid)
-    call ncd_defdim(ncid, 'budg_flux' , f_size*p_size, dimid)
-    call ncd_defdim(ncid, 'budg_state', s_size*p_size, dimid)
-    call ncd_defdim(ncid, 'budg_other', o_size*p_size, dimid)
        
     ! Define global attributes
     
@@ -404,10 +398,12 @@ contains
     stormth_read = .true.
 
 if (wrmflag) then
-    nvmax = 22
+    nvmax = 19
 else
-    nvmax = 18
+
+    nvmax = 15
 endif
+
 
     do nv = 1,nvmax
     do nt = 1,nt_rtm
@@ -490,25 +486,8 @@ endif
           uname = 'no unit'
           dfld  => rtmCTL%rr(:,nt)
 
-      ! budget terms
+          
        elseif (nv == 16 .and. trim(rtm_tracers(nt)) == 'LIQ') then
-          vname = 'WATER_BUDGET_STATE_'//trim(rtm_tracers(nt))
-          lname = 'Water budget global state'
-          uname = 'mm'
-          dfld  => rof_budg_stateG_1D
-       elseif (nv == 17 .and. trim(rtm_tracers(nt)) == 'LIQ') then
-          vname = 'WATER_BUDGET_FLUX_'//trim(rtm_tracers(nt))
-          lname = 'water budget global flux'
-          uname = 'mm/s'
-          dfld  => rof_budg_fluxG_1D
-       elseif (nv == 18 .and. trim(rtm_tracers(nt)) == 'LIQ') then
-          vname = 'WATER_BUDGET_COUNTER_'//trim(rtm_tracers(nt))
-          lname = 'water budget global step counter'
-          uname = 'no unit'
-          dfld  => rof_budg_fluxN_1D 
-
-       ! WRM terms   
-       elseif (nv == 19 .and. trim(rtm_tracers(nt)) == 'LIQ') then
           varok = .false.
           if (wrmflag) then
              varok = .true.
@@ -524,7 +503,7 @@ endif
              uname = 'm3'
              dfld  => StorWater%storageG(:)
           endif
-       elseif (nv == 20 .and. trim(rtm_tracers(nt)) == 'LIQ') then
+       elseif (nv == 17 .and. trim(rtm_tracers(nt)) == 'LIQ') then
           varok = .false.
           if (wrmflag) then
              varok = .true.
@@ -540,7 +519,7 @@ endif
              uname = 'm3'
              dfld  => StorWater%releaseG(:)
           endif
-       elseif (nv == 21 .and. trim(rtm_tracers(nt)) == 'LIQ') then
+       elseif (nv == 18 .and. trim(rtm_tracers(nt)) == 'LIQ') then
           varok = .false.
           if (wrmflag) then
              varok = .true.
@@ -556,7 +535,7 @@ endif
              uname = 'm3'
              dfld  => WRMUnit%StorMthStOpG(:)
           endif        
-       elseif (nv == 22 .and. trim(rtm_tracers(nt)) == 'LIQ') then
+       elseif (nv == 19 .and. trim(rtm_tracers(nt)) == 'LIQ') then
           varok = .false.
           if (wrmflag) then
              varok = .true.
@@ -571,22 +550,15 @@ endif
              lname = 'dam active stage'
              uname = 'no unit'
              dfld_int  => StorWater%active_stageG(:)
-          endif       
+          endif
+          
        else
           varok = .false.
        endif
 
        if (varok) then
        if (flag == 'define') then
-         if (nv == 16) then
-          call ncd_defvar(ncid=ncid, varname=trim(vname), &
-            xtype=ncd_double,  dim1name='budg_state', &
-            long_name=trim(lname), units=trim(uname))  
-         elseif (nv == 17 .or. nv == 18) then
-          call ncd_defvar(ncid=ncid, varname=trim(vname), &
-            xtype=ncd_double,  dim1name='budg_flux', &
-            long_name=trim(lname), units=trim(uname))
-         elseif (nv == 22) then
+         if (nv == 19) then
           call ncd_defvar(ncid=ncid, varname=trim(vname), &
                xtype=ncd_int,  dim1name='rtmlon', dim2name='rtmlat', &
                long_name=trim(lname), units=trim(uname))
@@ -595,15 +567,11 @@ endif
                xtype=ncd_double,  dim1name='rtmlon', dim2name='rtmlat', &
                long_name=trim(lname), units=trim(uname))
          endif
-
        else if (flag == 'read' .or. flag == 'write') then
-         if (nv==22) then
+         if (nv==19) then
           call ncd_io(varname=trim(vname), data=dfld_int, dim1name='allrof', &
                ncid=ncid, flag=flag, readvar=readvar)
-         elseif (nv >= 16 .and. nv <=18) then
-          call ncd_io(varname=trim(vname), data=dfld,  &
-               ncid=ncid, flag=flag, readvar=readvar)
-         else  
+         else
           call ncd_io(varname=trim(vname), data=dfld, dim1name='allrof', &
                ncid=ncid, flag=flag, readvar=readvar)
          endif
@@ -665,6 +633,7 @@ endif
           endif
        enddo  ! n
 
+
        if (wrmflag) then
           do idam = 1, ctlSubwWRM%localNumDam
              ig = WRMUnit%icell(idam)
@@ -683,3 +652,6 @@ endif
   end subroutine RtmRestart
 
 end module RtmRestFile
+
+
+
