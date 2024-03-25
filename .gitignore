@@ -34,3 +34,6 @@ site
 components/eamxx/site/*
 # Ignore auto-generated eamxx_params.md file
 components/eamxx/docs/common/eamxx_params.md
+
+# Ignore pflotran-interface directory
+components/elm/src/external_models/pflotran-interface/
