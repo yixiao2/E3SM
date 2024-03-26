@@ -2284,6 +2284,7 @@ contains
   !        in 'SoilHydrologyMod.F90'. When coupled with pflotran, it's hard to get those together
   !        like GB does in 'step_th_elm_pf' subroutine. So, this subroutine is a collective call of
   !        that and others in 'Hydrology2Mod.F90' so that pflotran can be called out of 'hydrology2'.
+  ! Y. Xiao: 'Hydrology2Mod' is now HydrologyNoDrainageMod.F90 and HydrologyDrainageMod.F90
   !
   ! !USES:
     use ColumnType      , only : col_pp
@@ -2293,7 +2294,7 @@ contains
     use shr_infnan_mod  , only : shr_infnan_isnan
     use shr_const_mod   , only : SHR_CONST_G
 
-    use elm_pflotran_interface_data
+    !use elm_pflotran_interface_data ! [yx]comment to test its use
     use elm_varctl      , only : pf_elmnstep0
 
   ! !ARGUMENTS:
@@ -2676,7 +2677,7 @@ contains
     use elm_varpar      , only : nlevgrnd
     use shr_infnan_mod  , only : shr_infnan_isnan
 
-    use elm_pflotran_interface_data
+    ! use elm_pflotran_interface_data ! [yx]comment to test its use
     use elm_varctl      , only : pf_elmnstep0
 
   ! !ARGUMENTS:
