@@ -511,6 +511,7 @@ sub write_filepath_cesmbld
          "external_models/sbetr/src/Applications/soil-farm/v1eca/v1ecaPara",
          "external_models/sbetr/src/Applications/soil-farm/v1eca/v1eca1layer",
          "external_models/sbetr/src/Applications/soil-farm/v1eca/v1ecaNlayer",
+         "external_models/pflotran-interface/src/elm-pflotran-eh",
 		     "utils", 
 		     "cpl" );
 
