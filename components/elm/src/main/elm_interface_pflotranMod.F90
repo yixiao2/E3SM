@@ -55,7 +55,7 @@ module elm_interface_pflotranMod
 
 
 #ifdef ELM_PFLOTRAN
-  !use elm_pflotran_interface_data ! [yx]comment to test its use
+  use elmpf_interface_data ! [yx]comment to test its use -> elm_pf_idata
   use pflotran_elm_main_module
   use pflotran_elm_setmapping_module
 #endif
@@ -2294,7 +2294,7 @@ contains
     use shr_infnan_mod  , only : shr_infnan_isnan
     use shr_const_mod   , only : SHR_CONST_G
 
-    !use elm_pflotran_interface_data ! [yx]comment to test its use
+    use elmpf_interface_data ! [yx]comment to test its use
     use elm_varctl      , only : pf_elmnstep0
 
   ! !ARGUMENTS:
@@ -2677,7 +2677,7 @@ contains
     use elm_varpar      , only : nlevgrnd
     use shr_infnan_mod  , only : shr_infnan_isnan
 
-    ! use elm_pflotran_interface_data ! [yx]comment to test its use
+    use elmpf_interface_data ! [yx]comment to test its use
     use elm_varctl      , only : pf_elmnstep0
 
   ! !ARGUMENTS:
