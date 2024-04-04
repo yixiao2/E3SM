@@ -239,6 +239,15 @@ contains
     type(bounds_type)    :: bounds_clump
     type(bounds_type)    :: bounds_proc
     !-----------------------------------------------------------------------
+    #ifdef DEBUG_ELMPFEH
+      ! !print ELM_PFLOTRAN, use_pflotran, pf_cmode, pf_hmode, pf_tmode, and use_cn
+      write(iulog,*)'debug elm_drv: use_pflotran = ',use_pflotran
+      write(iulog,*)'debug elm_drv: pf_cmode = ',pf_cmode
+      write(iulog,*)'debug elm_drv: pf_hmode = ',pf_hmode
+      write(iulog,*)'debug elm_drv: pf_tmode = ',pf_tmode
+      write(iulog,*)'debug elm_drv: use_cn = ',use_cn
+    #endif
+
 
     call get_curr_time_string(dateTimeString)
     if (masterproc) then

@@ -293,8 +293,8 @@ contains
     integer :: nstep
 
 #ifdef ELM_PFLOTRAN
-    call elm_pf_BeginCBalance(elm_interface_data, bounds, filters, ifilter)
-    call elm_pf_BeginNBalance(elm_interface_data, bounds, filters, ifilter)
+    !call elm_pf_BeginCBalance(elm_interface_data, bounds, filters, ifilter)
+    !call elm_pf_BeginNBalance(elm_interface_data, bounds, filters, ifilter)
 
     call pflotran_run_onestep(elm_interface_data, bounds, filters, ifilter)
 
@@ -407,7 +407,7 @@ contains
 
 #include "petsc/finclude/petscsys.h"
 #include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
+! #include "petsc/finclude/petscvec.h90"
 
     !
     ! !REVISION HISTORY:
@@ -1331,7 +1331,7 @@ contains
 
 #include "petsc/finclude/petscsys.h"
 #include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
+! #include "petsc/finclude/petscvec.h90"
 
     type(bounds_type)                   , intent(in) :: bounds
     type(elm_interface_data_type)   , intent(in) :: elm_interface_data
@@ -1673,7 +1673,7 @@ contains
 
 #include "petsc/finclude/petscsys.h"
 #include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
+! #include "petsc/finclude/petscvec.h90"
 #include "petsc/finclude/petscviewer.h"
 
     !
@@ -1987,7 +1987,7 @@ contains
 
 #include "petsc/finclude/petscsys.h"
 #include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
+! #include "petsc/finclude/petscvec.h90"
     logical           , intent(in) :: initpftmode, initpfhmode
     type(bounds_type) , intent(in) :: bounds         ! bounds of current process
     type(clumpfilter) , intent(in) :: filters(:)     ! filters on current process
@@ -2189,7 +2189,7 @@ contains
 
 #include "petsc/finclude/petscsys.h"
 #include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
+! #include "petsc/finclude/petscvec.h90"
 
     type(bounds_type)         , intent(in) :: bounds         ! bounds
     type(clumpfilter)         , intent(in) :: filters(:)     ! filters on current process
@@ -2302,7 +2302,7 @@ contains
 
 #include "petsc/finclude/petscsys.h"
 #include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
+! #include "petsc/finclude/petscvec.h90"
 
     type(bounds_type), intent(in) :: bounds         ! bounds of current process
     type(clumpfilter), intent(inout) :: filters(:)     ! filters on current process
@@ -2685,7 +2685,7 @@ contains
 
 #include "petsc/finclude/petscsys.h"
 #include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
+! #include "petsc/finclude/petscvec.h90"
 
     type(bounds_type), intent(in) :: bounds         ! bounds of current process
     type(clumpfilter), intent(in) :: filters(:)     ! filters on current process
@@ -2889,7 +2889,7 @@ contains
 
 #include "petsc/finclude/petscsys.h"
 #include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
+! #include "petsc/finclude/petscvec.h90"
 
     ! Local variables
     integer  :: fc, c, g, j, k        ! do loop indices
@@ -3051,7 +3051,7 @@ contains
 
 #include "petsc/finclude/petscsys.h"
 #include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
+! #include "petsc/finclude/petscvec.h90"
 
  ! !LOCAL VARIABLES:
     integer  :: fc, c, g, j, k                         ! do loop indices
@@ -3272,7 +3272,7 @@ contains
 
 #include "petsc/finclude/petscsys.h"
 #include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
+! #include "petsc/finclude/petscvec.h90"
 
     type(bounds_type), intent(in) :: bounds         ! bounds of current process
     type(clumpfilter), intent(in) :: filters(:)     ! filters on current process
@@ -3411,7 +3411,7 @@ contains
 
 #include "petsc/finclude/petscsys.h"
 #include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
+! #include "petsc/finclude/petscvec.h90"
 
     type(bounds_type), intent(in) :: bounds         ! bounds of current process
     type(clumpfilter), intent(in) :: filters(:)     ! filters on current process
@@ -3532,7 +3532,7 @@ contains
   ! !LOCAL VARIABLES:
 #include "petsc/finclude/petscsys.h"
 #include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
+! #include "petsc/finclude/petscvec.h90"
 
     integer  :: fc, c, g, gcount           ! indices
     real(r8) :: area                       ! top face area
@@ -3665,7 +3665,7 @@ contains
 
 #include "petsc/finclude/petscsys.h"
 #include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
+! #include "petsc/finclude/petscvec.h90"
 
     integer  :: fc,c,g,j,k,l
     integer  :: gcount, cellcount
@@ -3973,7 +3973,7 @@ contains
 
 #include "petsc/finclude/petscsys.h"
 #include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
+! #include "petsc/finclude/petscvec.h90"
 
      integer  :: fc, c, g, j, k
      integer  :: gcount, cellcount
@@ -4329,7 +4329,7 @@ contains
 
 #include "petsc/finclude/petscsys.h"
 #include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
+! #include "petsc/finclude/petscvec.h90"
 
      integer  :: fc, c, g, j
      integer  :: gcount, cellcount
@@ -4436,7 +4436,7 @@ contains
 
 #include "petsc/finclude/petscsys.h"
 #include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
+! #include "petsc/finclude/petscvec.h90"
 
   ! !ARGUMENTS:
     character(len=*), intent(IN) :: subname  ! subroutine name called this
