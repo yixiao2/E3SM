@@ -55,7 +55,7 @@ module elm_interface_pflotranMod
 
 
 #ifdef ELM_PFLOTRAN
-  use elmpf_interface_data ! [yx]comment to test its use -> elm_pf_idata
+  use elmpf_interface_data
   use pflotran_elm_main_module
   use pflotran_elm_setmapping_module
 #endif
@@ -878,11 +878,12 @@ contains
          call printErrMsg(pflotran_m%option)
     end select
 
-    if(pflotran_m%option%nsurfflowdof > 0) then
-       pflotran_m%option%io_buffer = "This version of elm-pflotran DOES NOT work with PF Surface simulation."
-       write(*, '(/A/)') pflotran_m%option%io_buffer
-       call printErrMsg(pflotran_m%option)
-    endif
+    ! if(pflotran_m%option%nsurfflowdof > 0) then
+    !    pflotran_m%option%io_buffer = "This version of elm-pflotran DOES NOT work with PF Surface simulation."
+    !    write(*, '(/A/)') pflotran_m%option%io_buffer
+    !    call printErrMsg(pflotran_m%option)
+    ! endif
+    ! [yx: 2024-04-04] PFLOTRAN surface flow is not supported in this version of ELM-PFLOTRAN
     pf_surfaceflow = .false.
 
     !------------------------------------------------
@@ -2294,7 +2295,7 @@ contains
     use shr_infnan_mod  , only : shr_infnan_isnan
     use shr_const_mod   , only : SHR_CONST_G
 
-    use elmpf_interface_data ! [yx]comment to test its use
+    use elmpf_interface_data
     use elm_varctl      , only : pf_elmnstep0
 
   ! !ARGUMENTS:
@@ -2677,7 +2678,7 @@ contains
     use elm_varpar      , only : nlevgrnd
     use shr_infnan_mod  , only : shr_infnan_isnan
 
-    use elmpf_interface_data ! [yx]comment to test its use
+    use elmpf_interface_data
     use elm_varctl      , only : pf_elmnstep0
 
   ! !ARGUMENTS:
