@@ -239,14 +239,14 @@ contains
     type(bounds_type)    :: bounds_clump
     type(bounds_type)    :: bounds_proc
     !-----------------------------------------------------------------------
-    #ifdef DEBUG_ELMPFEH
-      ! !print ELM_PFLOTRAN, use_pflotran, pf_cmode, pf_hmode, pf_tmode, and use_cn
-      write(iulog,*)'debug elm_drv: use_pflotran = ',use_pflotran
-      write(iulog,*)'debug elm_drv: pf_cmode = ',pf_cmode
-      write(iulog,*)'debug elm_drv: pf_hmode = ',pf_hmode
-      write(iulog,*)'debug elm_drv: pf_tmode = ',pf_tmode
-      write(iulog,*)'debug elm_drv: use_cn = ',use_cn
-    #endif
+#ifdef DEBUG_ELMPFEH
+   ! !print ELM_PFLOTRAN, use_pflotran, pf_cmode, pf_hmode, pf_tmode, and use_cn
+   write(iulog,*)'debug elm_drv: use_pflotran = ',use_pflotran
+   write(iulog,*)'debug elm_drv: pf_cmode = ',pf_cmode
+   write(iulog,*)'debug elm_drv: pf_hmode = ',pf_hmode
+   write(iulog,*)'debug elm_drv: pf_tmode = ',pf_tmode
+   write(iulog,*)'debug elm_drv: use_cn = ',use_cn
+#endif
 
 
     call get_curr_time_string(dateTimeString)
@@ -1071,6 +1071,12 @@ contains
                            phosphorusflux_vars, phosphorusstate_vars,                   &
                            ch4_vars)
 
+#ifdef DEBUG_ELMPFEH
+  if (masterproc) then
+     write(*,*) '[YX DEBUG][elm_drver::elm_drv] start elm_pf_run'
+     !stop
+  endif
+#endif
 
                  if (use_pflotran .and. pf_cmode) then
                     call t_startf('pflotran')
@@ -1082,7 +1088,13 @@ contains
                     ! STEP-2: (3) update elm_interface_data from pflotran
                     ! -------------------------------------------------------------------------
                     call elm_pf_run(elm_interface_data, bounds_clump, filter, nc)
-
+#ifdef DEBUG_ELMPFEH
+  if (masterproc) then
+     write(*,*) '[YX DEBUG][elm_drver::elm_drv] complete elm_pf_run'
+     write(*,*) '[YX DEBUG][elm_drver::elm_drv] start update_bgc_data_pf2elm'
+     !stop
+  endif
+#endif
                     ! STEP-3: update CLM from elm_interface_data
                     call update_bgc_data_pf2elm(elm_interface_data%bgc,         &
                            bounds_clump,filter(nc)%num_soilc, filter(nc)%soilc, &
@@ -1094,33 +1106,33 @@ contains
 
                     call t_stopf('pflotran')
 
-                 elseif (use_elm_bgc) then
-                    call t_startf('elm-bgc via interface')
-                    ! -------------------------------------------------------------------------
-                    ! run elm-bgc (SoilLittDecompAlloc) through interface
-                    ! STEP-2: (1) pass data from elm_interface_data to SoilLittDecompAlloc
-                    ! STEP-2: (2) run SoilLittDecompAlloc
-                    ! STEP-2: (3) update elm_interface_data from SoilLittDecompAlloc
-                    ! -------------------------------------------------------------------------
-                    call elm_bgc_run(elm_interface_data, bounds_clump,          &
-                           filter(nc)%num_soilc, filter(nc)%soilc,              &
-                           filter(nc)%num_soilp, filter(nc)%soilp,              &
-                           canopystate_vars, soilstate_vars,                    &
-                           temperature_vars, waterstate_vars,                   &
-                           cnstate_vars, ch4_vars,                              &
-                           carbonstate_vars, carbonflux_vars,                   &
-                           nitrogenstate_vars, nitrogenflux_vars,               &
-                           phosphorusstate_vars,phosphorusflux_vars)
+               !   elseif (use_elm_bgc) then
+               !      call t_startf('elm-bgc via interface')
+               !      ! -------------------------------------------------------------------------
+               !      ! run elm-bgc (SoilLittDecompAlloc) through interface
+               !      ! STEP-2: (1) pass data from elm_interface_data to SoilLittDecompAlloc
+               !      ! STEP-2: (2) run SoilLittDecompAlloc
+               !      ! STEP-2: (3) update elm_interface_data from SoilLittDecompAlloc
+               !      ! -------------------------------------------------------------------------
+               !      call elm_bgc_run(elm_interface_data, bounds_clump,          &
+               !             filter(nc)%num_soilc, filter(nc)%soilc,              &
+               !             filter(nc)%num_soilp, filter(nc)%soilp,              &
+               !             canopystate_vars, soilstate_vars,                    &
+               !             temperature_vars, waterstate_vars,                   &
+               !             cnstate_vars, ch4_vars,                              &
+               !             carbonstate_vars, carbonflux_vars,                   &
+               !             nitrogenstate_vars, nitrogenflux_vars,               &
+               !             phosphorusstate_vars,phosphorusflux_vars)
 
-                    ! STEP-3: update CLM from elm_interface_data
-                    call update_bgc_data_elm2elm(elm_interface_data%bgc,        &
-                           bounds_clump, filter(nc)%num_soilc, filter(nc)%soilc,&
-                           filter(nc)%num_soilp, filter(nc)%soilp,              &
-                           cnstate_vars, carbonflux_vars, carbonstate_vars,     &
-                           nitrogenflux_vars, nitrogenstate_vars,               &
-                           phosphorusflux_vars, phosphorusstate_vars,           &
-                           ch4_vars)
-                    call t_stopf('elm-bgc via interface')
+               !      ! STEP-3: update CLM from elm_interface_data
+               !      call update_bgc_data_elm2elm(elm_interface_data%bgc,        &
+               !             bounds_clump, filter(nc)%num_soilc, filter(nc)%soilc,&
+               !             filter(nc)%num_soilp, filter(nc)%soilp,              &
+               !             cnstate_vars, carbonflux_vars, carbonstate_vars,     &
+               !             nitrogenflux_vars, nitrogenstate_vars,               &
+               !             phosphorusflux_vars, phosphorusstate_vars,           &
+               !             ch4_vars)
+               !      call t_stopf('elm-bgc via interface')
                  end if !if (use_pflotran .and. pf_cmode)
              end if !if (use_elm_interface)
              !--------------------------------------------------------------------------------

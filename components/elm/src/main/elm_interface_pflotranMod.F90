@@ -28,6 +28,8 @@ module elm_interface_pflotranMod
 !----------------------------------------------------------------------------------------------
 
 #include "shr_assert.h"
+#include "petsc/finclude/petscsys.h"
+  use petscsys
 
   !-----------------------------------------------------------------------
   !BOP
@@ -74,6 +76,7 @@ module elm_interface_pflotranMod
                                                         !      or inactive column in (1:bounds%endc-bounds%endc+1)
 #endif
   !
+  character(len=256), private:: pflotran_inputdir = '' ! [yx 2024-04-04] fix error msg, but not tested
   character(len=256), private:: pflotran_prefix = ''
   character(len=32), private :: restart_stamp = ''
 
@@ -107,15 +110,15 @@ module elm_interface_pflotranMod
   private :: get_elm_soil_th
   private :: get_elm_iceadj_porosity 
   !
-  private :: get_elm_bgc_conc
-  private :: get_elm_bgc_rate
-  private :: update_soil_bgc_pf2elm
-  private :: update_bgc_gaslosses_pf2elm
-  ! pflotran mass balance check
-  private :: elm_pf_BeginCBalance
-  private :: elm_pf_BeginNBalance
-  private :: elm_pf_CBalanceCheck
-  private :: elm_pf_NBalanceCheck
+  ! private :: get_elm_bgc_conc
+  ! private :: get_elm_bgc_rate
+  ! private :: update_soil_bgc_pf2elm
+  ! private :: update_bgc_gaslosses_pf2elm
+  ! ! pflotran mass balance check
+  ! private :: elm_pf_BeginCBalance
+  ! private :: elm_pf_BeginNBalance
+  ! private :: elm_pf_CBalanceCheck
+  ! private :: elm_pf_NBalanceCheck
   !
   private :: get_elm_bcwflx
   private :: get_elm_bceflx
@@ -163,7 +166,7 @@ contains
     character(len=32) :: subname = 'elm_pf_readnl'  ! subroutine name
   !EOP
   !-----------------------------------------------------------------------
-    namelist / elm_pflotran_inparm / pflotran_prefix
+    namelist / elm_pflotran_inparm / pflotran_prefix, pflotran_inputdir
 
     ! ----------------------------------------------------------------------
     ! Read namelist from standard namelist file.
@@ -189,6 +192,7 @@ contains
 
     ! Broadcast namelist variables read in
     call shr_mpi_bcast(pflotran_prefix, mpicom)
+    call shr_mpi_bcast(pflotran_inputdir, mpicom)
 
   end subroutine elm_pf_readnl
 
@@ -300,10 +304,10 @@ contains
 
     nstep = get_nstep()
 
-    if (nstep > 1 )then
-        call elm_pf_CBalanceCheck(elm_interface_data, bounds, filters, ifilter)
-        call elm_pf_NBalanceCheck(elm_interface_data, bounds, filters, ifilter)
-    end if
+    ! if (nstep > 1 )then
+    !     call elm_pf_CBalanceCheck(elm_interface_data, bounds, filters, ifilter)
+    !     call elm_pf_NBalanceCheck(elm_interface_data, bounds, filters, ifilter)
+    ! end if
 #else
     call pflotran_not_available(subname)
 #endif
@@ -506,6 +510,51 @@ contains
                     total_soilc_pes, 1, MPI_INTEGER, 0, mpicom, ierr)
     call mpi_bcast(total_soilc_pes, npes, MPI_INTEGER, 0, mpicom, ierr)
 
+#ifdef DEBUG_ELMPFEH
+    if (masterproc) then
+      write(*,*) '%%--------------------------------------------------------%%'
+      write(*,*) '%%                                                        %%'
+      write(*,*) '%% [YX DEBUG][elm_interface_pflotranMod]                  %%'
+      write(*,*) '%%                                                        %%'
+      write(*,*) 'bounds%begg = ',bounds%begg, ' bounds%endg = ',bounds%endg
+      write(*,*) 'bounds%begt = ',bounds%begt, ' bounds%endt = ',bounds%endt
+      write(*,*) 'bounds%begl = ',bounds%begl, ' bounds%endl = ',bounds%endl
+      write(*,*) 'bounds%begc = ',bounds%begc, ' bounds%endc = ',bounds%endc
+      write(*,*) 'bounds%begp = ',bounds%begp, ' bounds%endp = ',bounds%endp
+      write(*,*) 'bounds%begCohort = ',bounds%begCohort, ' bounds%endCohort = ',bounds%endCohort
+
+      write(*,*) 'bounds%begg_ghost = ',bounds%begg_ghost, ' bounds%endg_ghost = ',bounds%endg_ghost
+      write(*,*) 'bounds%begt_ghost = ',bounds%begt_ghost, ' bounds%endt_ghost = ',bounds%endt_ghost
+      write(*,*) 'bounds%begl_ghost = ',bounds%begl_ghost, ' bounds%endl_ghost = ',bounds%endl_ghost
+      write(*,*) 'bounds%begc_ghost = ',bounds%begc_ghost, ' bounds%endc_ghost = ',bounds%endc_ghost
+      write(*,*) 'bounds%begp_ghost = ',bounds%begp_ghost, ' bounds%endp_ghost = ',bounds%endp_ghost
+      write(*,*) 'bounds%begCohort_ghost = ',bounds%begCohort_ghost, ' bounds%endCohort_ghost = ',bounds%endCohort_ghost
+
+      write(*,*) 'bounds%begg_all = ',bounds%begg_all, ' bounds%endg_all = ',bounds%endg_all
+      write(*,*) 'bounds%begt_all = ',bounds%begt_all, ' bounds%endt_all = ',bounds%endt_all
+      write(*,*) 'bounds%begl_all = ',bounds%begl_all, ' bounds%endl_all = ',bounds%endl_all
+      write(*,*) 'bounds%begc_all = ',bounds%begc_all, ' bounds%endc_all = ',bounds%endc_all
+      write(*,*) 'bounds%begp_all = ',bounds%begp_all, ' bounds%endp_all = ',bounds%endp_all
+      write(*,*) 'bounds%begCohort_all = ',bounds%begCohort_all, ' bounds%endCohort_all = ',bounds%endCohort_all
+
+      write(*,*) 'total_soilc = ',total_soilc
+      write(*,*) 'global_numc = ',global_numc
+      write(*,*) 'total_soilc_pes = ',total_soilc_pes
+      write(*,*) 'ltype = ',ltype
+      write(*,*) 'lgridcell = ',lgridcell
+      write(*,*) 'cgridcell = ',cgridcell
+      write(*,*) 'clandunit = ',clandunit
+      write(*,*) 'cwtgcell = ',cwtgcell
+      write(*,*) 'cactive = ',cactive
+
+      write(*,*) 'mapped_gcount_skip= ',mapped_gcount_skip
+      write(*,*) '%%                                                        %%'
+      write(*,*) '%%--------------------------------------------------------%%'
+      write(*,*) ' '
+    endif
+#endif
+
+
     ! ELM's natural grid id, continued and ordered across processes, for mapping to PF mesh
     ! will be assigned to calculate 'elm_cell_ids_nindex' below
     allocate(mapped_gid(1:total_soilc))
@@ -531,81 +580,90 @@ contains
        endif
 
     end do
+#ifdef DEBUG_ELMPFEH
+    !if (masterproc) then
+      write(*,*) '%%--------------------------------------------------------%%'
+      write(*,*) '%%    [YX DEBUG MPI_LOCAL][elm_interface_pflotranMod]     %%'
+      write(*,*) '[iam=',iam,'] mapped_gid= ',mapped_gid
+      write(*,*) '%%--------------------------------------------------------%%'
+      write(*,*) ' '
+    !endif
+#endif
 
+#else !COLUMN_MODE
+    ! [yx 2024-04-09] to do
+    ! ! 'grid'-wised coupling
+    ! !  (1) grid without soil column IS allowed, but will be skipped.
+    ! !      This will allow exactly same grid domain for ELM and PFLOTRAN
+    ! !      (why? - we may be able to run ELM-PFLOTRAN for irregular mesh, by assigning non-soil grid in normally a ELM rectangulal surface domain.)
+    ! !  (2) if soil column within a grid, assumes that only 1 natural/cropped soil-column allowed per grid cell NOW
 
-#else
-    ! 'grid'-wised coupling
-    !  (1) grid without soil column IS allowed, but will be skipped.
-    !      This will allow exactly same grid domain for ELM and PFLOTRAN
-    !      (why? - we may be able to run ELM-PFLOTRAN for irregular mesh, by assigning non-soil grid in normally a ELM rectangulal surface domain.)
-    !  (2) if soil column within a grid, assumes that only 1 natural/cropped soil-column allowed per grid cell NOW
+    ! ! count active soil columns for a gridcell to do checking below
+    ! gcolumns(:) = 0
+    ! ! a note: grc%ncolumns NOT assigned values at all, so cannot be used here.
+    ! do c = bounds%begc, bounds%endc
+    !   l = clandunit(c)
+    !   g = cgridcell(c)
 
-    ! count active soil columns for a gridcell to do checking below
-    gcolumns(:) = 0
-    ! a note: grc%ncolumns NOT assigned values at all, so cannot be used here.
-    do c = bounds%begc, bounds%endc
-      l = clandunit(c)
-      g = cgridcell(c)
+    !   gcount = g - bounds%begg + 1
+    !   if ((.not.(ltype(l)==istsoil)) .and. (.not.(ltype(l)==istcrop)) ) then
+    !      !write (iulog,*) 'WARNING: Land Unit type of Non-SOIL/CROP... within the domain'
+    !      !write (iulog,*) 'ELM-- PFLOTRAN does not support this land unit at present, AND will skip it'
 
-      gcount = g - bounds%begg + 1
-      if ((.not.(ltype(l)==istsoil)) .and. (.not.(ltype(l)==istcrop)) ) then
-         !write (iulog,*) 'WARNING: Land Unit type of Non-SOIL/CROP... within the domain'
-         !write (iulog,*) 'ELM-- PFLOTRAN does not support this land unit at present, AND will skip it'
+    !   else
+    !       if (cactive(c) .and. cwtgcell(c)>0._r8) then
+    !         gcolumns(gcount) = gcolumns(gcount)+1
+    !      end if
+    !   endif
 
-      else
-          if (cactive(c) .and. cwtgcell(c)>0._r8) then
-            gcolumns(gcount) = gcolumns(gcount)+1
-         end if
-      endif
+    ! enddo ! do c = bounds%begc, bounds%endc
 
-    enddo ! do c = bounds%begc, bounds%endc
+    ! ! do checking on assumption: 1 soil col. (either natveg or crop, but not both) per grid
+    ! total_soilc = 0
+    ! do g = bounds%begg, bounds%endg
+    !    if (gcolumns(g-bounds%begg+1) > 1) then
+    !        write (iulog,*) 'ERROR: More than 1 ACTIVE soil column found in gridcell:', g, gcolumns(g-bounds%begg+1)
+    !        write (iulog,*) 'ELM-PFLOTRAN does not support this at present, AND please check your surface data, then re-run'
+    !        write (iulog,*) ' i.e., this mode is used for user-defined ELM grid, which may be generated together with PF mesh'
 
-    ! do checking on assumption: 1 soil col. (either natveg or crop, but not both) per grid
-    total_soilc = 0
-    do g = bounds%begg, bounds%endg
-       if (gcolumns(g-bounds%begg+1) > 1) then
-           write (iulog,*) 'ERROR: More than 1 ACTIVE soil column found in gridcell:', g, gcolumns(g-bounds%begg+1)
-           write (iulog,*) 'ELM-PFLOTRAN does not support this at present, AND please check your surface data, then re-run'
-           write (iulog,*) ' i.e., this mode is used for user-defined ELM grid, which may be generated together with PF mesh'
+    !        call endrun(trim(subname) // ": ERROR: Currently does not support multiple or inactive soil column per grid " // &
+    !           "in this version of ELM-PFLOTRAN.")
 
-           call endrun(trim(subname) // ": ERROR: Currently does not support multiple or inactive soil column per grid " // &
-              "in this version of ELM-PFLOTRAN.")
+    !    else
+    !        total_soilc = total_soilc + gcolumns(g-bounds%begg+1)
 
-       else
-           total_soilc = total_soilc + gcolumns(g-bounds%begg+1)
+    !    endif
+    ! enddo
 
-       endif
-    enddo
+    ! call mpi_barrier(mpicom, ierr)      ! needs all processes done first
+    ! ! sum of all active-soil-column gridcells across all processors (information only)
+    ! call mpi_allreduce(total_soilc, global_numg, 1, MPI_INTEGER,MPI_SUM,mpicom,ierr)
 
-    call mpi_barrier(mpicom, ierr)      ! needs all processes done first
-    ! sum of all active-soil-column gridcells across all processors (information only)
-    call mpi_allreduce(total_soilc, global_numg, 1, MPI_INTEGER,MPI_SUM,mpicom,ierr)
+    ! ! counting active gridcells in current pes
+    ! total_grid = bounds%endg-bounds%begg+1
 
-    ! counting active gridcells in current pes
-    total_grid = bounds%endg-bounds%begg+1
+    ! ! ELM's natural grid id, continued and ordered across processors, for mapping to PF mesh
+    ! ! will be assigned to calculate 'elm_cell_ids_nindex' below
+    ! allocate(mapped_gid(1:total_grid))
 
-    ! ELM's natural grid id, continued and ordered across processors, for mapping to PF mesh
-    ! will be assigned to calculate 'elm_cell_ids_nindex' below
-    allocate(mapped_gid(1:total_grid))
+    ! ! mark the inactive grid (non-natveg/crop landunits)
+    ! ! will be used to skip inactive grids in 'bounds%begg:endg'
+    ! allocate(mapped_gcount_skip(1:bounds%endg-bounds%begg+1))
+    ! mapped_gcount_skip(:) = .true.
+    ! ! ideally it's better to loop with grc%numcol, but which seems not assigned a value
+    ! do c=bounds%begc, bounds%endc
+    !   l = clandunit(c)
+    !   g = cgridcell(c)
+    !   gcount = g-bounds%begg+1
 
-    ! mark the inactive grid (non-natveg/crop landunits)
-    ! will be used to skip inactive grids in 'bounds%begg:endg'
-    allocate(mapped_gcount_skip(1:bounds%endg-bounds%begg+1))
-    mapped_gcount_skip(:) = .true.
-    ! ideally it's better to loop with grc%numcol, but which seems not assigned a value
-    do c=bounds%begc, bounds%endc
-      l = clandunit(c)
-      g = cgridcell(c)
-      gcount = g-bounds%begg+1
+    !   if( (ltype(l)==istsoil .or. ltype(l)==istcrop) .and. &
+    !       (cactive(c) .and. cwtgcell(c)>0._r8) ) then
+    !      mapped_gid(gcount) = grc_pp%gindex(g)      ! this is the globally grid-index, i.e. 'an' in its original calculation
 
-      if( (ltype(l)==istsoil .or. ltype(l)==istcrop) .and. &
-          (cactive(c) .and. cwtgcell(c)>0._r8) ) then
-         mapped_gid(gcount) = grc_pp%gindex(g)      ! this is the globally grid-index, i.e. 'an' in its original calculation
+    !      mapped_gcount_skip(gcount) = .false.
+    !   endif
 
-         mapped_gcount_skip(gcount) = .false.
-      endif
-
-    end do
+    ! end do
 
 
 #endif  
@@ -630,6 +688,11 @@ contains
 
 
     pf_elmnstep0 = get_nstep()
+#ifdef DEBUG_ELMPFEH
+    if (masterproc) then
+      write(*,*) '[YX DEBUG] pf_elmnstep0 = ',pf_elmnstep0
+    endif
+#endif
 
     !----------------------------------------------------------------------------------------
     ! (1) Initialize PETSc vector for data transfer between ELM and PFLOTRAN
@@ -677,57 +740,58 @@ contains
     deallocate(total_soilc_pes)
 
 #else
-    elm_pf_idata%nxelm_mapped = ldomain%ni  ! longitudial
-    elm_pf_idata%nyelm_mapped = ldomain%nj  ! latidudial
+    ! [yx 2024-04-09] to do; usg
+    ! elm_pf_idata%nxelm_mapped = ldomain%ni  ! longitudial
+    ! elm_pf_idata%nyelm_mapped = ldomain%nj  ! latidudial
 
-    ! Currently, the following IS only good for user-defined non-global soil domain
-    ! AND, the ELM grids ONLY over-rides PF mesh, when 'mapping_files' not provided
-    ! i.e. only used for structured-grid.
+    ! ! Currently, the following IS only good for user-defined non-global soil domain
+    ! ! AND, the ELM grids ONLY over-rides PF mesh, when 'mapping_files' not provided
+    ! ! i.e. only used for structured-grid.
 
-    ! due to virtually 2-D surface-grid, along which PF structured-grids are decomposed,
-    !the 'npes' used by PF must be some specific number
-    nx = ldomain%ni
-    ny = ldomain%nj
-    if(npes<max(nx,ny)) then
-        npes_pf = npes
-    else
-        npes_pf = npes - min(mod(npes,nx), mod(npes,ny))
-    endif
-    ! no. of processors along X-/Y-direction
-    if(mod(npes_pf,nx)==0) then
-        elm_pf_idata%npx = nx
-        elm_pf_idata%npy = npes_pf/nx
-    elseif(mod(npes_pf,ny)==0) then
-        elm_pf_idata%npx = npes_pf/ny
-        elm_pf_idata%npy = ny
-    else
-        if(nx<ny) then
-            elm_pf_idata%npx = 1
-            elm_pf_idata%npy = npes_pf
-        else
-            elm_pf_idata%npx = npes_pf
-            elm_pf_idata%npy = 1
-        endif
-    endif
-    elm_pf_idata%npz = 1                               ! No decompose along Z-direction currently
+    ! ! due to virtually 2-D surface-grid, along which PF structured-grids are decomposed,
+    ! !the 'npes' used by PF must be some specific number
+    ! nx = ldomain%ni
+    ! ny = ldomain%nj
+    ! if(npes<max(nx,ny)) then
+    !     npes_pf = npes
+    ! else
+    !     npes_pf = npes - min(mod(npes,nx), mod(npes,ny))
+    ! endif
+    ! ! no. of processors along X-/Y-direction
+    ! if(mod(npes_pf,nx)==0) then
+    !     elm_pf_idata%npx = nx
+    !     elm_pf_idata%npy = npes_pf/nx
+    ! elseif(mod(npes_pf,ny)==0) then
+    !     elm_pf_idata%npx = npes_pf/ny
+    !     elm_pf_idata%npy = ny
+    ! else
+    !     if(nx<ny) then
+    !         elm_pf_idata%npx = 1
+    !         elm_pf_idata%npy = npes_pf
+    !     else
+    !         elm_pf_idata%npx = npes_pf
+    !         elm_pf_idata%npy = 1
+    !     endif
+    ! endif
+    ! elm_pf_idata%npz = 1                               ! No decompose along Z-direction currently
 
-    ! calculate node no. for each processor along X-/Y-/Z-direction
-    if(.not.associated(elm_pf_idata%elm_lx)) &
-    allocate(elm_pf_idata%elm_lx(1:elm_pf_idata%npx))
-    if(.not.associated(elm_pf_idata%elm_ly)) &
-    allocate(elm_pf_idata%elm_ly(1:elm_pf_idata%npy))
-    if(.not.associated(elm_pf_idata%elm_lz)) &
-    allocate(elm_pf_idata%elm_lz(1:elm_pf_idata%npz))
+    ! ! calculate node no. for each processor along X-/Y-/Z-direction
+    ! if(.not.associated(elm_pf_idata%elm_lx)) &
+    ! allocate(elm_pf_idata%elm_lx(1:elm_pf_idata%npx))
+    ! if(.not.associated(elm_pf_idata%elm_ly)) &
+    ! allocate(elm_pf_idata%elm_ly(1:elm_pf_idata%npy))
+    ! if(.not.associated(elm_pf_idata%elm_lz)) &
+    ! allocate(elm_pf_idata%elm_lz(1:elm_pf_idata%npz))
 
-    elm_pf_idata%elm_lx(:) = (nx-mod(nx,elm_pf_idata%npx))/elm_pf_idata%npx
-    do i=1, mod(nx,elm_pf_idata%npx)
-       elm_pf_idata%elm_lx(i) = elm_pf_idata%elm_lx(i)+1
-    end do
-    elm_pf_idata%elm_ly(:) = (ny-mod(ny,elm_pf_idata%npy))/elm_pf_idata%npy
-    do j=1, mod(ny,elm_pf_idata%npy)
-       elm_pf_idata%elm_ly(j) = elm_pf_idata%elm_ly(j)+1
-    end do
-    elm_pf_idata%elm_lz = elm_pf_idata%nzelm_mapped
+    ! elm_pf_idata%elm_lx(:) = (nx-mod(nx,elm_pf_idata%npx))/elm_pf_idata%npx
+    ! do i=1, mod(nx,elm_pf_idata%npx)
+    !    elm_pf_idata%elm_lx(i) = elm_pf_idata%elm_lx(i)+1
+    ! end do
+    ! elm_pf_idata%elm_ly(:) = (ny-mod(ny,elm_pf_idata%npy))/elm_pf_idata%npy
+    ! do j=1, mod(ny,elm_pf_idata%npy)
+    !    elm_pf_idata%elm_ly(j) = elm_pf_idata%elm_ly(j)+1
+    ! end do
+    ! elm_pf_idata%elm_lz = elm_pf_idata%nzelm_mapped
 
 #endif
 
@@ -754,51 +818,60 @@ contains
     elm_pf_idata%y0elm_global = 0.d0
     elm_pf_idata%dxelm_global = 1.d0
     elm_pf_idata%dyelm_global = 1.d0
+! #ifdef DEBUG_ELMPFEH
+!     if (masterproc) then
+!       write(*,*) '[YX DEBUG][elm_interface_pflotranMod]<elm_pf_idata> x0elm_global = ',elm_pf_idata%x0elm_global
+!       write(*,*) '[YX DEBUG][elm_interface_pflotranMod]<elm_pf_idata> y0elm_global = ',elm_pf_idata%y0elm_global
+!       write(*,*) '[YX DEBUG][elm_interface_pflotranMod]<elm_pf_idata> dxelm_global = ',elm_pf_idata%dxelm_global
+!       write(*,*) '[YX DEBUG][elm_interface_pflotranMod]<elm_pf_idata> dyelm_global = ',elm_pf_idata%dyelm_global
+!     endif
+! #endif
 
 #else
-    ! if given vertices,
-    ! then have enough information to configure out spatial connections of ELM grids
-    ! ldomain%nv missing in ACME1
+    ! [yx 2024-04-09] to do; usg
+    ! ! if given vertices,
+    ! ! then have enough information to configure out spatial connections of ELM grids
+    ! ! ldomain%nv missing in ACME1
     
-    if (ldomain%nv == 4) then
+    ! if (ldomain%nv == 4) then
 
-      if(.not.associated(elm_pf_idata%dxelm_global)) &
-      allocate(elm_pf_idata%dxelm_global(1:elm_pf_idata%nxelm_mapped))
-      if(.not.associated(elm_pf_idata%dyelm_global)) &
-      allocate(elm_pf_idata%dyelm_global(1:elm_pf_idata%nyelm_mapped))
+    !   if(.not.associated(elm_pf_idata%dxelm_global)) &
+    !   allocate(elm_pf_idata%dxelm_global(1:elm_pf_idata%nxelm_mapped))
+    !   if(.not.associated(elm_pf_idata%dyelm_global)) &
+    !   allocate(elm_pf_idata%dyelm_global(1:elm_pf_idata%nyelm_mapped))
 
-      ! globally grids
-      !NOTE: lon1d/lat1d are the centroid of a grid along longitude-axis/latitude-axis
-      elm_pf_idata%x0elm_global = lon0
-      x0 = lon0
-      x1 = lon1d(1) + (lon1d(1) - lon0)
+    !   ! globally grids
+    !   !NOTE: lon1d/lat1d are the centroid of a grid along longitude-axis/latitude-axis
+    !   elm_pf_idata%x0elm_global = lon0
+    !   x0 = lon0
+    !   x1 = lon1d(1) + (lon1d(1) - lon0)
 
-      do i=1,ldomain%ni-1
-          dx_global(i) = abs(x1 - x0)
-          x0 = x1
-          x1 = lon1d(i+1) + (lon1d(i+1)-x0)
-      end do
-      dx_global(i) = abs(x1 - x0)
+    !   do i=1,ldomain%ni-1
+    !       dx_global(i) = abs(x1 - x0)
+    !       x0 = x1
+    !       x1 = lon1d(i+1) + (lon1d(i+1)-x0)
+    !   end do
+    !   dx_global(i) = abs(x1 - x0)
 
-      elm_pf_idata%y0elm_global = lat0
-      y0 = lat0
-      y1 = lat1d(1) + (lat1d(1) - lat0)
-      do j=1,ldomain%nj-1
-          dy_global(j) = abs(y1 - y0)
-          y0 = y1
-          y1 = lat1d(j+1) + (lat1d(j+1)-y0)
-      end do
-      dy_global(j) = abs(y1 - y0)
+    !   elm_pf_idata%y0elm_global = lat0
+    !   y0 = lat0
+    !   y1 = lat1d(1) + (lat1d(1) - lat0)
+    !   do j=1,ldomain%nj-1
+    !       dy_global(j) = abs(y1 - y0)
+    !       y0 = y1
+    !       y1 = lat1d(j+1) + (lat1d(j+1)-y0)
+    !   end do
+    !   dy_global(j) = abs(y1 - y0)
 
-      ! passing info to elm-pf-interface
-      do i=1, ldomain%ni
-         elm_pf_idata%dxelm_global(i)=dx_global(i)
-      end do
-      do j=1, ldomain%nj
-         elm_pf_idata%dyelm_global(j)=dy_global(j)
-      end do
+    !   ! passing info to elm-pf-interface
+    !   do i=1, ldomain%ni
+    !      elm_pf_idata%dxelm_global(i)=dx_global(i)
+    !   end do
+    !   do j=1, ldomain%nj
+    !      elm_pf_idata%dyelm_global(j)=dy_global(j)
+    !   end do
 
-    end if
+    ! end if
 
 #endif
 
@@ -811,56 +884,97 @@ contains
     end do
     elm_pf_idata%z0elm_global = 0._r8
 
+#ifdef DEBUG_ELMPFEH
+    if (masterproc) then
+      write(*,*) '[YX DEBUG][elm_interface_pflotranMod] total_soilc = ',total_soilc
+      write(*,*) '[YX DEBUG][elm_interface_pflotranMod]<elm_pf_idata> nzelm_mapped = ',elm_pf_idata%nzelm_mapped
+      write(*,*) '[YX DEBUG][elm_interface_pflotranMod]<elm_pf_idata> nxelm_mapped = ',elm_pf_idata%nxelm_mapped
+      write(*,*) '[YX DEBUG][elm_interface_pflotranMod]<elm_pf_idata> nyelm_mapped = ',elm_pf_idata%nyelm_mapped
+      write(*,*) '[YX DEBUG][elm_interface_pflotranMod]<elm_pf_idata> npes = ',npes
+      write(*,*) '[YX DEBUG][elm_interface_pflotranMod]<elm_pf_idata> npx = ',elm_pf_idata%npx
+      write(*,*) '[YX DEBUG][elm_interface_pflotranMod]<elm_pf_idata> npy = ',elm_pf_idata%npy
+      write(*,*) '[YX DEBUG][elm_interface_pflotranMod]<elm_pf_idata> npz = ',elm_pf_idata%npz
+      write(*,*) '[YX DEBUG][elm_interface_pflotranMod]<elm_pf_idata> elm_lx = ',elm_pf_idata%elm_lx
+      write(*,*) '[YX DEBUG][elm_interface_pflotranMod]<elm_pf_idata> elm_ly = ',elm_pf_idata%elm_ly
+      write(*,*) '[YX DEBUG][elm_interface_pflotranMod]<elm_pf_idata> elm_lz = ',elm_pf_idata%elm_lz
+      write(*,*) '[YX DEBUG][elm_interface_pflotranMod]<elm_pf_idata> x0elm_global = ',elm_pf_idata%x0elm_global
+      write(*,*) '[YX DEBUG][elm_interface_pflotranMod]<elm_pf_idata> y0elm_global = ',elm_pf_idata%y0elm_global
+      write(*,*) '[YX DEBUG][elm_interface_pflotranMod]<elm_pf_idata> dxelm_global = ',elm_pf_idata%dxelm_global
+      write(*,*) '[YX DEBUG][elm_interface_pflotranMod]<elm_pf_idata> dyelm_global = ',elm_pf_idata%dyelm_global
+
+      write(*,*) '[YX DEBUG][elm_interface_pflotranMod]<elm_pf_idata> dzelm_global = ', elm_pf_idata%dzelm_global
+      write(*,*) '[YX DEBUG][elm_interface_pflotranMod]<elm_pf_idata> z0elm_global =', elm_pf_idata%z0elm_global
+
+    endif
+#endif
+
     !----------------------------------------------------------------------------------------
     ! (3) passing BGC species no./constants to interface_data
 
-    ! the ELM-CN/BGC decomposing pool size and element number, and constants
-    elm_pf_idata%ndecomp_pools    = ndecomp_pools
-    elm_pf_idata%ndecomp_elements = 2    ! now: C and N only
+    ! [yx: 2024-04-04] to do; bgc
+    ! ! the ELM-CN/BGC decomposing pool size and element number, and constants
+    ! elm_pf_idata%ndecomp_pools    = ndecomp_pools
+    ! elm_pf_idata%ndecomp_elements = 2    ! now: C and N only
 
-    if (.not. associated(elm_pf_idata%floating_cn_ratio)) &
-    allocate(elm_pf_idata%floating_cn_ratio(1:elm_pf_idata%ndecomp_pools))
+    ! if (.not. associated(elm_pf_idata%floating_cn_ratio)) &
+    ! allocate(elm_pf_idata%floating_cn_ratio(1:elm_pf_idata%ndecomp_pools))
 
-    if (.not. associated(elm_pf_idata%decomp_pool_name)) &
-    allocate(elm_pf_idata%decomp_pool_name(1:elm_pf_idata%ndecomp_pools))
+    ! if (.not. associated(elm_pf_idata%decomp_pool_name)) &
+    ! allocate(elm_pf_idata%decomp_pool_name(1:elm_pf_idata%ndecomp_pools))
 
-    if (.not. associated(elm_pf_idata%decomp_element_ratios)) &
-    allocate(elm_pf_idata%decomp_element_ratios(1:elm_pf_idata%ndecomp_pools,1:elm_pf_idata%ndecomp_elements))
+    ! if (.not. associated(elm_pf_idata%decomp_element_ratios)) &
+    ! allocate(elm_pf_idata%decomp_element_ratios(1:elm_pf_idata%ndecomp_pools,1:elm_pf_idata%ndecomp_elements))
 
-    if (.not. associated(elm_pf_idata%ispec_decomp_c)) &
-    allocate(elm_pf_idata%ispec_decomp_c(1:elm_pf_idata%ndecomp_pools))
+    ! if (.not. associated(elm_pf_idata%ispec_decomp_c)) &
+    ! allocate(elm_pf_idata%ispec_decomp_c(1:elm_pf_idata%ndecomp_pools))
 
-    if (.not. associated(elm_pf_idata%ispec_decomp_n)) &
-    allocate(elm_pf_idata%ispec_decomp_n(1:elm_pf_idata%ndecomp_pools))
+    ! if (.not. associated(elm_pf_idata%ispec_decomp_n)) &
+    ! allocate(elm_pf_idata%ispec_decomp_n(1:elm_pf_idata%ndecomp_pools))
 
-    if (.not. associated(elm_pf_idata%ispec_decomp_hr)) &
-    allocate(elm_pf_idata%ispec_decomp_hr(1:elm_pf_idata%ndecomp_pools))
+    ! if (.not. associated(elm_pf_idata%ispec_decomp_hr)) &
+    ! allocate(elm_pf_idata%ispec_decomp_hr(1:elm_pf_idata%ndecomp_pools))
 
-    if (.not. associated(elm_pf_idata%ispec_decomp_nmin)) &
-    allocate(elm_pf_idata%ispec_decomp_nmin(1:elm_pf_idata%ndecomp_pools))
+    ! if (.not. associated(elm_pf_idata%ispec_decomp_nmin)) &
+    ! allocate(elm_pf_idata%ispec_decomp_nmin(1:elm_pf_idata%ndecomp_pools))
 
-    if (.not. associated(elm_pf_idata%ispec_decomp_nimm)) &
-    allocate(elm_pf_idata%ispec_decomp_nimm(1:elm_pf_idata%ndecomp_pools))
+    ! if (.not. associated(elm_pf_idata%ispec_decomp_nimm)) &
+    ! allocate(elm_pf_idata%ispec_decomp_nimm(1:elm_pf_idata%ndecomp_pools))
 
-    if (.not. associated(elm_pf_idata%ispec_decomp_nimp)) &
-    allocate(elm_pf_idata%ispec_decomp_nimp(1:elm_pf_idata%ndecomp_pools))
+    ! if (.not. associated(elm_pf_idata%ispec_decomp_nimp)) &
+    ! allocate(elm_pf_idata%ispec_decomp_nimp(1:elm_pf_idata%ndecomp_pools))
 
-    if (.not. associated(elm_pf_idata%ck_decomp_c)) &
-    allocate(elm_pf_idata%ck_decomp_c(1:elm_pf_idata%ndecomp_pools))
+    ! if (.not. associated(elm_pf_idata%ck_decomp_c)) &
+    ! allocate(elm_pf_idata%ck_decomp_c(1:elm_pf_idata%ndecomp_pools))
 
-    if (.not. associated(elm_pf_idata%adfactor_ck_c)) &
-    allocate(elm_pf_idata%adfactor_ck_c(1:elm_pf_idata%ndecomp_pools))
+    ! if (.not. associated(elm_pf_idata%adfactor_ck_c)) &
+    ! allocate(elm_pf_idata%adfactor_ck_c(1:elm_pf_idata%ndecomp_pools))
 
-    if (.not. associated(elm_pf_idata%fr_decomp_c)) &
-    allocate(elm_pf_idata%fr_decomp_c(1:elm_pf_idata%ndecomp_pools,1:elm_pf_idata%ndecomp_pools))
+    ! if (.not. associated(elm_pf_idata%fr_decomp_c)) &
+    ! allocate(elm_pf_idata%fr_decomp_c(1:elm_pf_idata%ndecomp_pools,1:elm_pf_idata%ndecomp_pools))
 
     ! -----------------------------------------------------------------
 
     ! (4) Create PFLOTRAN model
-    call pflotranModelCreate(mpicom, pflotran_prefix, pflotran_m)
-
+! #ifdef DEBUG_ELMPFEH
+!     if (masterproc) then
+!       write(*,*) '[YX DEBUG][elm_interface_pflotranMod] pflotran_inputdir = ',pflotran_inputdir
+!       write(*,*) '[YX DEBUG][elm_interface_pflotranMod] pflotran_prefix = ',pflotran_prefix
+!     endif
+! #endif
+    call pflotranModelCreate(mpicom, pflotran_inputdir, pflotran_prefix, pflotran_m)
+! #ifdef DEBUG_ELMPFEH
+!     if (masterproc) then
+!       write(*,*) '[YX DEBUG][elm_interface_pflotranMod] pflotran_m%option%mapping_files = ',pflotran_m%option%mapping_files
+!       write(*,*) '[YX DEBUG][elm_interface_pflotranMod] pass pflotranModelCreate(), start pflotranModelSetupMappingFiles()'
+!       !stop
+!     endif
+! #endif
     call pflotranModelSetupMappingFiles(pflotran_m)
-
+#ifdef DEBUG_ELMPFEH
+    if (masterproc) then
+      write(*,*) '[YX DEBUG][elm_interface_pflotranMod] pass pflotranModelSetupMappingFiles()'      !stop
+    endif
+#endif
     ! PFLOTRAN ck file (*.ck) NOT works well when coupling with ELM. So it's off and restart PF from ELM.
     !restart_stamp = ""
     !call pflotranModelSetupRestart(pflotran_m, restart_stamp)
@@ -914,30 +1028,43 @@ contains
     end do
     deallocate(mapped_gid)
 
+#ifdef DEBUG_ELMPFEH
+    !if (masterproc) then
+      write(*,*) '%%--------------------------------------------------------%%'
+      write(*,*) '%%    [YX DEBUG MPI_LOCAL][elm_interface_pflotranMod]     %%'
+      write(*,*) '%%                                                        %%'
+      write(*,*) '[iam=',iam,'] elm_top_cell_ids_nindex= ',elm_top_cell_ids_nindex
+      write(*,*) '[iam=',iam,'] elm_all_cell_ids_nindex= ',elm_all_cell_ids_nindex
+      write(*,*) '[iam=',iam,'] elm_bot_cell_ids_nindex= ',elm_bot_cell_ids_nindex
+      write(*,*) '%%                                                        %%'
+      write(*,*) '%%--------------------------------------------------------%%'
+      write(*,*) ' '
+    !endif
+#endif
 #else
-    !grid-wised for mapping.
-    elm_all_npts = total_grid*elm_pf_idata%nzelm_mapped
-    elm_top_npts = total_grid
-    elm_bot_npts = total_grid
-    allocate(elm_all_cell_ids_nindex(1:elm_all_npts))
-    allocate(elm_top_cell_ids_nindex(1:elm_top_npts))
-    allocate(elm_bot_cell_ids_nindex(1:elm_bot_npts))
+    ! !grid-wised for mapping.
+    ! elm_all_npts = total_grid*elm_pf_idata%nzelm_mapped
+    ! elm_top_npts = total_grid
+    ! elm_bot_npts = total_grid
+    ! allocate(elm_all_cell_ids_nindex(1:elm_all_npts))
+    ! allocate(elm_top_cell_ids_nindex(1:elm_top_npts))
+    ! allocate(elm_bot_cell_ids_nindex(1:elm_bot_npts))
 
-    cellcount = 0
-    do gcount = 1, total_grid
+    ! cellcount = 0
+    ! do gcount = 1, total_grid
 
-       gid = mapped_gid(gcount)
+    !    gid = mapped_gid(gcount)
 
-       ! Save cell IDs of ELM grid
-       do j = 1,elm_pf_idata%nzelm_mapped
-          cellcount = cellcount + 1
-          elm_all_cell_ids_nindex(cellcount) = (gid-1)*elm_pf_idata%nzelm_mapped + j-1   ! zero-based
-       enddo
-       elm_top_cell_ids_nindex(gcount) = (gid-1)*elm_pf_idata%nzelm_mapped               ! zero-based
-       elm_bot_cell_ids_nindex(gcount) = gid*elm_pf_idata%nzelm_mapped-1                 ! zero-based
+    !    ! Save cell IDs of ELM grid
+    !    do j = 1,elm_pf_idata%nzelm_mapped
+    !       cellcount = cellcount + 1
+    !       elm_all_cell_ids_nindex(cellcount) = (gid-1)*elm_pf_idata%nzelm_mapped + j-1   ! zero-based
+    !    enddo
+    !    elm_top_cell_ids_nindex(gcount) = (gid-1)*elm_pf_idata%nzelm_mapped               ! zero-based
+    !    elm_bot_cell_ids_nindex(gcount) = gid*elm_pf_idata%nzelm_mapped-1                 ! zero-based
 
-    enddo
-    deallocate(mapped_gid)
+    ! enddo
+    ! deallocate(mapped_gid)
 
 #endif
 
@@ -963,41 +1090,92 @@ contains
     elm_pf_idata%ngelm_srf = 0
     elm_pf_idata%nlpf_srf  = 0
     elm_pf_idata%ngpf_srf  = 0
-
+#ifdef DEBUG_ELMPFEH
+    if (masterproc) then
+      write(*,*) '[YX DEBUG][elm_interface_pflotranMod] debug pflotranModelInitMapping()'
+      write(*,*) '[YX DEBUG][elm_interface_pflotranMod] elm_pf_idata%[nlelm_sub|ngelm_sub] = ',elm_all_npts
+      write(*,*) '[YX DEBUG][elm_interface_pflotranMod] elm_pf_idata%[nlelm_2dtop|ngelm_2dtop] = ',elm_top_npts
+      write(*,*) '[YX DEBUG][elm_interface_pflotranMod] elm_pf_idata%[nlelm_2dbot|ngelm_2dbot] = ',elm_bot_npts
+      write(*,*) '[YX DEBUG][elm_interface_pflotranMod] elm_pf_idata%nlpf_sub = ',elm_pf_idata%nlpf_sub
+      write(*,*) '[YX DEBUG][elm_interface_pflotranMod] elm_pf_idata%ngpf_sub = ',elm_pf_idata%ngpf_sub
+      !stop
+    endif
+#endif
     ! Initialize maps for transferring data between ELM and PFLOTRAN.
     if(associated(pflotran_m%map_elm_sub_to_pf_sub) .and. &
        pflotran_m%map_elm_sub_to_pf_sub%id == ELM_3DSUB_TO_PF_3DSUB) then
        call pflotranModelInitMapping(pflotran_m, elm_all_cell_ids_nindex, &
                                   elm_all_npts, ELM_3DSUB_TO_PF_3DSUB)
     endif
+#ifdef DEBUG_ELMPFEH
+    if (masterproc) then
+      write(*,*) '[YX DEBUG][elm_interface_pflotranMod] pass ELM_3DSUB_TO_PF_3DSUB pflotranModelInitMapping()'
+      !stop
+    endif
+#endif
     if(associated(pflotran_m%map_pf_sub_to_elm_sub) .and. &
        pflotran_m%map_pf_sub_to_elm_sub%id == PF_3DSUB_TO_ELM_3DSUB) then
        call pflotranModelInitMapping(pflotran_m, elm_all_cell_ids_nindex, &
                                   elm_all_npts, PF_3DSUB_TO_ELM_3DSUB)
     endif
-    !
+#ifdef DEBUG_ELMPFEH
+    if (masterproc) then
+      write(*,*) '[YX DEBUG][elm_interface_pflotranMod] pass PF_3DSUB_TO_ELM_3DSUB pflotranModelInitMapping()'
+      !stop
+    endif
+#endif
     if(associated(pflotran_m%map_elm_2dtop_to_pf_2dtop) .and. &
        pflotran_m%map_elm_2dtop_to_pf_2dtop%id == ELM_2DTOP_TO_PF_2DTOP) then
        call pflotranModelInitMapping(pflotran_m, elm_top_cell_ids_nindex,   &
                                       elm_top_npts, ELM_2DTOP_TO_PF_2DTOP)
     endif
+#ifdef DEBUG_ELMPFEH
+    if (masterproc) then
+      write(*,*) '[YX DEBUG][elm_interface_pflotranMod] associated(pflotran_m%map_elm_2dtop_to_pf_2dtop)',associated(pflotran_m%map_elm_2dtop_to_pf_2dtop)
+      !write(*,*) '[YX DEBUG][elm_interface_pflotranMod] pflotran_m%map_elm_2dtop_to_pf_2dtop%id',pflotran_m%map_elm_2dtop_to_pf_2dtop%id
+      write(*,*) '[YX DEBUG][elm_interface_pflotranMod] pass ELM_2DTOP_TO_PF_2DTOP pflotranModelInitMapping()'
+      !stop
+    endif
+#endif
     if(associated(pflotran_m%map_pf_2dtop_to_elm_2dtop) .and. &
        pflotran_m%map_pf_2dtop_to_elm_2dtop%id == PF_2DTOP_TO_ELM_2DTOP) then
        call pflotranModelInitMapping(pflotran_m, elm_top_cell_ids_nindex,   &
                                       elm_top_npts, PF_2DTOP_TO_ELM_2DTOP)
     endif
-    !
+#ifdef DEBUG_ELMPFEH
+    if (masterproc) then
+      write(*,*) '[YX DEBUG][elm_interface_pflotranMod] associated(pflotran_m%map_pf_2dtop_to_elm_2dtop)',associated(pflotran_m%map_pf_2dtop_to_elm_2dtop)
+      !write(*,*) '[YX DEBUG][elm_interface_pflotranMod] pflotran_m%map_pf_2dtop_to_elm_2dtop%id',pflotran_m%map_pf_2dtop_to_elm_2dtop%id
+      write(*,*) '[YX DEBUG][elm_interface_pflotranMod] pass PF_2DTOP_TO_ELM_2DTOP pflotranModelInitMapping()'
+      !stop
+    endif
+#endif
     if(associated(pflotran_m%map_elm_2dbot_to_pf_2dbot) .and. &
        pflotran_m%map_elm_2dbot_to_pf_2dbot%id == ELM_2DBOT_TO_PF_2DBOT) then
        call pflotranModelInitMapping(pflotran_m, elm_bot_cell_ids_nindex, &
                                      elm_bot_npts, ELM_2DBOT_TO_PF_2DBOT)
     endif
+#ifdef DEBUG_ELMPFEH
+    if (masterproc) then
+      write(*,*) '[YX DEBUG][elm_interface_pflotranMod] associated(pflotran_m%map_elm_2dbot_to_pf_2dbot)',associated(pflotran_m%map_elm_2dbot_to_pf_2dbot)
+      !write(*,*) '[YX DEBUG][elm_interface_pflotranMod] pflotran_m%map_elm_2dbot_to_pf_2dbot%id',pflotran_m%map_elm_2dbot_to_pf_2dbot%id
+      write(*,*) '[YX DEBUG][elm_interface_pflotranMod] pass ELM_2DBOT_TO_PF_2DBOT pflotranModelInitMapping()'
+      !stop
+    endif
+#endif
     if(associated(pflotran_m%map_pf_2dbot_to_elm_2dbot) .and. &
        pflotran_m%map_pf_2dbot_to_elm_2dbot%id == PF_2DBOT_TO_ELM_2DBOT) then
        call pflotranModelInitMapping(pflotran_m, elm_bot_cell_ids_nindex, &
                                      elm_bot_npts, PF_2DBOT_TO_ELM_2DBOT)
     endif
-
+#ifdef DEBUG_ELMPFEH
+    if (masterproc) then
+      write(*,*) '[YX DEBUG][elm_interface_pflotranMod] associated(pflotran_m%map_pf_2dbot_to_elm_2dbot)',associated(pflotran_m%map_pf_2dbot_to_elm_2dbot)
+      !write(*,*) '[YX DEBUG][elm_interface_pflotranMod] pflotran_m%map_pf_2dbot_to_elm_2dbot%id',pflotran_m%map_pf_2dbot_to_elm_2dbot%id
+      write(*,*) '[YX DEBUG][elm_interface_pflotranMod] pass PF_2DBOT_TO_ELM_2DBOT pflotranModelInitMapping()'
+      !stop
+    endif
+#endif
     ! Allocate vectors for data transfer between ELM and PFLOTRAN.
     call ELMPFLOTRANIDataCreateVec(MPI_COMM_WORLD)
 
@@ -1006,9 +1184,9 @@ contains
     if(pflotran_m%option%nflowdof > 0) then
       pflotran_m%option%flow%only_vertical_flow = PETSC_TRUE
     endif
-    if(pflotran_m%option%ntrandof > 0) then
-      pflotran_m%option%transport%only_vertical_tran = PETSC_TRUE
-    endif
+    ! if(pflotran_m%option%ntrandof > 0) then
+    !   pflotran_m%option%transport%only_vertical_tran = PETSC_TRUE
+    ! endif ! [yx: 2024-04-04] optio%transport%only_vertical_tran is not supported in this version of PFLOTRAN
 
     ! checking if 'option%mapping_files' turned off by default
     if(pflotran_m%option%mapping_files) then
@@ -1019,15 +1197,15 @@ contains
 
 #endif
 
-    ! if BGC is on
-    if(pflotran_m%option%ntrandof > 0) then
+    ! ! if BGC is on
+    ! if(pflotran_m%option%ntrandof > 0) then
 
-      ! the ELM-CN/BGC decomposing pools
-      elm_pf_idata%decomp_pool_name  = decomp_cascade_con%decomp_pool_name_history(1:ndecomp_pools)
-      elm_pf_idata%floating_cn_ratio = decomp_cascade_con%floating_cn_ratio_decomp_pools(1:ndecomp_pools)
-      ! PF bgc species names/IDs
-      call pflotranModelGetRTspecies(pflotran_m)
-    endif
+    !   ! the ELM-CN/BGC decomposing pools
+    !   elm_pf_idata%decomp_pool_name  = decomp_cascade_con%decomp_pool_name_history(1:ndecomp_pools)
+    !   elm_pf_idata%floating_cn_ratio = decomp_cascade_con%floating_cn_ratio_decomp_pools(1:ndecomp_pools)
+    !   ! PF bgc species names/IDs
+    !   call pflotranModelGetRTspecies(pflotran_m)
+    ! endif
 
     deallocate(elm_all_cell_ids_nindex)
     deallocate(elm_top_cell_ids_nindex)
@@ -1043,11 +1221,12 @@ contains
     elseif(pflotran_m%option%iflowmode==TH_MODE) then
       pf_hmode = .true.
       pf_tmode = .true.
-      if (pflotran_m%option%use_th_freezing) then
-         pf_frzmode = .true.
-      else
-         pf_frzmode = .false.
-      endif
+      ! if (pflotran_m%option%use_th_freezing) then
+      !    pf_frzmode = .true.
+      ! else
+      !    pf_frzmode = .false.
+      ! endif
+      pf_frzmode = .false. ! [yx: 2024-04-04] option%use_th_freezing is not supported in this version of PFLOTRAN TH_MODE
     endif
 
     if(pflotran_m%option%ntrandof.gt.0) then
@@ -1057,7 +1236,12 @@ contains
 
     ! Initialize PFLOTRAN states
     call pflotranModelStepperRunInit(pflotran_m)
-
+#ifdef DEBUG_ELMPFEH
+    if (masterproc) then
+      write(*,*) '[YX DEBUG][elm_interface_pflotranMod] pass pflotranModelStepperRunInit()'
+      !stop
+    endif
+#endif
     end associate
   end subroutine interface_init
 
@@ -1149,54 +1333,54 @@ contains
     end if
 
     ! ice-len adjusted porostiy, if PF-ice mode off
-    if (.not.pf_frzmode) then
-        call get_elm_iceadj_porosity(elm_interface_data, bounds, filters, ifilter)
+    ! if (.not.pf_frzmode) then
+    !     call get_elm_iceadj_porosity(elm_interface_data, bounds, filters, ifilter)
 
-        call pflotranModelResetSoilPorosityFromELM(pflotran_m)
+    !     call pflotranModelResetSoilPorosityFromELM(pflotran_m)
 
-    endif
+    ! endif
 
     ! (2) ELM thermal BC to PFLOTRAN-ELM interface
-    if (pf_tmode) then
-        call get_elm_bceflx(elm_interface_data, bounds, filters, ifilter)
-        call pflotranModelUpdateSubsurfTCond( pflotran_m )   ! E-SrcSink and T bc
-    end if
+    ! if (pf_tmode) then
+    !     call get_elm_bceflx(elm_interface_data, bounds, filters, ifilter)
+    !     call pflotranModelUpdateSubsurfTCond( pflotran_m )   ! E-SrcSink and T bc
+    ! end if
 
     ! (3) pass ELM water fluxes to PFLOTRAN-ELM interface
-    if (pf_hmode) then      !if coupled 'H' mode between ELM45 and PFLOTRAN
-        call get_elm_bcwflx(elm_interface_data, bounds, filters, ifilter)
+    ! if (pf_hmode) then      !if coupled 'H' mode between ELM45 and PFLOTRAN
+    !     call get_elm_bcwflx(elm_interface_data, bounds, filters, ifilter)
 
-        ! pass flux 'vecs' from ELM to pflotran
-        call pflotranModelUpdateHSourceSink( pflotran_m )   ! H SrcSink
-        call pflotranModelSetSoilHbcsFromELM( pflotran_m )  ! H bc
-    end if
+    !     ! pass flux 'vecs' from ELM to pflotran
+    !     call pflotranModelUpdateHSourceSink( pflotran_m )   ! H SrcSink
+    !     call pflotranModelSetSoilHbcsFromELM( pflotran_m )  ! H bc
+    ! end if
 
     ! (4)
-    if (pf_cmode) then
+    ! if (pf_cmode) then
 
-    ! (4a) always (re-)initialize PFLOTRAN soil bgc state variables from ELM-CN
-    !      (this will be easier to maintain balance error-free)
+    ! ! (4a) always (re-)initialize PFLOTRAN soil bgc state variables from ELM-CN
+    ! !      (this will be easier to maintain balance error-free)
 
-        call get_elm_bgc_conc(elm_interface_data, bounds, filters, ifilter)
-        call pflotranModelSetBgcConcFromELM(pflotran_m)
-        if ((.not.pf_hmode .or. .not.pf_frzmode)) then
-          ! this is needed, because at step 0, PF's interface data is empty
-          ! which causes Aq. conc. adjustment balacne issue
-          call pflotranModelGetSaturationFromPF(pflotran_m)
-        endif
+    !     call get_elm_bgc_conc(elm_interface_data, bounds, filters, ifilter)
+    !     call pflotranModelSetBgcConcFromELM(pflotran_m)
+    !     if ((.not.pf_hmode .or. .not.pf_frzmode)) then
+    !       ! this is needed, because at step 0, PF's interface data is empty
+    !       ! which causes Aq. conc. adjustment balacne issue
+    !       call pflotranModelGetSaturationFromPF(pflotran_m)
+    !     endif
 
 
-       ! MUST reset PFLOTRAN soil aq. bgc state variables from ELM-CN due to liq. water volume change
-       ! when NOT coupled with PF Hydrology or NOT in freezing-mode (porosity will be forced to vary from ELM)
-        if (.not.pf_hmode .or. .not.pf_frzmode) then
-          call pflotranModelUpdateAqConcFromELM(pflotran_m)
-        endif
+    !    ! MUST reset PFLOTRAN soil aq. bgc state variables from ELM-CN due to liq. water volume change
+    !    ! when NOT coupled with PF Hydrology or NOT in freezing-mode (porosity will be forced to vary from ELM)
+    !     if (.not.pf_hmode .or. .not.pf_frzmode) then
+    !       call pflotranModelUpdateAqConcFromELM(pflotran_m)
+    !     endif
 
-    ! (4b) bgc rate (fluxes) from ELM to PFLOTRAN
-        call get_elm_bgc_rate(elm_interface_data, bounds, filters, ifilter)
-        call pflotranModelSetBgcRatesFromELM(pflotran_m)
+    ! ! (4b) bgc rate (fluxes) from ELM to PFLOTRAN
+    !     call get_elm_bgc_rate(elm_interface_data, bounds, filters, ifilter)
+    !     call pflotranModelSetBgcRatesFromELM(pflotran_m)
 
-    endif
+    ! endif
 
     ! (5) the main callings of PFLOTRAN
     call mpi_barrier(mpicom, ierr)
@@ -1212,36 +1396,36 @@ contains
 
     ! (6) update ELM variables from PFLOTRAN
 
-    if (pf_hmode) then
-        call pflotranModelGetSaturationFromPF( pflotran_m )   ! hydrological states
-        call update_soil_moisture_pf2elm(elm_interface_data, bounds, filters, ifilter)
+    ! if (pf_hmode) then
+    !     call pflotranModelGetSaturationFromPF( pflotran_m )   ! hydrological states
+    !     call update_soil_moisture_pf2elm(elm_interface_data, bounds, filters, ifilter)
 
-        ! the actual infiltration/runoff/drainage and solute flux with BC, if defined,
-        ! are retrieving from PFLOTRAN using 'update_bcflow_pf2elm' subroutine
-        call pflotranModelGetBCMassBalanceDeltaFromPF( pflotran_m )
-        call update_bcflow_pf2elm(elm_interface_data, bounds, filters, ifilter)
+    !     ! the actual infiltration/runoff/drainage and solute flux with BC, if defined,
+    !     ! are retrieving from PFLOTRAN using 'update_bcflow_pf2elm' subroutine
+    !     call pflotranModelGetBCMassBalanceDeltaFromPF( pflotran_m )
+    !     call update_bcflow_pf2elm(elm_interface_data, bounds, filters, ifilter)
 
-    endif
+    ! endif
 
-    if (pf_tmode) then
-        call pflotranModelGetTemperatureFromPF( pflotran_m )  ! thermal states
-        call update_soil_temperature_pf2elm(elm_interface_data, bounds, filters, ifilter)
-    endif
+    ! if (pf_tmode) then
+    !     call pflotranModelGetTemperatureFromPF( pflotran_m )  ! thermal states
+    !     call update_soil_temperature_pf2elm(elm_interface_data, bounds, filters, ifilter)
+    ! endif
 
-    if (pf_cmode) then
-        call pflotranModelGetBgcVariablesFromPF( pflotran_m)      ! bgc variables
+    ! if (pf_cmode) then
+    !     call pflotranModelGetBgcVariablesFromPF( pflotran_m)      ! bgc variables
 
-        call update_soil_bgc_pf2elm(elm_interface_data, bounds, filters, ifilter)
+    !     call update_soil_bgc_pf2elm(elm_interface_data, bounds, filters, ifilter)
 
-        call update_bgc_bcflux_pf2elm(elm_interface_data, bounds, filters, ifilter)
+    !     call update_bgc_bcflux_pf2elm(elm_interface_data, bounds, filters, ifilter)
 
-        ! need to save the current time-step PF porosity/liq. saturation for bgc species mass conservation
-        ! if ELM forced changing them into PF at NEXT timestep
-        if (.not.pf_hmode .or. .not.pf_frzmode) then
-           call pflotranModelGetSaturationFromPF(pflotran_m)
-        endif
+    !     ! need to save the current time-step PF porosity/liq. saturation for bgc species mass conservation
+    !     ! if ELM forced changing them into PF at NEXT timestep
+    !     if (.not.pf_hmode .or. .not.pf_frzmode) then
+    !        call pflotranModelGetSaturationFromPF(pflotran_m)
+    !     endif
 
-    endif
+    ! endif
 
   end subroutine pflotran_run_onestep
 
@@ -2050,8 +2234,8 @@ contains
     call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
     call VecGetArrayF90(elm_pf_idata%soilt_elmp, soilt_elmp_loc, ierr)
     call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
-    call VecGetArrayF90(elm_pf_idata%h2osoi_vol_elmp, soilvwc_elmp_loc, ierr)
-    call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+    ! call VecGetArrayF90(elm_pf_idata%h2osoi_vol_elmp, soilvwc_elmp_loc, ierr)
+    ! call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)! [yx 2024.04.04]
     call VecGetArrayF90(elm_pf_idata%t_scalar_elmp, t_scalar_elmp_loc, ierr)
     call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
     call VecGetArrayF90(elm_pf_idata%w_scalar_elmp, w_scalar_elmp_loc, ierr)
@@ -2152,8 +2336,8 @@ contains
     call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
     call VecRestoreArrayF90(elm_pf_idata%soilt_elmp, soilt_elmp_loc, ierr)
     call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
-    call VecRestoreArrayF90(elm_pf_idata%h2osoi_vol_elmp, soilvwc_elmp_loc, ierr)
-    call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+    ! call VecRestoreArrayF90(elm_pf_idata%h2osoi_vol_elmp, soilvwc_elmp_loc, ierr)
+    ! call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)! [yx 2024.04.04]
     call VecRestoreArrayF90(elm_pf_idata%t_scalar_elmp, t_scalar_elmp_loc, ierr)
     call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
     call VecRestoreArrayF90(elm_pf_idata%w_scalar_elmp, w_scalar_elmp_loc, ierr)
@@ -2873,378 +3057,378 @@ contains
   !
   ! !INTERFACE:
 
-  subroutine get_elm_bgc_conc(elm_interface_data, bounds, filters, ifilter)
-    use ColumnType          , only : col_pp
-    use elm_varctl          , only : iulog
-    use elm_varpar          , only : ndecomp_pools, nlevdecomp_full
+!   subroutine get_elm_bgc_conc(elm_interface_data, bounds, filters, ifilter)
+!     use ColumnType          , only : col_pp
+!     use elm_varctl          , only : iulog
+!     use elm_varpar          , only : ndecomp_pools, nlevdecomp_full
 
-    implicit none
+!     implicit none
 
-    type(bounds_type) , intent(in) :: bounds          ! bounds of current process
-    type(clumpfilter) , intent(in) :: filters(:)      ! filters on current process
-    integer           , intent(in) :: ifilter         ! which filter to be operated
+!     type(bounds_type) , intent(in) :: bounds          ! bounds of current process
+!     type(clumpfilter) , intent(in) :: filters(:)      ! filters on current process
+!     integer           , intent(in) :: ifilter         ! which filter to be operated
 
-    type(elm_interface_data_type), intent(in) :: elm_interface_data
+!     type(elm_interface_data_type), intent(in) :: elm_interface_data
 
-    character(len=256) :: subname = "get_elm_bgc_concentration"
+!     character(len=256) :: subname = "get_elm_bgc_concentration"
 
-#include "petsc/finclude/petscsys.h"
-#include "petsc/finclude/petscvec.h"
-! #include "petsc/finclude/petscvec.h90"
+! #include "petsc/finclude/petscsys.h"
+! #include "petsc/finclude/petscvec.h"
+! ! #include "petsc/finclude/petscvec.h90"
 
-    ! Local variables
-    integer  :: fc, c, g, j, k        ! do loop indices
-    integer  :: gcount, cellcount
-    real(r8) :: CN_ratio_mass_to_mol
+!     ! Local variables
+!     integer  :: fc, c, g, j, k        ! do loop indices
+!     integer  :: gcount, cellcount
+!     real(r8) :: CN_ratio_mass_to_mol
 
-    integer  :: vec_offset
-    PetscScalar, pointer :: decomp_cpools_vr_elm_loc(:)      ! (gC/m3) vertically-resolved decomposing (litter, cwd, soil) c pools
-    PetscScalar, pointer :: decomp_npools_vr_elm_loc(:)      ! (gN/m3) vertically-resolved decomposing (litter, cwd, soil) N pools
-!   PetscScalar, pointer :: decomp_ppools_vr_elm_loc(:)      ! (gN/m3) vertically-resolved decomposing (litter, cwd, soil) P pools
+!     integer  :: vec_offset
+!     PetscScalar, pointer :: decomp_cpools_vr_elm_loc(:)      ! (gC/m3) vertically-resolved decomposing (litter, cwd, soil) c pools
+!     PetscScalar, pointer :: decomp_npools_vr_elm_loc(:)      ! (gN/m3) vertically-resolved decomposing (litter, cwd, soil) N pools
+! !   PetscScalar, pointer :: decomp_ppools_vr_elm_loc(:)      ! (gN/m3) vertically-resolved decomposing (litter, cwd, soil) P pools
 
-    PetscScalar, pointer :: smin_no3_vr_elm_loc(:)           ! (gN/m3) vertically-resolved soil mineral NO3
-    PetscScalar, pointer :: smin_nh4_vr_elm_loc(:)           ! (gN/m3) vertically-resolved soil mineral NH4
-    PetscScalar, pointer :: smin_nh4sorb_vr_elm_loc(:)       ! (gN/m3) vertically-resolved soil mineral NH4 absorbed
+!     PetscScalar, pointer :: smin_no3_vr_elm_loc(:)           ! (gN/m3) vertically-resolved soil mineral NO3
+!     PetscScalar, pointer :: smin_nh4_vr_elm_loc(:)           ! (gN/m3) vertically-resolved soil mineral NH4
+!     PetscScalar, pointer :: smin_nh4sorb_vr_elm_loc(:)       ! (gN/m3) vertically-resolved soil mineral NH4 absorbed
 
-    PetscErrorCode :: ierr
-    !
-    !------------------------------------------------------------------------------------------
-    !
-    associate ( &
-      cgridcell        => col_pp%gridcell                                , & ! column's gridcell
-      !
-      initial_cn_ratio => elm_interface_data%bgc%initial_cn_ratio        , &
-      initial_cp_ratio => elm_interface_data%bgc%initial_cp_ratio        , &
+!     PetscErrorCode :: ierr
+!     !
+!     !------------------------------------------------------------------------------------------
+!     !
+!     associate ( &
+!       cgridcell        => col_pp%gridcell                                , & ! column's gridcell
+!       !
+!       initial_cn_ratio => elm_interface_data%bgc%initial_cn_ratio        , &
+!       initial_cp_ratio => elm_interface_data%bgc%initial_cp_ratio        , &
 
-      decomp_cpools_vr => elm_interface_data%bgc%decomp_cpools_vr_col    , & ! (gC/m3) vertically-resolved decomposing (litter, cwd, soil) c pools
-      decomp_npools_vr => elm_interface_data%bgc%decomp_npools_vr_col    , & ! (gN/m3)  vertically-resolved decomposing (litter, cwd, soil) N pools
-      smin_no3_vr      => elm_interface_data%bgc%smin_no3_vr_col         , & ! (gN/m3) vertically-resolved soil mineral NO3
-      smin_nh4_vr      => elm_interface_data%bgc%smin_nh4_vr_col         , & ! (gN/m3) vertically-resolved soil mineral NH4
-      smin_nh4sorb_vr  => elm_interface_data%bgc%smin_nh4sorb_vr_col     , & ! (gN/m3) vertically-resolved soil mineral NH4 absorbed
+!       decomp_cpools_vr => elm_interface_data%bgc%decomp_cpools_vr_col    , & ! (gC/m3) vertically-resolved decomposing (litter, cwd, soil) c pools
+!       decomp_npools_vr => elm_interface_data%bgc%decomp_npools_vr_col    , & ! (gN/m3)  vertically-resolved decomposing (litter, cwd, soil) N pools
+!       smin_no3_vr      => elm_interface_data%bgc%smin_no3_vr_col         , & ! (gN/m3) vertically-resolved soil mineral NO3
+!       smin_nh4_vr      => elm_interface_data%bgc%smin_nh4_vr_col         , & ! (gN/m3) vertically-resolved soil mineral NH4
+!       smin_nh4sorb_vr  => elm_interface_data%bgc%smin_nh4sorb_vr_col     , & ! (gN/m3) vertically-resolved soil mineral NH4 absorbed
 
-      decomp_ppools_vr => elm_interface_data%bgc%decomp_ppools_vr_col    , & ! [real(r8) (:,:,:) ! col (gP/m3) vertically-resolved decomposing (litter, cwd, soil) P pools
-      solutionp_vr     => elm_interface_data%bgc%solutionp_vr_col        , & ! [real(r8) (:,:)   ! col (gP/m3) vertically-resolved soil solution P
-      labilep_vr       => elm_interface_data%bgc%labilep_vr_col          , & ! [real(r8) (:,:)   ! col (gP/m3) vertically-resolved soil labile mineral P
-      secondp_vr       => elm_interface_data%bgc%secondp_vr_col          , & ! [real(r8) (:,:)   ! col (gP/m3) vertically-resolved soil secondary mineralP
-      occlp_vr         => elm_interface_data%bgc%occlp_vr_col            , & ! [real(r8) (:,:)   ! col (gP/m3) vertically-resolved soil occluded mineral P
-      primp_vr         => elm_interface_data%bgc%primp_vr_col            , & ! [real(r8) (:,:)   ! col (gP/m3) vertically-resolved soil primary mineral P
-      sminp_vr         => elm_interface_data%bgc%sminp_vr_col              & ! [real(r8) (:,:)   ! col (gP/m3) vertically-resolved soil mineral P = solutionp + labilep + secondp
-    )
+!       decomp_ppools_vr => elm_interface_data%bgc%decomp_ppools_vr_col    , & ! [real(r8) (:,:,:) ! col (gP/m3) vertically-resolved decomposing (litter, cwd, soil) P pools
+!       solutionp_vr     => elm_interface_data%bgc%solutionp_vr_col        , & ! [real(r8) (:,:)   ! col (gP/m3) vertically-resolved soil solution P
+!       labilep_vr       => elm_interface_data%bgc%labilep_vr_col          , & ! [real(r8) (:,:)   ! col (gP/m3) vertically-resolved soil labile mineral P
+!       secondp_vr       => elm_interface_data%bgc%secondp_vr_col          , & ! [real(r8) (:,:)   ! col (gP/m3) vertically-resolved soil secondary mineralP
+!       occlp_vr         => elm_interface_data%bgc%occlp_vr_col            , & ! [real(r8) (:,:)   ! col (gP/m3) vertically-resolved soil occluded mineral P
+!       primp_vr         => elm_interface_data%bgc%primp_vr_col            , & ! [real(r8) (:,:)   ! col (gP/m3) vertically-resolved soil primary mineral P
+!       sminp_vr         => elm_interface_data%bgc%sminp_vr_col              & ! [real(r8) (:,:)   ! col (gP/m3) vertically-resolved soil mineral P = solutionp + labilep + secondp
+!     )
 
-    call VecGetArrayF90(elm_pf_idata%decomp_cpools_vr_elmp, decomp_cpools_vr_elm_loc, ierr)
-    call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
-    call VecGetArrayF90(elm_pf_idata%decomp_npools_vr_elmp, decomp_npools_vr_elm_loc, ierr)
-    call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!     call VecGetArrayF90(elm_pf_idata%decomp_cpools_vr_elmp, decomp_cpools_vr_elm_loc, ierr)
+!     call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!     call VecGetArrayF90(elm_pf_idata%decomp_npools_vr_elmp, decomp_npools_vr_elm_loc, ierr)
+!     call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
 
-    call VecGetArrayF90(elm_pf_idata%smin_no3_vr_elmp, smin_no3_vr_elm_loc, ierr)
-    call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
-    call VecGetArrayF90(elm_pf_idata%smin_nh4_vr_elmp, smin_nh4_vr_elm_loc, ierr)
-    call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
-    call VecGetArrayF90(elm_pf_idata%smin_nh4sorb_vr_elmp, smin_nh4sorb_vr_elm_loc, ierr)
-    call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!     call VecGetArrayF90(elm_pf_idata%smin_no3_vr_elmp, smin_no3_vr_elm_loc, ierr)
+!     call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!     call VecGetArrayF90(elm_pf_idata%smin_nh4_vr_elmp, smin_nh4_vr_elm_loc, ierr)
+!     call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!     call VecGetArrayF90(elm_pf_idata%smin_nh4sorb_vr_elmp, smin_nh4sorb_vr_elm_loc, ierr)
+!     call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
 
-    CN_ratio_mass_to_mol = elm_pf_idata%N_molecular_weight/elm_pf_idata%C_molecular_weight
+!     CN_ratio_mass_to_mol = elm_pf_idata%N_molecular_weight/elm_pf_idata%C_molecular_weight
 
-    !
-    decomp_cpools_vr_elm_loc(:) = 0._r8
-    decomp_npools_vr_elm_loc(:) = 0._r8
-    smin_no3_vr_elm_loc(:)      = 0._r8
-    smin_nh4_vr_elm_loc(:)      = 0._r8
-    smin_nh4sorb_vr_elm_loc(:)  = 0._r8
+!     !
+!     decomp_cpools_vr_elm_loc(:) = 0._r8
+!     decomp_npools_vr_elm_loc(:) = 0._r8
+!     smin_no3_vr_elm_loc(:)      = 0._r8
+!     smin_nh4_vr_elm_loc(:)      = 0._r8
+!     smin_nh4sorb_vr_elm_loc(:)  = 0._r8
 
-    ! operating via 'filters'
-    gcount = -1
-    do fc = 1,filters(ifilter)%num_soilc
-      c = filters(ifilter)%soilc(fc)
-      g = cgridcell(c)
+!     ! operating via 'filters'
+!     gcount = -1
+!     do fc = 1,filters(ifilter)%num_soilc
+!       c = filters(ifilter)%soilc(fc)
+!       g = cgridcell(c)
 
-#ifdef COLUMN_MODE
-      if (mapped_gcount_skip(c-bounds%begc+1)) cycle   ! skip inactive column (and following numbering)
-      gcount = gcount + 1                              ! 0-based: cumulatively by not-skipped column
-#else
-      gcount = g - bounds%begg                 ! 0-based
-      if (mapped_gcount_skip(gcount+1)) cycle  ! skip inactive grid, but not numbering
-#endif
+! #ifdef COLUMN_MODE
+!       if (mapped_gcount_skip(c-bounds%begc+1)) cycle   ! skip inactive column (and following numbering)
+!       gcount = gcount + 1                              ! 0-based: cumulatively by not-skipped column
+! #else
+!       gcount = g - bounds%begg                 ! 0-based
+!       if (mapped_gcount_skip(gcount+1)) cycle  ! skip inactive grid, but not numbering
+! #endif
 
 
-      do j = 1, elm_pf_idata%nzelm_mapped
-          cellcount = gcount*elm_pf_idata%nzelm_mapped + j    ! 1-based
+!       do j = 1, elm_pf_idata%nzelm_mapped
+!           cellcount = gcount*elm_pf_idata%nzelm_mapped + j    ! 1-based
 
-          ! note: all elm-pf soil layers are 'elm_pf_idata%nzelm_mapped' for both TH/BGC,
-          !       but in ELM, T is within 'nlevgrnd', H is within 'nlevsoi', bgc within 'nlevdecomp'
+!           ! note: all elm-pf soil layers are 'elm_pf_idata%nzelm_mapped' for both TH/BGC,
+!           !       but in ELM, T is within 'nlevgrnd', H is within 'nlevsoi', bgc within 'nlevdecomp'
 
-          if(j <= nlevdecomp_full) then
+!           if(j <= nlevdecomp_full) then
 
-             do k = 1, ndecomp_pools
-                vec_offset = (k-1)*elm_pf_idata%nlelm_sub        ! 0-based
-                ! decomp_pool vec: 'cell' first, then 'species' (i.e. cell by cell for 1 species, then species by species)
-                ! Tips: then when doing 3-D data-mapping, no need to stride the vecs BUT to do segmentation.
+!              do k = 1, ndecomp_pools
+!                 vec_offset = (k-1)*elm_pf_idata%nlelm_sub        ! 0-based
+!                 ! decomp_pool vec: 'cell' first, then 'species' (i.e. cell by cell for 1 species, then species by species)
+!                 ! Tips: then when doing 3-D data-mapping, no need to stride the vecs BUT to do segmentation.
 
-                decomp_cpools_vr_elm_loc(vec_offset+cellcount) = decomp_cpools_vr(c,j,k)   &
-                     /elm_pf_idata%C_molecular_weight
+!                 decomp_cpools_vr_elm_loc(vec_offset+cellcount) = decomp_cpools_vr(c,j,k)   &
+!                      /elm_pf_idata%C_molecular_weight
 
-                if (elm_pf_idata%floating_cn_ratio(k)) then
-                  decomp_npools_vr_elm_loc(vec_offset+cellcount) = decomp_npools_vr(c,j,k) &
-                     /elm_pf_idata%N_molecular_weight
-                else
-                  decomp_npools_vr_elm_loc(vec_offset+cellcount) =   &
-                      decomp_cpools_vr_elm_loc(vec_offset+cellcount) &
-                     /(initial_cn_ratio(k)*CN_ratio_mass_to_mol)      ! initial_cn_ratio: in unit of mass
-                endif
+!                 if (elm_pf_idata%floating_cn_ratio(k)) then
+!                   decomp_npools_vr_elm_loc(vec_offset+cellcount) = decomp_npools_vr(c,j,k) &
+!                      /elm_pf_idata%N_molecular_weight
+!                 else
+!                   decomp_npools_vr_elm_loc(vec_offset+cellcount) =   &
+!                       decomp_cpools_vr_elm_loc(vec_offset+cellcount) &
+!                      /(initial_cn_ratio(k)*CN_ratio_mass_to_mol)      ! initial_cn_ratio: in unit of mass
+!                 endif
 
-             enddo ! do k=1, ndecomp_pools
+!              enddo ! do k=1, ndecomp_pools
 
-             smin_no3_vr_elm_loc(cellcount)      = smin_no3_vr(c,j) &
-                        /elm_pf_idata%N_molecular_weight
-             smin_nh4_vr_elm_loc(cellcount)      = smin_nh4_vr(c,j) &
-                        /elm_pf_idata%N_molecular_weight
-             smin_nh4sorb_vr_elm_loc(cellcount)  = smin_nh4sorb_vr(c,j) &
-                        /elm_pf_idata%N_molecular_weight
+!              smin_no3_vr_elm_loc(cellcount)      = smin_no3_vr(c,j) &
+!                         /elm_pf_idata%N_molecular_weight
+!              smin_nh4_vr_elm_loc(cellcount)      = smin_nh4_vr(c,j) &
+!                         /elm_pf_idata%N_molecular_weight
+!              smin_nh4sorb_vr_elm_loc(cellcount)  = smin_nh4sorb_vr(c,j) &
+!                         /elm_pf_idata%N_molecular_weight
 
-           endif
+!            endif
 
-       enddo ! do j = 1, elm_pf_idata%nzelm_mapped
+!        enddo ! do j = 1, elm_pf_idata%nzelm_mapped
 
-    enddo ! do fc = 1, num_soilc
+!     enddo ! do fc = 1, num_soilc
 
-    call VecRestoreArrayF90(elm_pf_idata%decomp_cpools_vr_elmp, decomp_cpools_vr_elm_loc, ierr)
-    call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
-    call VecRestoreArrayF90(elm_pf_idata%decomp_npools_vr_elmp, decomp_npools_vr_elm_loc, ierr)
-    call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!     call VecRestoreArrayF90(elm_pf_idata%decomp_cpools_vr_elmp, decomp_cpools_vr_elm_loc, ierr)
+!     call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!     call VecRestoreArrayF90(elm_pf_idata%decomp_npools_vr_elmp, decomp_npools_vr_elm_loc, ierr)
+!     call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
 
-    call VecRestoreArrayF90(elm_pf_idata%smin_no3_vr_elmp, smin_no3_vr_elm_loc, ierr)
-    call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
-    call VecRestoreArrayF90(elm_pf_idata%smin_nh4_vr_elmp, smin_nh4_vr_elm_loc, ierr)
-    call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
-    call VecRestoreArrayF90(elm_pf_idata%smin_nh4sorb_vr_elmp, smin_nh4sorb_vr_elm_loc, ierr)
-    call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!     call VecRestoreArrayF90(elm_pf_idata%smin_no3_vr_elmp, smin_no3_vr_elm_loc, ierr)
+!     call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!     call VecRestoreArrayF90(elm_pf_idata%smin_nh4_vr_elmp, smin_nh4_vr_elm_loc, ierr)
+!     call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!     call VecRestoreArrayF90(elm_pf_idata%smin_nh4sorb_vr_elmp, smin_nh4sorb_vr_elm_loc, ierr)
+!     call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
 
-  end associate
-  end subroutine get_elm_bgc_conc
+!   end associate
+!   end subroutine get_elm_bgc_conc
 
   !-----------------------------------------------------------------------------
   !
   ! !IROUTINE: get_elm_bgc_rate()
   !
   ! !INTERFACE:
-  subroutine get_elm_bgc_rate(elm_interface_data,  bounds, filters, ifilter)
-! TODO: add phosphorus vars
-  !
-  ! !DESCRIPTION:
-  !
-  !
-  ! !USES:
-    use ColumnType          , only : col_pp
-    use elm_time_manager    , only : get_step_size, get_nstep,  is_first_step, is_first_restart_step
-    use elm_varpar          , only : ndecomp_pools, nlevdecomp_full
-    use elm_varctl          , only : iulog, pf_hmode
+!   subroutine get_elm_bgc_rate(elm_interface_data,  bounds, filters, ifilter)
+! ! TODO: add phosphorus vars
+!   !
+!   ! !DESCRIPTION:
+!   !
+!   !
+!   ! !USES:
+!     use ColumnType          , only : col_pp
+!     use elm_time_manager    , only : get_step_size, get_nstep,  is_first_step, is_first_restart_step
+!     use elm_varpar          , only : ndecomp_pools, nlevdecomp_full
+!     use elm_varctl          , only : iulog, pf_hmode
 
-  ! !ARGUMENTS:
-    implicit none
+!   ! !ARGUMENTS:
+!     implicit none
 
-    type(bounds_type) , intent(in) :: bounds         ! bounds of current process
-    type(clumpfilter) , intent(in) :: filters(:)     ! filters on current process
-    integer           , intent(in) :: ifilter        ! which filter to be operated
+!     type(bounds_type) , intent(in) :: bounds         ! bounds of current process
+!     type(clumpfilter) , intent(in) :: filters(:)     ! filters on current process
+!     integer           , intent(in) :: ifilter        ! which filter to be operated
 
-    type(elm_interface_data_type), intent(in) :: elm_interface_data
+!     type(elm_interface_data_type), intent(in) :: elm_interface_data
 
-    character(len=256) :: subname = "get_elm_bgc_rate"
+!     character(len=256) :: subname = "get_elm_bgc_rate"
 
-#include "petsc/finclude/petscsys.h"
-#include "petsc/finclude/petscvec.h"
-! #include "petsc/finclude/petscvec.h90"
+! #include "petsc/finclude/petscsys.h"
+! #include "petsc/finclude/petscvec.h"
+! ! #include "petsc/finclude/petscvec.h90"
 
- ! !LOCAL VARIABLES:
-    integer  :: fc, c, g, j, k                         ! do loop indices
-    integer  :: gcount, cellcount
+!  ! !LOCAL VARIABLES:
+!     integer  :: fc, c, g, j, k                         ! do loop indices
+!     integer  :: gcount, cellcount
 
-    real(r8) :: dtime                               ! land model time step (sec)
+!     real(r8) :: dtime                               ! land model time step (sec)
 
-    ! C/N source/sink rates as inputs for pflotran: Units - moles/m3/s (note: do unit conversion here for input rates)
-    integer  :: vec_offset
-    PetscScalar, pointer :: rate_decomp_c_elm_loc(:)       !
-    PetscScalar, pointer :: rate_decomp_n_elm_loc(:)       !
-!     PetscScalar, pointer :: rate_decomp_p_elm_loc(:)     !
+!     ! C/N source/sink rates as inputs for pflotran: Units - moles/m3/s (note: do unit conversion here for input rates)
+!     integer  :: vec_offset
+!     PetscScalar, pointer :: rate_decomp_c_elm_loc(:)       !
+!     PetscScalar, pointer :: rate_decomp_n_elm_loc(:)       !
+! !     PetscScalar, pointer :: rate_decomp_p_elm_loc(:)     !
 
-    PetscScalar, pointer :: kscalar_decomp_c_elm_loc(:)  !
+!     PetscScalar, pointer :: kscalar_decomp_c_elm_loc(:)  !
 
-    PetscScalar, pointer :: rate_plantndemand_elm_loc(:)   !
-    PetscScalar, pointer :: rate_smin_no3_elm_loc(:)       !
-    PetscScalar, pointer :: rate_smin_nh4_elm_loc(:)       !
+!     PetscScalar, pointer :: rate_plantndemand_elm_loc(:)   !
+!     PetscScalar, pointer :: rate_smin_no3_elm_loc(:)       !
+!     PetscScalar, pointer :: rate_smin_nh4_elm_loc(:)       !
 
-    PetscErrorCode :: ierr
+!     PetscErrorCode :: ierr
 
-    !
-    !---------------------------------------------------------------------------
-    !
-    associate ( &
-      cgridcell                         => col_pp%gridcell               , & ! column's gridcell
-      !
-      decomp_cpools_vr                  => elm_interface_data%bgc%decomp_cpools_vr_col            , &      ! (gC/m3) vertically-resolved decomposing (litter, cwd, soil) c pools
-      decomp_npools_vr                  => elm_interface_data%bgc%decomp_npools_vr_col            , &      ! (gN/m3) vertically-resolved decomposing (litter, cwd, soil) N pools
-      decomp_k_scalar_vr                => elm_interface_data%bgc%sitefactor_kd_vr_col            , &      ! (-) vertically-resolved decomposing rate adjusting factor relevant to location (site)
-      smin_no3_vr                       => elm_interface_data%bgc%smin_no3_vr_col                 , &      ! (gN/m3) vertically-resolved soil mineral NO3
-      smin_nh4_vr                       => elm_interface_data%bgc%smin_nh4_vr_col                 , &      ! (gN/m3) vertically-resolved soil mineral NH4
-      smin_nh4sorb_vr                   => elm_interface_data%bgc%smin_nh4sorb_vr_col             , &      ! (gN/m3) vertically-resolved soil mineral NH4 absorbed
-      ! plant litering and removal + SOM/LIT vertical transport
-      col_net_to_decomp_cpools_vr       => elm_interface_data%bgc%externalc_to_decomp_cpools_col  , &
-      col_net_to_decomp_npools_vr       => elm_interface_data%bgc%externaln_to_decomp_npools_col  , &
-      ! inorg. nitrogen sink potential
-      col_plant_ndemand_vr              => elm_interface_data%bgc%plant_ndemand_vr_col            , &
-      ! inorg. N source/sink
-      externaln_to_nh4_vr               => elm_interface_data%bgc%externaln_to_nh4_col            , &
-      externaln_to_no3_vr               => elm_interface_data%bgc%externaln_to_no3_col            , &
+!     !
+!     !---------------------------------------------------------------------------
+!     !
+!     associate ( &
+!       cgridcell                         => col_pp%gridcell               , & ! column's gridcell
+!       !
+!       decomp_cpools_vr                  => elm_interface_data%bgc%decomp_cpools_vr_col            , &      ! (gC/m3) vertically-resolved decomposing (litter, cwd, soil) c pools
+!       decomp_npools_vr                  => elm_interface_data%bgc%decomp_npools_vr_col            , &      ! (gN/m3) vertically-resolved decomposing (litter, cwd, soil) N pools
+!       decomp_k_scalar_vr                => elm_interface_data%bgc%sitefactor_kd_vr_col            , &      ! (-) vertically-resolved decomposing rate adjusting factor relevant to location (site)
+!       smin_no3_vr                       => elm_interface_data%bgc%smin_no3_vr_col                 , &      ! (gN/m3) vertically-resolved soil mineral NO3
+!       smin_nh4_vr                       => elm_interface_data%bgc%smin_nh4_vr_col                 , &      ! (gN/m3) vertically-resolved soil mineral NH4
+!       smin_nh4sorb_vr                   => elm_interface_data%bgc%smin_nh4sorb_vr_col             , &      ! (gN/m3) vertically-resolved soil mineral NH4 absorbed
+!       ! plant litering and removal + SOM/LIT vertical transport
+!       col_net_to_decomp_cpools_vr       => elm_interface_data%bgc%externalc_to_decomp_cpools_col  , &
+!       col_net_to_decomp_npools_vr       => elm_interface_data%bgc%externaln_to_decomp_npools_col  , &
+!       ! inorg. nitrogen sink potential
+!       col_plant_ndemand_vr              => elm_interface_data%bgc%plant_ndemand_vr_col            , &
+!       ! inorg. N source/sink
+!       externaln_to_nh4_vr               => elm_interface_data%bgc%externaln_to_nh4_col            , &
+!       externaln_to_no3_vr               => elm_interface_data%bgc%externaln_to_no3_col            , &
 
-      col_net_to_decomp_ppools_vr       => elm_interface_data%bgc%externalp_to_decomp_ppools_col  , &
-      externalp_to_primp_vr             => elm_interface_data%bgc%externalp_to_primp_col          , &
-      externalp_to_labilep_vr           => elm_interface_data%bgc%externalp_to_labilep_col        , &
-      externalp_to_solutionp            => elm_interface_data%bgc%externalp_to_solutionp_col      , &
-      sminp_net_transport_vr            => elm_interface_data%bgc%sminp_net_transport_vr_col      , &
-      col_plant_pdemand_vr              => elm_interface_data%bgc%plant_pdemand_vr_col              &
-    )
+!       col_net_to_decomp_ppools_vr       => elm_interface_data%bgc%externalp_to_decomp_ppools_col  , &
+!       externalp_to_primp_vr             => elm_interface_data%bgc%externalp_to_primp_col          , &
+!       externalp_to_labilep_vr           => elm_interface_data%bgc%externalp_to_labilep_col        , &
+!       externalp_to_solutionp            => elm_interface_data%bgc%externalp_to_solutionp_col      , &
+!       sminp_net_transport_vr            => elm_interface_data%bgc%sminp_net_transport_vr_col      , &
+!       col_plant_pdemand_vr              => elm_interface_data%bgc%plant_pdemand_vr_col              &
+!     )
 
-    dtime = get_step_size()
+!     dtime = get_step_size()
 
 
-    call VecGetArrayF90(elm_pf_idata%rate_decomp_c_elmp, rate_decomp_c_elm_loc, ierr)
-    call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
-    call VecGetArrayF90(elm_pf_idata%rate_decomp_n_elmp, rate_decomp_n_elm_loc, ierr)
-    call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!     call VecGetArrayF90(elm_pf_idata%rate_decomp_c_elmp, rate_decomp_c_elm_loc, ierr)
+!     call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!     call VecGetArrayF90(elm_pf_idata%rate_decomp_n_elmp, rate_decomp_n_elm_loc, ierr)
+!     call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
 
-    call VecGetArrayF90(elm_pf_idata%kscalar_decomp_c_elmp, kscalar_decomp_c_elm_loc, ierr)
-    call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!     call VecGetArrayF90(elm_pf_idata%kscalar_decomp_c_elmp, kscalar_decomp_c_elm_loc, ierr)
+!     call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
 
-    call VecGetArrayF90(elm_pf_idata%rate_plantndemand_elmp, rate_plantndemand_elm_loc, ierr)
-    call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
-    call VecGetArrayF90(elm_pf_idata%rate_smin_no3_elmp, rate_smin_no3_elm_loc, ierr)
-    call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
-    call VecGetArrayF90(elm_pf_idata%rate_smin_nh4_elmp, rate_smin_nh4_elm_loc, ierr)
-    call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!     call VecGetArrayF90(elm_pf_idata%rate_plantndemand_elmp, rate_plantndemand_elm_loc, ierr)
+!     call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!     call VecGetArrayF90(elm_pf_idata%rate_smin_no3_elmp, rate_smin_no3_elm_loc, ierr)
+!     call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!     call VecGetArrayF90(elm_pf_idata%rate_smin_nh4_elmp, rate_smin_nh4_elm_loc, ierr)
+!     call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
 
-    ! Initialize to ZERO
+!     ! Initialize to ZERO
 
-    rate_decomp_c_elm_loc(:) = 0.0_r8
-    rate_decomp_n_elm_loc(:) = 0.0_r8
+!     rate_decomp_c_elm_loc(:) = 0.0_r8
+!     rate_decomp_n_elm_loc(:) = 0.0_r8
 
-    rate_smin_no3_elm_loc(:) = 0.0_r8
-    rate_smin_nh4_elm_loc(:) = 0.0_r8
-    rate_plantndemand_elm_loc(:) = 0.0_r8
+!     rate_smin_no3_elm_loc(:) = 0.0_r8
+!     rate_smin_nh4_elm_loc(:) = 0.0_r8
+!     rate_plantndemand_elm_loc(:) = 0.0_r8
 
-    ! operating via 'filters'
-    gcount = -1
-    do fc = 1,filters(ifilter)%num_soilc
-      c = filters(ifilter)%soilc(fc)
-      g = cgridcell(c)
+!     ! operating via 'filters'
+!     gcount = -1
+!     do fc = 1,filters(ifilter)%num_soilc
+!       c = filters(ifilter)%soilc(fc)
+!       g = cgridcell(c)
 
-#ifdef COLUMN_MODE
-      if (mapped_gcount_skip(c-bounds%begc+1)) cycle   ! skip inactive column (and following numbering)
-      gcount = gcount + 1                              ! 0-based: cumulatively by not-skipped column
-#else
-      gcount = g - bounds%begg                 ! 0-based
-      if (mapped_gcount_skip(gcount+1)) cycle  ! skip inactive grid, but not numbering
-#endif
+! #ifdef COLUMN_MODE
+!       if (mapped_gcount_skip(c-bounds%begc+1)) cycle   ! skip inactive column (and following numbering)
+!       gcount = gcount + 1                              ! 0-based: cumulatively by not-skipped column
+! #else
+!       gcount = g - bounds%begg                 ! 0-based
+!       if (mapped_gcount_skip(gcount+1)) cycle  ! skip inactive grid, but not numbering
+! #endif
 
-      do j = 1, elm_pf_idata%nzelm_mapped
-          cellcount = gcount*elm_pf_idata%nzelm_mapped + j    ! 1-based
+!       do j = 1, elm_pf_idata%nzelm_mapped
+!           cellcount = gcount*elm_pf_idata%nzelm_mapped + j    ! 1-based
 
-          ! note: all elm-pf soil layers are 'elm_pf_idata%nzelm_mapped' for both TH/BGC,
-          !       but in ELM, T is within 'nlevgrnd', H is within 'nlevsoi', bgc within 'nlevdecomp'
-          !       (nlevdecomp_full = nlevgrnd)
+!           ! note: all elm-pf soil layers are 'elm_pf_idata%nzelm_mapped' for both TH/BGC,
+!           !       but in ELM, T is within 'nlevgrnd', H is within 'nlevsoi', bgc within 'nlevdecomp'
+!           !       (nlevdecomp_full = nlevgrnd)
 
-          if(j <= nlevdecomp_full) then
-              ! just in case, we need to do some checking first (actually already done before)
-              do k = 1,ndecomp_pools
-                if (col_net_to_decomp_cpools_vr(c,j,k) < 0._r8) then
-                  col_net_to_decomp_cpools_vr(c,j,k) =                  &
-                    max(col_net_to_decomp_cpools_vr(c,j,k),             &
-                        -max(decomp_cpools_vr(c,j,k)/dtime, 0._r8))
-                endif
+!           if(j <= nlevdecomp_full) then
+!               ! just in case, we need to do some checking first (actually already done before)
+!               do k = 1,ndecomp_pools
+!                 if (col_net_to_decomp_cpools_vr(c,j,k) < 0._r8) then
+!                   col_net_to_decomp_cpools_vr(c,j,k) =                  &
+!                     max(col_net_to_decomp_cpools_vr(c,j,k),             &
+!                         -max(decomp_cpools_vr(c,j,k)/dtime, 0._r8))
+!                 endif
 
-                if (col_net_to_decomp_npools_vr(c,j,k) < 0._r8) then
-                  col_net_to_decomp_npools_vr(c,j,k) =                  &
-                    max(col_net_to_decomp_npools_vr(c,j,k),             &
-                        -max(decomp_npools_vr(c,j,k)/dtime, 0._r8))
-                endif
-              end do
+!                 if (col_net_to_decomp_npools_vr(c,j,k) < 0._r8) then
+!                   col_net_to_decomp_npools_vr(c,j,k) =                  &
+!                     max(col_net_to_decomp_npools_vr(c,j,k),             &
+!                         -max(decomp_npools_vr(c,j,k)/dtime, 0._r8))
+!                 endif
+!               end do
 
-              do k = 1, ndecomp_pools
-                 vec_offset = (k-1)*elm_pf_idata%nlelm_sub        ! 0-based
-                 ! decomp_pool vec: 'cell' first, then 'species' (i.e. cell by cell for 1 species, then species by species)
-                 ! Tips: then when doing 3-D data-mapping, no need to stride the vecs BUT to do segmentation.
+!               do k = 1, ndecomp_pools
+!                  vec_offset = (k-1)*elm_pf_idata%nlelm_sub        ! 0-based
+!                  ! decomp_pool vec: 'cell' first, then 'species' (i.e. cell by cell for 1 species, then species by species)
+!                  ! Tips: then when doing 3-D data-mapping, no need to stride the vecs BUT to do segmentation.
 
-                 rate_decomp_c_elm_loc(vec_offset+cellcount)   =  &
-                            col_net_to_decomp_cpools_vr(c,j,k)    &
-                           /elm_pf_idata%C_molecular_weight
+!                  rate_decomp_c_elm_loc(vec_offset+cellcount)   =  &
+!                             col_net_to_decomp_cpools_vr(c,j,k)    &
+!                            /elm_pf_idata%C_molecular_weight
 
-                 if (rate_decomp_c_elm_loc(vec_offset+cellcount)<0._r8) then
-                   rate_decomp_c_elm_loc(vec_offset+cellcount) = max(     &
-                     rate_decomp_c_elm_loc(vec_offset+cellcount),         &
-                     -max(decomp_cpools_vr(c,j,k)/elm_pf_idata%C_molecular_weight/dtime, 0._r8))
-                 endif
+!                  if (rate_decomp_c_elm_loc(vec_offset+cellcount)<0._r8) then
+!                    rate_decomp_c_elm_loc(vec_offset+cellcount) = max(     &
+!                      rate_decomp_c_elm_loc(vec_offset+cellcount),         &
+!                      -max(decomp_cpools_vr(c,j,k)/elm_pf_idata%C_molecular_weight/dtime, 0._r8))
+!                  endif
 
-                 if (elm_pf_idata%floating_cn_ratio(k)) then
-                   rate_decomp_n_elm_loc(vec_offset+cellcount) =  &
-                           col_net_to_decomp_npools_vr(c,j,k)     &
-                           /elm_pf_idata%N_molecular_weight
+!                  if (elm_pf_idata%floating_cn_ratio(k)) then
+!                    rate_decomp_n_elm_loc(vec_offset+cellcount) =  &
+!                            col_net_to_decomp_npools_vr(c,j,k)     &
+!                            /elm_pf_idata%N_molecular_weight
 
-                   if (rate_decomp_n_elm_loc(vec_offset+cellcount)<0._r8) then
-                     rate_decomp_n_elm_loc(vec_offset+cellcount) = max(     &
-                       rate_decomp_n_elm_loc(vec_offset+cellcount),         &
-                       -max(decomp_npools_vr(c,j,k)/elm_pf_idata%N_molecular_weight/dtime, 0._r8))
-                   endif
+!                    if (rate_decomp_n_elm_loc(vec_offset+cellcount)<0._r8) then
+!                      rate_decomp_n_elm_loc(vec_offset+cellcount) = max(     &
+!                        rate_decomp_n_elm_loc(vec_offset+cellcount),         &
+!                        -max(decomp_npools_vr(c,j,k)/elm_pf_idata%N_molecular_weight/dtime, 0._r8))
+!                    endif
 
-                 endif
+!                  endif
 
-              enddo ! do k=1, ndecomp_pools
+!               enddo ! do k=1, ndecomp_pools
 
-              ! site-scalar to adjust decomposition rate constants
-              ! note: (1) this only works for CTC, together with adspinup_factor(k)>1
-              !       (2) coding here is because of its time (year)-dependent, which implies checking each time-step
-              kscalar_decomp_c_elm_loc(cellcount) = decomp_k_scalar_vr(c,j)
+!               ! site-scalar to adjust decomposition rate constants
+!               ! note: (1) this only works for CTC, together with adspinup_factor(k)>1
+!               !       (2) coding here is because of its time (year)-dependent, which implies checking each time-step
+!               kscalar_decomp_c_elm_loc(cellcount) = decomp_k_scalar_vr(c,j)
 
-              rate_smin_nh4_elm_loc(cellcount) = externaln_to_nh4_vr(c,j)/ &
-                                                 elm_pf_idata%N_molecular_weight
-              if (rate_smin_nh4_elm_loc(cellcount)<0._r8) then
-                 rate_smin_nh4_elm_loc(cellcount) = max(     &
-                   rate_smin_nh4_elm_loc(cellcount),         &
-                   -max(smin_nh4_vr(c,j)/elm_pf_idata%N_molecular_weight/dtime, 0._r8))
-              endif
+!               rate_smin_nh4_elm_loc(cellcount) = externaln_to_nh4_vr(c,j)/ &
+!                                                  elm_pf_idata%N_molecular_weight
+!               if (rate_smin_nh4_elm_loc(cellcount)<0._r8) then
+!                  rate_smin_nh4_elm_loc(cellcount) = max(     &
+!                    rate_smin_nh4_elm_loc(cellcount),         &
+!                    -max(smin_nh4_vr(c,j)/elm_pf_idata%N_molecular_weight/dtime, 0._r8))
+!               endif
 
-              rate_smin_no3_elm_loc(cellcount) = externaln_to_no3_vr(c,j)/ &
-                                                 elm_pf_idata%N_molecular_weight
-              if (rate_smin_no3_elm_loc(cellcount)<0._r8) then
-                 rate_smin_no3_elm_loc(cellcount) = max(     &
-                   rate_smin_no3_elm_loc(cellcount),         &
-                   -max(smin_no3_vr(c,j)/elm_pf_idata%N_molecular_weight/dtime, 0._r8))
-              endif
+!               rate_smin_no3_elm_loc(cellcount) = externaln_to_no3_vr(c,j)/ &
+!                                                  elm_pf_idata%N_molecular_weight
+!               if (rate_smin_no3_elm_loc(cellcount)<0._r8) then
+!                  rate_smin_no3_elm_loc(cellcount) = max(     &
+!                    rate_smin_no3_elm_loc(cellcount),         &
+!                    -max(smin_no3_vr(c,j)/elm_pf_idata%N_molecular_weight/dtime, 0._r8))
+!               endif
 
-              ! plant N uptake rate here IS the N demand (potential uptake)
-              rate_plantndemand_elm_loc(cellcount) = &
-                         col_plant_ndemand_vr(c,j)/elm_pf_idata%N_molecular_weight
+!               ! plant N uptake rate here IS the N demand (potential uptake)
+!               rate_plantndemand_elm_loc(cellcount) = &
+!                          col_plant_ndemand_vr(c,j)/elm_pf_idata%N_molecular_weight
 
-          endif ! if (j<=nlevdecomp_full)
+!           endif ! if (j<=nlevdecomp_full)
 
-      enddo ! do j=1, elm_pf_idata%nzelm_mapped
+!       enddo ! do j=1, elm_pf_idata%nzelm_mapped
 
-    enddo ! do fc=1,numsoic
+!     enddo ! do fc=1,numsoic
 
-    call VecRestoreArrayF90(elm_pf_idata%rate_decomp_c_elmp, rate_decomp_c_elm_loc, ierr)
-    call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
-    call VecRestoreArrayF90(elm_pf_idata%rate_decomp_n_elmp, rate_decomp_n_elm_loc, ierr)
-    call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!     call VecRestoreArrayF90(elm_pf_idata%rate_decomp_c_elmp, rate_decomp_c_elm_loc, ierr)
+!     call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!     call VecRestoreArrayF90(elm_pf_idata%rate_decomp_n_elmp, rate_decomp_n_elm_loc, ierr)
+!     call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
 
-    call VecRestoreArrayF90(elm_pf_idata%kscalar_decomp_c_elmp, kscalar_decomp_c_elm_loc, ierr)
-    call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!     call VecRestoreArrayF90(elm_pf_idata%kscalar_decomp_c_elmp, kscalar_decomp_c_elm_loc, ierr)
+!     call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
 
-    call VecRestoreArrayF90(elm_pf_idata%rate_plantndemand_elmp, rate_plantndemand_elm_loc, ierr)
-    call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
-    call VecRestoreArrayF90(elm_pf_idata%rate_smin_no3_elmp, rate_smin_no3_elm_loc, ierr)
-    call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
-    call VecRestoreArrayF90(elm_pf_idata%rate_smin_nh4_elmp, rate_smin_nh4_elm_loc, ierr)
-    call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!     call VecRestoreArrayF90(elm_pf_idata%rate_plantndemand_elmp, rate_plantndemand_elm_loc, ierr)
+!     call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!     call VecRestoreArrayF90(elm_pf_idata%rate_smin_no3_elmp, rate_smin_no3_elm_loc, ierr)
+!     call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!     call VecRestoreArrayF90(elm_pf_idata%rate_smin_nh4_elmp, rate_smin_nh4_elm_loc, ierr)
+!     call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
 
-    end associate
-  end subroutine get_elm_bgc_rate
+!     end associate
+!   end subroutine get_elm_bgc_rate
 
 
 
@@ -3643,303 +3827,303 @@ contains
   !   NOTE: Don't update the organic C/N state variables, which will be updated in those 'update' subroutines
   !           and the 'SoilLittVertTranspMod.F90' after 'update1'.
   !
-  subroutine update_soil_bgc_pf2elm(elm_interface_data, bounds, filters, ifilter)
-! TODO: add phosphorus vars
-    use ColumnType              , only : col_pp
-    use elm_varctl              , only : iulog, use_fates
-    use CNDecompCascadeConType  , only : decomp_cascade_con
-    use elm_varpar              , only : ndecomp_pools, nlevdecomp_full
-    use elm_varctl              , only : pf_hmode
-    use elm_time_manager        , only : get_step_size,get_nstep
+!   subroutine update_soil_bgc_pf2elm(elm_interface_data, bounds, filters, ifilter)
+! ! TODO: add phosphorus vars
+!     use ColumnType              , only : col_pp
+!     use elm_varctl              , only : iulog, use_fates
+!     use CNDecompCascadeConType  , only : decomp_cascade_con
+!     use elm_varpar              , only : ndecomp_pools, nlevdecomp_full
+!     use elm_varctl              , only : pf_hmode
+!     use elm_time_manager        , only : get_step_size,get_nstep
 
-    use elm_varcon              , only : dzsoi_decomp
+!     use elm_varcon              , only : dzsoi_decomp
 
-    implicit none
+!     implicit none
 
-    type(bounds_type) , intent(in) :: bounds         ! bounds of current process
-    type(clumpfilter) , intent(in) :: filters(:)     ! filters on current process
-    integer           , intent(in) :: ifilter        ! which filter to be operated
+!     type(bounds_type) , intent(in) :: bounds         ! bounds of current process
+!     type(clumpfilter) , intent(in) :: filters(:)     ! filters on current process
+!     integer           , intent(in) :: ifilter        ! which filter to be operated
 
-    type(elm_interface_data_type), intent(inout) :: elm_interface_data
+!     type(elm_interface_data_type), intent(inout) :: elm_interface_data
 
-    character(len=256) :: subname = "update_soil_bgc_pf2elm"
+!     character(len=256) :: subname = "update_soil_bgc_pf2elm"
 
-#include "petsc/finclude/petscsys.h"
-#include "petsc/finclude/petscvec.h"
-! #include "petsc/finclude/petscvec.h90"
+! #include "petsc/finclude/petscsys.h"
+! #include "petsc/finclude/petscvec.h"
+! ! #include "petsc/finclude/petscvec.h90"
 
-    integer  :: fc,c,g,j,k,l
-    integer  :: gcount, cellcount
+!     integer  :: fc,c,g,j,k,l
+!     integer  :: gcount, cellcount
 
-    real(r8) :: dtime            ! land model time step (sec)
+!     real(r8) :: dtime            ! land model time step (sec)
 
-    integer  :: vec_offset
-    PetscScalar, pointer :: decomp_cpools_vr_elm_loc(:)      ! (moleC/m3) vertically-resolved decomposing (litter, cwd, soil) c pools
-    PetscScalar, pointer :: decomp_npools_vr_elm_loc(:)      ! (moleN/m3) vertically-resolved decomposing (litter, cwd, soil) N pools
+!     integer  :: vec_offset
+!     PetscScalar, pointer :: decomp_cpools_vr_elm_loc(:)      ! (moleC/m3) vertically-resolved decomposing (litter, cwd, soil) c pools
+!     PetscScalar, pointer :: decomp_npools_vr_elm_loc(:)      ! (moleN/m3) vertically-resolved decomposing (litter, cwd, soil) N pools
 
-    PetscScalar, pointer :: smin_no3_vr_elm_loc(:)           ! (moleN/m3) vertically-resolved soil mineral NO3
-    PetscScalar, pointer :: smin_nh4_vr_elm_loc(:)           ! (moleN/m3) vertically-resolved total soil mineral NH4
-    PetscScalar, pointer :: smin_nh4sorb_vr_elm_loc(:)       ! (moleN/m3) vertically-resolved absorbed soil mineral NH4
+!     PetscScalar, pointer :: smin_no3_vr_elm_loc(:)           ! (moleN/m3) vertically-resolved soil mineral NO3
+!     PetscScalar, pointer :: smin_nh4_vr_elm_loc(:)           ! (moleN/m3) vertically-resolved total soil mineral NH4
+!     PetscScalar, pointer :: smin_nh4sorb_vr_elm_loc(:)       ! (moleN/m3) vertically-resolved absorbed soil mineral NH4
 
-    ! 'accextrn_vr' - accumulative (root) extracted N, i.e., actual plant N uptake from each soil layer, within a ELM timestep
-    PetscScalar, pointer :: accextrnh4_vr_elm_loc(:)         ! (moleN/m3/timestep) vertically-resolved soil mineral N root-extraction (accumulated)
-    PetscScalar, pointer :: accextrno3_vr_elm_loc(:)         ! (moleN/m3/timestep) vertically-resolved soil mineral N root-extraction (accumulated)
+!     ! 'accextrn_vr' - accumulative (root) extracted N, i.e., actual plant N uptake from each soil layer, within a ELM timestep
+!     PetscScalar, pointer :: accextrnh4_vr_elm_loc(:)         ! (moleN/m3/timestep) vertically-resolved soil mineral N root-extraction (accumulated)
+!     PetscScalar, pointer :: accextrno3_vr_elm_loc(:)         ! (moleN/m3/timestep) vertically-resolved soil mineral N root-extraction (accumulated)
 
-    ! 'accnmin_vr' - accumulative gross N mineralization within a ELM timestep
-    PetscScalar, pointer :: accnmin_vr_elm_loc(:)               ! (moleN/m3/timestep) vertically-resolved soil N mineralization (accumulated)
+!     ! 'accnmin_vr' - accumulative gross N mineralization within a ELM timestep
+!     PetscScalar, pointer :: accnmin_vr_elm_loc(:)               ! (moleN/m3/timestep) vertically-resolved soil N mineralization (accumulated)
 
-    ! 'accnimm_vr' - accumulative N immobilization within a ELM timestep
-    PetscScalar, pointer :: accnimmp_vr_elm_loc(:)              ! (moleN/m3/timestep) vertically-resolved soil N potential immoblilization (accumulated)
-    PetscScalar, pointer :: accnimm_vr_elm_loc(:)               ! (moleN/m3/timestep) vertically-resolved soil N immoblilization (accumulated)
+!     ! 'accnimm_vr' - accumulative N immobilization within a ELM timestep
+!     PetscScalar, pointer :: accnimmp_vr_elm_loc(:)              ! (moleN/m3/timestep) vertically-resolved soil N potential immoblilization (accumulated)
+!     PetscScalar, pointer :: accnimm_vr_elm_loc(:)               ! (moleN/m3/timestep) vertically-resolved soil N immoblilization (accumulated)
 
-    PetscErrorCode :: ierr
+!     PetscErrorCode :: ierr
 
-!------------------------------------------------------------------------------------
-     !
-     associate ( &
-     cgridcell                    => col_pp%gridcell                                        , & !  [integer (:)]  gridcell index of column
-     !
-     initial_cn_ratio             => elm_interface_data%bgc%initial_cn_ratio             , &
-     decomp_cpools_vr             => elm_interface_data%bgc%decomp_cpools_vr_col         , &
-     decomp_npools_vr             => elm_interface_data%bgc%decomp_npools_vr_col         , &
-     sminn_vr                     => elm_interface_data%bgc%sminn_vr_col                 , &
-     smin_no3_vr                  => elm_interface_data%bgc%smin_no3_vr_col              , &
-     smin_nh4_vr                  => elm_interface_data%bgc%smin_nh4_vr_col              , &
-     smin_nh4sorb_vr              => elm_interface_data%bgc%smin_nh4sorb_vr_col          , &
+! !------------------------------------------------------------------------------------
+!      !
+!      associate ( &
+!      cgridcell                    => col_pp%gridcell                                        , & !  [integer (:)]  gridcell index of column
+!      !
+!      initial_cn_ratio             => elm_interface_data%bgc%initial_cn_ratio             , &
+!      decomp_cpools_vr             => elm_interface_data%bgc%decomp_cpools_vr_col         , &
+!      decomp_npools_vr             => elm_interface_data%bgc%decomp_npools_vr_col         , &
+!      sminn_vr                     => elm_interface_data%bgc%sminn_vr_col                 , &
+!      smin_no3_vr                  => elm_interface_data%bgc%smin_no3_vr_col              , &
+!      smin_nh4_vr                  => elm_interface_data%bgc%smin_nh4_vr_col              , &
+!      smin_nh4sorb_vr              => elm_interface_data%bgc%smin_nh4sorb_vr_col          , &
 
-     decomp_cpools_delta_vr       => elm_interface_data%bgc%decomp_cpools_sourcesink_col  , &
-     decomp_npools_delta_vr       => elm_interface_data%bgc%decomp_npools_sourcesink_col  , &
+!      decomp_cpools_delta_vr       => elm_interface_data%bgc%decomp_cpools_sourcesink_col  , &
+!      decomp_npools_delta_vr       => elm_interface_data%bgc%decomp_npools_sourcesink_col  , &
 
-     sminn_to_plant_vr            => elm_interface_data%bgc%sminn_to_plant_vr_col         , &
-     smin_no3_to_plant_vr         => elm_interface_data%bgc%smin_no3_to_plant_vr_col      , &
-     smin_nh4_to_plant_vr         => elm_interface_data%bgc%smin_nh4_to_plant_vr_col      , &
-     potential_immob_vr           => elm_interface_data%bgc%potential_immob_vr_col        , &
-     actual_immob_vr              => elm_interface_data%bgc%actual_immob_vr_col           , &
-     gross_nmin_vr                => elm_interface_data%bgc%gross_nmin_vr_col               &
-     )
-! ------------------------------------------------------------------------
-     dtime = get_step_size()
+!      sminn_to_plant_vr            => elm_interface_data%bgc%sminn_to_plant_vr_col         , &
+!      smin_no3_to_plant_vr         => elm_interface_data%bgc%smin_no3_to_plant_vr_col      , &
+!      smin_nh4_to_plant_vr         => elm_interface_data%bgc%smin_nh4_to_plant_vr_col      , &
+!      potential_immob_vr           => elm_interface_data%bgc%potential_immob_vr_col        , &
+!      actual_immob_vr              => elm_interface_data%bgc%actual_immob_vr_col           , &
+!      gross_nmin_vr                => elm_interface_data%bgc%gross_nmin_vr_col               &
+!      )
+! ! ------------------------------------------------------------------------
+!      dtime = get_step_size()
 
-     ! soil C/N pool increments set to the previous timestep (i.e., not yet updated)
-     decomp_cpools_delta_vr  = 0._r8-decomp_cpools_vr
-     decomp_npools_delta_vr  = 0._r8-decomp_npools_vr
+!      ! soil C/N pool increments set to the previous timestep (i.e., not yet updated)
+!      decomp_cpools_delta_vr  = 0._r8-decomp_cpools_vr
+!      decomp_npools_delta_vr  = 0._r8-decomp_npools_vr
 
-     ! elm-pf interface data updated
-     call VecGetArrayReadF90(elm_pf_idata%decomp_cpools_vr_elms, decomp_cpools_vr_elm_loc, ierr)
-     call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
-     call VecGetArrayReadF90(elm_pf_idata%decomp_npools_vr_elms, decomp_npools_vr_elm_loc, ierr)
-     call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
-
-
-     call VecGetArrayReadF90(elm_pf_idata%smin_no3_vr_elms, smin_no3_vr_elm_loc, ierr)
-     call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
-     call VecGetArrayReadF90(elm_pf_idata%smin_nh4_vr_elms, smin_nh4_vr_elm_loc, ierr)
-     call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
-     call VecGetArrayReadF90(elm_pf_idata%smin_nh4sorb_vr_elms, smin_nh4sorb_vr_elm_loc, ierr)
-     call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
-
-     call VecGetArrayReadF90(elm_pf_idata%accextrnh4_vr_elms, accextrnh4_vr_elm_loc, ierr)
-     call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
-     call VecGetArrayReadF90(elm_pf_idata%accextrno3_vr_elms, accextrno3_vr_elm_loc, ierr)
-     call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
-
-     if(elm_pf_idata%ispec_nmin>0) then
-        call VecGetArrayReadF90(elm_pf_idata%acctotnmin_vr_elms, accnmin_vr_elm_loc, ierr)
-        call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
-     else
-        call VecGetArrayReadF90(elm_pf_idata%accnmin_vr_elms, accnmin_vr_elm_loc, ierr)
-        call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
-     endif
-
-     if(elm_pf_idata%ispec_nimp>0) then
-        call VecGetArrayReadF90(elm_pf_idata%acctotnimmp_vr_elms, accnimmp_vr_elm_loc, ierr)
-        call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
-     else
-        call VecGetArrayReadF90(elm_pf_idata%accnimmp_vr_elms, accnimmp_vr_elm_loc, ierr)
-        call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
-     endif
-
-     if(elm_pf_idata%ispec_nimm>0) then
-        call VecGetArrayReadF90(elm_pf_idata%acctotnimm_vr_elms, accnimm_vr_elm_loc, ierr)
-        call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
-     else
-        call VecGetArrayReadF90(elm_pf_idata%accnimm_vr_elms, accnimm_vr_elm_loc, ierr)
-        call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
-     endif
-
-    ! operating via 'filters'
-    gcount = -1
-    do fc = 1,filters(ifilter)%num_soilc
-      c = filters(ifilter)%soilc(fc)
-      g = cgridcell(c)
-
-#ifdef COLUMN_MODE
-      if (mapped_gcount_skip(c-bounds%begc+1)) cycle   ! skip inactive column (and following numbering)
-      gcount = gcount + 1                              ! 0-based: cumulatively by not-skipped column
-#else
-      gcount = g - bounds%begg                 ! 0-based
-      if (mapped_gcount_skip(gcount+1)) cycle  ! skip inactive grid, but not numbering
-#endif
-
-      do j = 1, nlevdecomp_full
-
-          gross_nmin_vr(c,j)      = 0._r8
-          actual_immob_vr(c,j)    = 0._r8
-          potential_immob_vr(c,j) = 0._r8
-
-          if(j <= elm_pf_idata%nzelm_mapped) then
-
-              cellcount = gcount*elm_pf_idata%nzelm_mapped + j   ! 1-based
-
-              do k=1, ndecomp_pools
-
-                 vec_offset = (k-1)*elm_pf_idata%ngelm_sub        ! 0-based
-                 ! decomp_pool vec: 'cell' first, then 'species' (i.e. cell by cell for 1 species, then species by species)
-                 ! Tips: then when doing 3-D data-mapping, no need to stride the vecs BUT to do segmentation.
-
-                 decomp_cpools_delta_vr(c,j,k) = ( decomp_cpools_delta_vr(c,j,k)  &
-                                + decomp_cpools_vr_elm_loc(vec_offset+cellcount)  &
-                                * elm_pf_idata%C_molecular_weight ) !decomp_cpools_delta_vr=> elm_bgc_data%decomp_cpools_sourcesink_col
-
-                 if (elm_pf_idata%floating_cn_ratio(k)) then
-                     decomp_npools_delta_vr(c,j,k) = ( decomp_npools_delta_vr(c,j,k)  &
-                                + decomp_npools_vr_elm_loc(vec_offset+cellcount)      &
-                                * elm_pf_idata%N_molecular_weight ) !/dtime
-                 else
-                     decomp_npools_delta_vr(c,j,k) = decomp_cpools_delta_vr(c,j,k)/ &
-                        initial_cn_ratio(k)      ! initial_cn_ratio: already in unit of mass
-                 endif
-
-                 if (abs(decomp_cpools_delta_vr(c,j,k))<=1.d-20) decomp_cpools_delta_vr(c,j,k)=0._r8
-                 if (abs(decomp_npools_delta_vr(c,j,k))<=1.d-21) decomp_npools_delta_vr(c,j,k)=0._r8
-
-                 !
-                 if (elm_pf_idata%ispec_decomp_nmin(k)>0 .and. elm_pf_idata%ispec_nmin<=0) then
-                    gross_nmin_vr(c,j)  = gross_nmin_vr(c,j)            &
-                          + (accnmin_vr_elm_loc(vec_offset+cellcount)   &
-                          * elm_pf_idata%N_molecular_weight)/dtime
-                 endif
-
-                 !
-                 if (elm_pf_idata%ispec_decomp_nimm(k)>0 .and. elm_pf_idata%ispec_nimm<=0) then
-                    actual_immob_vr(c,j) = actual_immob_vr(c,j)         &
-                          + (accnimm_vr_elm_loc(vec_offset+cellcount)   &
-                          * elm_pf_idata%N_molecular_weight)/dtime
-                 endif
-
-                 !
-                 if (elm_pf_idata%ispec_decomp_nimp(k)>0 .and. elm_pf_idata%ispec_nimp<=0) then
-                    potential_immob_vr(c,j) = potential_immob_vr(c,j)   &
-                          + (accnimmp_vr_elm_loc(vec_offset+cellcount)  &
-                          * elm_pf_idata%N_molecular_weight)/dtime
-                 endif
-
-              enddo ! do k=1, ndecomp_pools
-
-              if (elm_pf_idata%ispec_nmin>0) then
-                 gross_nmin_vr(c,j)  = gross_nmin_vr(c,j)           &
-                          + (accnmin_vr_elm_loc(cellcount)          &
-                          * elm_pf_idata%N_molecular_weight)/dtime
-              endif
-              if (elm_pf_idata%ispec_nimm>0) then
-                 actual_immob_vr(c,j) = actual_immob_vr(c,j)        &
-                          + (accnimm_vr_elm_loc(cellcount)          &
-                          * elm_pf_idata%N_molecular_weight)/dtime
-              endif
-              if (elm_pf_idata%ispec_nimp>0) then
-                 potential_immob_vr(c,j) = potential_immob_vr(c,j)  &
-                          + (accnimmp_vr_elm_loc(cellcount)         &
-                          * elm_pf_idata%N_molecular_weight)/dtime
-              endif
-
-              ! beg:--------------------------------------------------------------------------------
-              ! directly update the 'smin' N pools (SO, must bypass the 'CNNStateUpdate1,2,3' relevant to soil N)
-              smin_no3_vr(c,j) = &
-                           smin_no3_vr_elm_loc(cellcount)*elm_pf_idata%N_molecular_weight
-
-              smin_nh4_vr(c,j) = &
-                           smin_nh4_vr_elm_loc(cellcount)*elm_pf_idata%N_molecular_weight
-
-              smin_nh4sorb_vr(c,j) = &
-                           smin_nh4sorb_vr_elm_loc(cellcount)*elm_pf_idata%N_molecular_weight
-
-              sminn_vr(c,j) = smin_no3_vr(c,j) + smin_nh4_vr(c,j) + smin_nh4sorb_vr(c,j)
-              ! end:--------------------------------------------------------------------------------
-
-              ! flows or changes
-              smin_nh4_to_plant_vr(c,j) = (accextrnh4_vr_elm_loc(cellcount)  &
-                          * elm_pf_idata%N_molecular_weight)/dtime
-              smin_no3_to_plant_vr(c,j) = (accextrno3_vr_elm_loc(cellcount)  &
-                          * elm_pf_idata%N_molecular_weight)/dtime
-              sminn_to_plant_vr(c,j) = smin_nh4_to_plant_vr(c,j) + smin_no3_to_plant_vr(c,j)
-
-          else    ! just in case 'elm_pf_idata%nzelm_mapped<nlevdcomp_full', all set to ZERO (different from TH)
-
-              do k=1, ndecomp_pools
-                 decomp_cpools_delta_vr(c,j,k) = 0._r8
-                 decomp_npools_delta_vr(c,j,k) = 0._r8
-              enddo
-
-              smin_nh4_to_plant_vr(c,j)  = 0._r8
-              smin_no3_to_plant_vr(c,j)  = 0._r8
-              sminn_to_plant_vr(c,j)     = 0._r8
-              gross_nmin_vr(c,j)         = 0._r8
-              potential_immob_vr(c,j)    = 0._r8
-              actual_immob_vr(c,j)       = 0._r8
-
-          endif
-
-       enddo
-
-     enddo ! do fc = 1, filters(ifilter)%num_soilc
+!      ! elm-pf interface data updated
+!      call VecGetArrayReadF90(elm_pf_idata%decomp_cpools_vr_elms, decomp_cpools_vr_elm_loc, ierr)
+!      call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!      call VecGetArrayReadF90(elm_pf_idata%decomp_npools_vr_elms, decomp_npools_vr_elm_loc, ierr)
+!      call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
 
 
-     call VecRestoreArrayReadF90(elm_pf_idata%decomp_cpools_vr_elms, decomp_cpools_vr_elm_loc, ierr)
-     call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
-     call VecRestoreArrayReadF90(elm_pf_idata%decomp_npools_vr_elms, decomp_npools_vr_elm_loc, ierr)
-     call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!      call VecGetArrayReadF90(elm_pf_idata%smin_no3_vr_elms, smin_no3_vr_elm_loc, ierr)
+!      call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!      call VecGetArrayReadF90(elm_pf_idata%smin_nh4_vr_elms, smin_nh4_vr_elm_loc, ierr)
+!      call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!      call VecGetArrayReadF90(elm_pf_idata%smin_nh4sorb_vr_elms, smin_nh4sorb_vr_elm_loc, ierr)
+!      call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
 
-     call VecRestoreArrayReadF90(elm_pf_idata%smin_no3_vr_elms, smin_no3_vr_elm_loc, ierr)
-     call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
-     call VecRestoreArrayReadF90(elm_pf_idata%smin_nh4_vr_elms, smin_nh4_vr_elm_loc, ierr)
-     call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
-     call VecRestoreArrayReadF90(elm_pf_idata%smin_nh4sorb_vr_elms, smin_nh4sorb_vr_elm_loc, ierr)
-     call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!      call VecGetArrayReadF90(elm_pf_idata%accextrnh4_vr_elms, accextrnh4_vr_elm_loc, ierr)
+!      call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!      call VecGetArrayReadF90(elm_pf_idata%accextrno3_vr_elms, accextrno3_vr_elm_loc, ierr)
+!      call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
 
-     call VecRestoreArrayReadF90(elm_pf_idata%accextrnh4_vr_elms, accextrnh4_vr_elm_loc, ierr)
-     call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
-     call VecRestoreArrayReadF90(elm_pf_idata%accextrno3_vr_elms, accextrno3_vr_elm_loc, ierr)
-     call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!      if(elm_pf_idata%ispec_nmin>0) then
+!         call VecGetArrayReadF90(elm_pf_idata%acctotnmin_vr_elms, accnmin_vr_elm_loc, ierr)
+!         call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!      else
+!         call VecGetArrayReadF90(elm_pf_idata%accnmin_vr_elms, accnmin_vr_elm_loc, ierr)
+!         call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!      endif
 
-     if(elm_pf_idata%ispec_nmin>0) then
-        call VecRestoreArrayReadF90(elm_pf_idata%acctotnmin_vr_elms, accnmin_vr_elm_loc, ierr)
-        call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
-     else
-        call VecRestoreArrayReadF90(elm_pf_idata%accnmin_vr_elms, accnmin_vr_elm_loc, ierr)
-        call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
-     endif
+!      if(elm_pf_idata%ispec_nimp>0) then
+!         call VecGetArrayReadF90(elm_pf_idata%acctotnimmp_vr_elms, accnimmp_vr_elm_loc, ierr)
+!         call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!      else
+!         call VecGetArrayReadF90(elm_pf_idata%accnimmp_vr_elms, accnimmp_vr_elm_loc, ierr)
+!         call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!      endif
 
-     if(elm_pf_idata%ispec_nimp>0) then
-        call VecRestoreArrayReadF90(elm_pf_idata%acctotnimmp_vr_elms, accnimmp_vr_elm_loc, ierr)
-        call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
-     else
-        call VecRestoreArrayReadF90(elm_pf_idata%accnimmp_vr_elms, accnimmp_vr_elm_loc, ierr)
-        call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
-     endif
+!      if(elm_pf_idata%ispec_nimm>0) then
+!         call VecGetArrayReadF90(elm_pf_idata%acctotnimm_vr_elms, accnimm_vr_elm_loc, ierr)
+!         call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!      else
+!         call VecGetArrayReadF90(elm_pf_idata%accnimm_vr_elms, accnimm_vr_elm_loc, ierr)
+!         call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!      endif
 
-     if(elm_pf_idata%ispec_nimm>0) then
-        call VecRestoreArrayReadF90(elm_pf_idata%acctotnimm_vr_elms, accnimm_vr_elm_loc, ierr)
-        call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
-     else
-        call VecRestoreArrayReadF90(elm_pf_idata%accnimm_vr_elms, accnimm_vr_elm_loc, ierr)
-        call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
-     endif
+!     ! operating via 'filters'
+!     gcount = -1
+!     do fc = 1,filters(ifilter)%num_soilc
+!       c = filters(ifilter)%soilc(fc)
+!       g = cgridcell(c)
 
-     ! update bgc gas losses
-     call update_bgc_gaslosses_pf2elm(elm_interface_data, bounds, filters, ifilter)
+! #ifdef COLUMN_MODE
+!       if (mapped_gcount_skip(c-bounds%begc+1)) cycle   ! skip inactive column (and following numbering)
+!       gcount = gcount + 1                              ! 0-based: cumulatively by not-skipped column
+! #else
+!       gcount = g - bounds%begg                 ! 0-based
+!       if (mapped_gcount_skip(gcount+1)) cycle  ! skip inactive grid, but not numbering
+! #endif
 
-    end associate
-  end subroutine update_soil_bgc_pf2elm
+!       do j = 1, nlevdecomp_full
+
+!           gross_nmin_vr(c,j)      = 0._r8
+!           actual_immob_vr(c,j)    = 0._r8
+!           potential_immob_vr(c,j) = 0._r8
+
+!           if(j <= elm_pf_idata%nzelm_mapped) then
+
+!               cellcount = gcount*elm_pf_idata%nzelm_mapped + j   ! 1-based
+
+!               do k=1, ndecomp_pools
+
+!                  vec_offset = (k-1)*elm_pf_idata%ngelm_sub        ! 0-based
+!                  ! decomp_pool vec: 'cell' first, then 'species' (i.e. cell by cell for 1 species, then species by species)
+!                  ! Tips: then when doing 3-D data-mapping, no need to stride the vecs BUT to do segmentation.
+
+!                  decomp_cpools_delta_vr(c,j,k) = ( decomp_cpools_delta_vr(c,j,k)  &
+!                                 + decomp_cpools_vr_elm_loc(vec_offset+cellcount)  &
+!                                 * elm_pf_idata%C_molecular_weight ) !decomp_cpools_delta_vr=> elm_bgc_data%decomp_cpools_sourcesink_col
+
+!                  if (elm_pf_idata%floating_cn_ratio(k)) then
+!                      decomp_npools_delta_vr(c,j,k) = ( decomp_npools_delta_vr(c,j,k)  &
+!                                 + decomp_npools_vr_elm_loc(vec_offset+cellcount)      &
+!                                 * elm_pf_idata%N_molecular_weight ) !/dtime
+!                  else
+!                      decomp_npools_delta_vr(c,j,k) = decomp_cpools_delta_vr(c,j,k)/ &
+!                         initial_cn_ratio(k)      ! initial_cn_ratio: already in unit of mass
+!                  endif
+
+!                  if (abs(decomp_cpools_delta_vr(c,j,k))<=1.d-20) decomp_cpools_delta_vr(c,j,k)=0._r8
+!                  if (abs(decomp_npools_delta_vr(c,j,k))<=1.d-21) decomp_npools_delta_vr(c,j,k)=0._r8
+
+!                  !
+!                  if (elm_pf_idata%ispec_decomp_nmin(k)>0 .and. elm_pf_idata%ispec_nmin<=0) then
+!                     gross_nmin_vr(c,j)  = gross_nmin_vr(c,j)            &
+!                           + (accnmin_vr_elm_loc(vec_offset+cellcount)   &
+!                           * elm_pf_idata%N_molecular_weight)/dtime
+!                  endif
+
+!                  !
+!                  if (elm_pf_idata%ispec_decomp_nimm(k)>0 .and. elm_pf_idata%ispec_nimm<=0) then
+!                     actual_immob_vr(c,j) = actual_immob_vr(c,j)         &
+!                           + (accnimm_vr_elm_loc(vec_offset+cellcount)   &
+!                           * elm_pf_idata%N_molecular_weight)/dtime
+!                  endif
+
+!                  !
+!                  if (elm_pf_idata%ispec_decomp_nimp(k)>0 .and. elm_pf_idata%ispec_nimp<=0) then
+!                     potential_immob_vr(c,j) = potential_immob_vr(c,j)   &
+!                           + (accnimmp_vr_elm_loc(vec_offset+cellcount)  &
+!                           * elm_pf_idata%N_molecular_weight)/dtime
+!                  endif
+
+!               enddo ! do k=1, ndecomp_pools
+
+!               if (elm_pf_idata%ispec_nmin>0) then
+!                  gross_nmin_vr(c,j)  = gross_nmin_vr(c,j)           &
+!                           + (accnmin_vr_elm_loc(cellcount)          &
+!                           * elm_pf_idata%N_molecular_weight)/dtime
+!               endif
+!               if (elm_pf_idata%ispec_nimm>0) then
+!                  actual_immob_vr(c,j) = actual_immob_vr(c,j)        &
+!                           + (accnimm_vr_elm_loc(cellcount)          &
+!                           * elm_pf_idata%N_molecular_weight)/dtime
+!               endif
+!               if (elm_pf_idata%ispec_nimp>0) then
+!                  potential_immob_vr(c,j) = potential_immob_vr(c,j)  &
+!                           + (accnimmp_vr_elm_loc(cellcount)         &
+!                           * elm_pf_idata%N_molecular_weight)/dtime
+!               endif
+
+!               ! beg:--------------------------------------------------------------------------------
+!               ! directly update the 'smin' N pools (SO, must bypass the 'CNNStateUpdate1,2,3' relevant to soil N)
+!               smin_no3_vr(c,j) = &
+!                            smin_no3_vr_elm_loc(cellcount)*elm_pf_idata%N_molecular_weight
+
+!               smin_nh4_vr(c,j) = &
+!                            smin_nh4_vr_elm_loc(cellcount)*elm_pf_idata%N_molecular_weight
+
+!               smin_nh4sorb_vr(c,j) = &
+!                            smin_nh4sorb_vr_elm_loc(cellcount)*elm_pf_idata%N_molecular_weight
+
+!               sminn_vr(c,j) = smin_no3_vr(c,j) + smin_nh4_vr(c,j) + smin_nh4sorb_vr(c,j)
+!               ! end:--------------------------------------------------------------------------------
+
+!               ! flows or changes
+!               smin_nh4_to_plant_vr(c,j) = (accextrnh4_vr_elm_loc(cellcount)  &
+!                           * elm_pf_idata%N_molecular_weight)/dtime
+!               smin_no3_to_plant_vr(c,j) = (accextrno3_vr_elm_loc(cellcount)  &
+!                           * elm_pf_idata%N_molecular_weight)/dtime
+!               sminn_to_plant_vr(c,j) = smin_nh4_to_plant_vr(c,j) + smin_no3_to_plant_vr(c,j)
+
+!           else    ! just in case 'elm_pf_idata%nzelm_mapped<nlevdcomp_full', all set to ZERO (different from TH)
+
+!               do k=1, ndecomp_pools
+!                  decomp_cpools_delta_vr(c,j,k) = 0._r8
+!                  decomp_npools_delta_vr(c,j,k) = 0._r8
+!               enddo
+
+!               smin_nh4_to_plant_vr(c,j)  = 0._r8
+!               smin_no3_to_plant_vr(c,j)  = 0._r8
+!               sminn_to_plant_vr(c,j)     = 0._r8
+!               gross_nmin_vr(c,j)         = 0._r8
+!               potential_immob_vr(c,j)    = 0._r8
+!               actual_immob_vr(c,j)       = 0._r8
+
+!           endif
+
+!        enddo
+
+!      enddo ! do fc = 1, filters(ifilter)%num_soilc
+
+
+!      call VecRestoreArrayReadF90(elm_pf_idata%decomp_cpools_vr_elms, decomp_cpools_vr_elm_loc, ierr)
+!      call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!      call VecRestoreArrayReadF90(elm_pf_idata%decomp_npools_vr_elms, decomp_npools_vr_elm_loc, ierr)
+!      call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+
+!      call VecRestoreArrayReadF90(elm_pf_idata%smin_no3_vr_elms, smin_no3_vr_elm_loc, ierr)
+!      call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!      call VecRestoreArrayReadF90(elm_pf_idata%smin_nh4_vr_elms, smin_nh4_vr_elm_loc, ierr)
+!      call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!      call VecRestoreArrayReadF90(elm_pf_idata%smin_nh4sorb_vr_elms, smin_nh4sorb_vr_elm_loc, ierr)
+!      call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+
+!      call VecRestoreArrayReadF90(elm_pf_idata%accextrnh4_vr_elms, accextrnh4_vr_elm_loc, ierr)
+!      call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!      call VecRestoreArrayReadF90(elm_pf_idata%accextrno3_vr_elms, accextrno3_vr_elm_loc, ierr)
+!      call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+
+!      if(elm_pf_idata%ispec_nmin>0) then
+!         call VecRestoreArrayReadF90(elm_pf_idata%acctotnmin_vr_elms, accnmin_vr_elm_loc, ierr)
+!         call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!      else
+!         call VecRestoreArrayReadF90(elm_pf_idata%accnmin_vr_elms, accnmin_vr_elm_loc, ierr)
+!         call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!      endif
+
+!      if(elm_pf_idata%ispec_nimp>0) then
+!         call VecRestoreArrayReadF90(elm_pf_idata%acctotnimmp_vr_elms, accnimmp_vr_elm_loc, ierr)
+!         call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!      else
+!         call VecRestoreArrayReadF90(elm_pf_idata%accnimmp_vr_elms, accnimmp_vr_elm_loc, ierr)
+!         call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!      endif
+
+!      if(elm_pf_idata%ispec_nimm>0) then
+!         call VecRestoreArrayReadF90(elm_pf_idata%acctotnimm_vr_elms, accnimm_vr_elm_loc, ierr)
+!         call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!      else
+!         call VecRestoreArrayReadF90(elm_pf_idata%accnimm_vr_elms, accnimm_vr_elm_loc, ierr)
+!         call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!      endif
+
+!      ! update bgc gas losses
+!      call update_bgc_gaslosses_pf2elm(elm_interface_data, bounds, filters, ifilter)
+
+!     end associate
+!   end subroutine update_soil_bgc_pf2elm
 
 
   !-----------------------------------------------------------------------------
@@ -3952,353 +4136,353 @@ contains
   ! from their aq. phase states
   ! (due to not yet available in pflotran bgc)
   !
-  subroutine update_bgc_gaslosses_pf2elm(elm_interface_data, bounds, filters, ifilter)
+!   subroutine update_bgc_gaslosses_pf2elm(elm_interface_data, bounds, filters, ifilter)
 
-     use ColumnType         , only : col_pp
-     use elm_time_manager   , only : get_step_size, get_nstep
-     use elm_varpar         , only : nlevdecomp_full
-     use elm_varcon         , only : tfrz
+!      use ColumnType         , only : col_pp
+!      use elm_time_manager   , only : get_step_size, get_nstep
+!      use elm_varpar         , only : nlevdecomp_full
+!      use elm_varcon         , only : tfrz
 
-     use elm_varctl         , only : pf_tmode, pf_hmode, pf_frzmode
+!      use elm_varctl         , only : pf_tmode, pf_hmode, pf_frzmode
 
-     !
-     implicit none
+!      !
+!      implicit none
 
-     type(bounds_type), intent(in) :: bounds         ! bounds of current process
-     type(clumpfilter), intent(in) :: filters(:)     ! filters on current process
-     integer          , intent(in) :: ifilter        ! which filter to be operated
+!      type(bounds_type), intent(in) :: bounds         ! bounds of current process
+!      type(clumpfilter), intent(in) :: filters(:)     ! filters on current process
+!      integer          , intent(in) :: ifilter        ! which filter to be operated
 
-     type(elm_interface_data_type), intent(inout) :: elm_interface_data
+!      type(elm_interface_data_type), intent(inout) :: elm_interface_data
 
-     character(len=256) :: subname = "get_pf_bgc_gaslosses"
+!      character(len=256) :: subname = "get_pf_bgc_gaslosses"
 
-#include "petsc/finclude/petscsys.h"
-#include "petsc/finclude/petscvec.h"
-! #include "petsc/finclude/petscvec.h90"
+! #include "petsc/finclude/petscsys.h"
+! #include "petsc/finclude/petscvec.h"
+! ! #include "petsc/finclude/petscvec.h90"
 
-     integer  :: fc, c, g, j, k
-     integer  :: gcount, cellcount
-     real(r8) :: dtime            ! land model time step (sec)
-     integer  :: nstep
+!      integer  :: fc, c, g, j, k
+!      integer  :: gcount, cellcount
+!      real(r8) :: dtime            ! land model time step (sec)
+!      integer  :: nstep
 
-     ! for gas species
-     real(r8) :: tc, tk, total_p       ! temperature (oC, K), total air pressure (Pa)
-     real(r8) :: co2_p, n2_p, n2o_p    ! partial pressure (Pa) of CO2, N2, N2O
-     real(r8) :: cgas, cgas_p          ! mole-C(N)/m3(bulk soil)
-     real(r8) :: air_vol, air_molar, wfps
-     integer  :: lair_barrier(bounds%begc:bounds%endc)      ! toppest soil layer that little air space for air flow into deep soil (-1: no, 0: ground, >0: soil layer)
+!      ! for gas species
+!      real(r8) :: tc, tk, total_p       ! temperature (oC, K), total air pressure (Pa)
+!      real(r8) :: co2_p, n2_p, n2o_p    ! partial pressure (Pa) of CO2, N2, N2O
+!      real(r8) :: cgas, cgas_p          ! mole-C(N)/m3(bulk soil)
+!      real(r8) :: air_vol, air_molar, wfps
+!      integer  :: lair_barrier(bounds%begc:bounds%endc)      ! toppest soil layer that little air space for air flow into deep soil (-1: no, 0: ground, >0: soil layer)
 
-     ! gases from PFLOTRAN are timely accumulated, so gas fluxes are calculated here if over atm. partial pressure (no explicit transport available from PF now)
-     PetscScalar, pointer :: gco2_vr_elms_loc(:)               ! (M: molC/m3 bulk soil) vertically-resolved soil gas CO2 from PF's evolution
-     PetscScalar, pointer :: gn2_vr_elms_loc(:)                ! (M: molN/m3 bulk soil) vertically-resolved soil gas N2 from PF's evolution
-     PetscScalar, pointer :: gn2o_vr_elms_loc(:)               ! (M: molN/m3 bulk soil) vertically-resolved soil gas N2O from PF's evolution
-     PetscScalar, pointer :: gco2_vr_elmp_loc(:)               ! (M: molC/m3 bulk soil) vertically-resolved soil gas CO2 to reset PF's CO2g
-     PetscScalar, pointer :: gn2_vr_elmp_loc(:)                ! (M: molN/m3 bulk soil) vertically-resolved soil gas N2 to reset PF's N2g
-     PetscScalar, pointer :: gn2o_vr_elmp_loc(:)               ! (M: molN/m3 bulk soil) vertically-resolved soil gas N2O to reset PF's N2Og
+!      ! gases from PFLOTRAN are timely accumulated, so gas fluxes are calculated here if over atm. partial pressure (no explicit transport available from PF now)
+!      PetscScalar, pointer :: gco2_vr_elms_loc(:)               ! (M: molC/m3 bulk soil) vertically-resolved soil gas CO2 from PF's evolution
+!      PetscScalar, pointer :: gn2_vr_elms_loc(:)                ! (M: molN/m3 bulk soil) vertically-resolved soil gas N2 from PF's evolution
+!      PetscScalar, pointer :: gn2o_vr_elms_loc(:)               ! (M: molN/m3 bulk soil) vertically-resolved soil gas N2O from PF's evolution
+!      PetscScalar, pointer :: gco2_vr_elmp_loc(:)               ! (M: molC/m3 bulk soil) vertically-resolved soil gas CO2 to reset PF's CO2g
+!      PetscScalar, pointer :: gn2_vr_elmp_loc(:)                ! (M: molN/m3 bulk soil) vertically-resolved soil gas N2 to reset PF's N2g
+!      PetscScalar, pointer :: gn2o_vr_elmp_loc(:)               ! (M: molN/m3 bulk soil) vertically-resolved soil gas N2O to reset PF's N2Og
 
-     ! 'acchr_vr' - accumulative CO2 proudction from decompositon (for tracking HR, not involving mass-balance)
-     PetscScalar, pointer :: acchr_vr_elm_loc(:)               ! (moleC/m3/timestep) vertically-resolved soil CO2 production (accumulated)
-     ! 'accngasmin_vr' - accumulative N gas proudction from mineralization (for tracking, not involving mass-balance)
-     PetscScalar, pointer :: accngasmin_vr_elm_loc(:)          ! (moleN/m3/timestep) vertically-resolved soil gaseous N  production (accumulated)
-     ! 'accngasnitr_vr' - accumulative N gas proudction from nitrification (for tracking)
-     PetscScalar, pointer :: accngasnitr_vr_elm_loc(:)         ! (moleN/m3/timestep) vertically-resolved soil gaseous N  production (accumulated)
-     ! 'accngasdeni_vr' - accumulative N gas proudction from denitrification (for tracking)
-     PetscScalar, pointer :: accngasdeni_vr_elm_loc(:)         ! (moleN/m3/timestep) vertically-resolved soil gaseous N  production (accumulated)
+!      ! 'acchr_vr' - accumulative CO2 proudction from decompositon (for tracking HR, not involving mass-balance)
+!      PetscScalar, pointer :: acchr_vr_elm_loc(:)               ! (moleC/m3/timestep) vertically-resolved soil CO2 production (accumulated)
+!      ! 'accngasmin_vr' - accumulative N gas proudction from mineralization (for tracking, not involving mass-balance)
+!      PetscScalar, pointer :: accngasmin_vr_elm_loc(:)          ! (moleN/m3/timestep) vertically-resolved soil gaseous N  production (accumulated)
+!      ! 'accngasnitr_vr' - accumulative N gas proudction from nitrification (for tracking)
+!      PetscScalar, pointer :: accngasnitr_vr_elm_loc(:)         ! (moleN/m3/timestep) vertically-resolved soil gaseous N  production (accumulated)
+!      ! 'accngasdeni_vr' - accumulative N gas proudction from denitrification (for tracking)
+!      PetscScalar, pointer :: accngasdeni_vr_elm_loc(:)         ! (moleN/m3/timestep) vertically-resolved soil gaseous N  production (accumulated)
 
-     !
-     PetscScalar, pointer :: soillsat_elm_loc(:)
-     PetscScalar, pointer :: soilisat_elm_loc(:)
-     PetscScalar, pointer :: soilpor_elm_loc(:)
-     PetscScalar, pointer :: soilt_elm_loc(:)
-     PetscScalar, pointer :: soilpress_elm_loc(:)
-     PetscErrorCode :: ierr
+!      !
+!      PetscScalar, pointer :: soillsat_elm_loc(:)
+!      PetscScalar, pointer :: soilisat_elm_loc(:)
+!      PetscScalar, pointer :: soilpor_elm_loc(:)
+!      PetscScalar, pointer :: soilt_elm_loc(:)
+!      PetscScalar, pointer :: soilpress_elm_loc(:)
+!      PetscErrorCode :: ierr
 
-     real(r8), parameter :: rgas = 8.3144621       ! m3 Pa K-1 mol-1
+!      real(r8), parameter :: rgas = 8.3144621       ! m3 Pa K-1 mol-1
 
-!------------------------------------------------------------------------------------
-     associate ( &
-     cgridcell                    => col_pp%gridcell                      , & ! gridcell index of column
-     dz                           => col_pp%dz                            , & ! soil layer thickness depth (m)
-     !
-     frac_sno_eff                 => elm_interface_data%th%frac_sno_eff_col            , & ! fraction of ground covered by snow (0 to 1)
-     frac_h2osfc                  => elm_interface_data%th%frac_h2osfc_col             , & ! fraction of ground covered by surface water (0 to 1)
-     forc_pbot                    => elm_interface_data%th%forc_pbot_grc               , & ! atmospheric pressure (Pa)
-     !
-     forc_pco2                    => elm_interface_data%bgc%forc_pco2_grc              , & ! partial pressure co2 (Pa)
-     hr_vr                        => elm_interface_data%bgc%hr_vr_col                  , &
-     f_co2_soil_vr                => elm_interface_data%bgc%f_co2_soil_vr_col          , &
-     f_n2o_soil_vr                => elm_interface_data%bgc%f_n2o_soil_vr_col          , &
-     f_n2_soil_vr                 => elm_interface_data%bgc%f_n2_soil_vr_col           , &
-     f_ngas_decomp_vr             => elm_interface_data%bgc%f_ngas_decomp_vr_col       , &
-     f_ngas_nitri_vr              => elm_interface_data%bgc%f_ngas_nitri_vr_col        , &
-     f_ngas_denit_vr              => elm_interface_data%bgc%f_ngas_denit_vr_col          &
-     )
-! ------------------------------------------------------------------------
-     dtime = get_step_size()
-     nstep = get_nstep()
+! !------------------------------------------------------------------------------------
+!      associate ( &
+!      cgridcell                    => col_pp%gridcell                      , & ! gridcell index of column
+!      dz                           => col_pp%dz                            , & ! soil layer thickness depth (m)
+!      !
+!      frac_sno_eff                 => elm_interface_data%th%frac_sno_eff_col            , & ! fraction of ground covered by snow (0 to 1)
+!      frac_h2osfc                  => elm_interface_data%th%frac_h2osfc_col             , & ! fraction of ground covered by surface water (0 to 1)
+!      forc_pbot                    => elm_interface_data%th%forc_pbot_grc               , & ! atmospheric pressure (Pa)
+!      !
+!      forc_pco2                    => elm_interface_data%bgc%forc_pco2_grc              , & ! partial pressure co2 (Pa)
+!      hr_vr                        => elm_interface_data%bgc%hr_vr_col                  , &
+!      f_co2_soil_vr                => elm_interface_data%bgc%f_co2_soil_vr_col          , &
+!      f_n2o_soil_vr                => elm_interface_data%bgc%f_n2o_soil_vr_col          , &
+!      f_n2_soil_vr                 => elm_interface_data%bgc%f_n2_soil_vr_col           , &
+!      f_ngas_decomp_vr             => elm_interface_data%bgc%f_ngas_decomp_vr_col       , &
+!      f_ngas_nitri_vr              => elm_interface_data%bgc%f_ngas_nitri_vr_col        , &
+!      f_ngas_denit_vr              => elm_interface_data%bgc%f_ngas_denit_vr_col          &
+!      )
+! ! ------------------------------------------------------------------------
+!      dtime = get_step_size()
+!      nstep = get_nstep()
 
-     ! get the current time-step state variables of aq. phase of interested species
-     call VecGetArrayReadF90(elm_pf_idata%gco2_vr_elms, gco2_vr_elms_loc, ierr)
-     call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
-     call VecGetArrayReadF90(elm_pf_idata%gn2_vr_elms, gn2_vr_elms_loc, ierr)
-     call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
-     call VecGetArrayReadF90(elm_pf_idata%gn2o_vr_elms, gn2o_vr_elms_loc, ierr)
-     call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!      ! get the current time-step state variables of aq. phase of interested species
+!      call VecGetArrayReadF90(elm_pf_idata%gco2_vr_elms, gco2_vr_elms_loc, ierr)
+!      call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!      call VecGetArrayReadF90(elm_pf_idata%gn2_vr_elms, gn2_vr_elms_loc, ierr)
+!      call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!      call VecGetArrayReadF90(elm_pf_idata%gn2o_vr_elms, gn2o_vr_elms_loc, ierr)
+!      call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
 
-     call VecGetArrayF90(elm_pf_idata%gco2_vr_elmp, gco2_vr_elmp_loc, ierr)
-     call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
-     call VecGetArrayF90(elm_pf_idata%gn2_vr_elmp, gn2_vr_elmp_loc, ierr)
-     call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
-     call VecGetArrayF90(elm_pf_idata%gn2o_vr_elmp, gn2o_vr_elmp_loc, ierr)
-     call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!      call VecGetArrayF90(elm_pf_idata%gco2_vr_elmp, gco2_vr_elmp_loc, ierr)
+!      call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!      call VecGetArrayF90(elm_pf_idata%gn2_vr_elmp, gn2_vr_elmp_loc, ierr)
+!      call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!      call VecGetArrayF90(elm_pf_idata%gn2o_vr_elmp, gn2o_vr_elmp_loc, ierr)
+!      call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
 
      
-     call VecGetArrayReadF90(elm_pf_idata%accngasmin_vr_elms, accngasmin_vr_elm_loc, ierr)
-     call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
-     call VecGetArrayReadF90(elm_pf_idata%accngasnitr_vr_elms, accngasnitr_vr_elm_loc, ierr)
-     call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
-     call VecGetArrayReadF90(elm_pf_idata%accngasdeni_vr_elms, accngasdeni_vr_elm_loc, ierr)
-     call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!      call VecGetArrayReadF90(elm_pf_idata%accngasmin_vr_elms, accngasmin_vr_elm_loc, ierr)
+!      call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!      call VecGetArrayReadF90(elm_pf_idata%accngasnitr_vr_elms, accngasnitr_vr_elm_loc, ierr)
+!      call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!      call VecGetArrayReadF90(elm_pf_idata%accngasdeni_vr_elms, accngasdeni_vr_elm_loc, ierr)
+!      call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
 
-     if(elm_pf_idata%ispec_hrimm>0) then
-        call VecGetArrayReadF90(elm_pf_idata%acctothr_vr_elms, acchr_vr_elm_loc, ierr)
-        call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
-     else
-        call VecGetArrayReadF90(elm_pf_idata%acchr_vr_elms, acchr_vr_elm_loc, ierr)
-        call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
-     endif
+!      if(elm_pf_idata%ispec_hrimm>0) then
+!         call VecGetArrayReadF90(elm_pf_idata%acctothr_vr_elms, acchr_vr_elm_loc, ierr)
+!         call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!      else
+!         call VecGetArrayReadF90(elm_pf_idata%acchr_vr_elms, acchr_vr_elm_loc, ierr)
+!         call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!      endif
 
-     ! env. variables to properties of gases
-     if (pf_tmode) then
-         call VecGetArrayReadF90(elm_pf_idata%soilt_elms, soilt_elm_loc, ierr)
-         call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)     ! PF evolved 'soilt'
-     else
-         call VecGetArrayReadF90(elm_pf_idata%soilt_elmp, soilt_elm_loc, ierr)
-         call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)   ! ELM evolved 'soilt' - for ELM, MPI vecs and Seq. vecs should be same
-     end if
+!      ! env. variables to properties of gases
+!      if (pf_tmode) then
+!          call VecGetArrayReadF90(elm_pf_idata%soilt_elms, soilt_elm_loc, ierr)
+!          call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)     ! PF evolved 'soilt'
+!      else
+!          call VecGetArrayReadF90(elm_pf_idata%soilt_elmp, soilt_elm_loc, ierr)
+!          call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)   ! ELM evolved 'soilt' - for ELM, MPI vecs and Seq. vecs should be same
+!      end if
 
-     if (pf_frzmode) then
-         call VecGetArrayReadF90(elm_pf_idata%soilisat_elms, soilisat_elm_loc, ierr)
-         call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)     ! PF evolved 'soil ice saturation'
-     end if
+!      if (pf_frzmode) then
+!          call VecGetArrayReadF90(elm_pf_idata%soilisat_elms, soilisat_elm_loc, ierr)
+!          call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)     ! PF evolved 'soil ice saturation'
+!      end if
 
-     if (pf_hmode) then
-         call VecGetArrayReadF90(elm_pf_idata%soillsat_elms, soillsat_elm_loc, ierr)
-         call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)     ! PF evolved 'soil liq. saturation'
-         call VecGetArrayReadF90(elm_pf_idata%press_elms, soilpress_elm_loc, ierr)
-         call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)     ! PF evolved 'soil liq. saturation'
-     else
-         call VecGetArrayReadF90(elm_pf_idata%soillsat_elmp, soillsat_elm_loc, ierr)
-         call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)! ELM evolved 'soilt liq. saturation'
-         call VecGetArrayReadF90(elm_pf_idata%press_elmp, soilpress_elm_loc, ierr)
-         call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)! ELM evolved 'soilt liq. saturation'
-     endif
-     call VecGetArrayReadF90(elm_pf_idata%effporosity_elms, soilpor_elm_loc, ierr)  ! PF evolved 'soil porosity'
-     call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!      if (pf_hmode) then
+!          call VecGetArrayReadF90(elm_pf_idata%soillsat_elms, soillsat_elm_loc, ierr)
+!          call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)     ! PF evolved 'soil liq. saturation'
+!          call VecGetArrayReadF90(elm_pf_idata%press_elms, soilpress_elm_loc, ierr)
+!          call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)     ! PF evolved 'soil liq. saturation'
+!      else
+!          call VecGetArrayReadF90(elm_pf_idata%soillsat_elmp, soillsat_elm_loc, ierr)
+!          call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)! ELM evolved 'soilt liq. saturation'
+!          call VecGetArrayReadF90(elm_pf_idata%press_elmp, soilpress_elm_loc, ierr)
+!          call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)! ELM evolved 'soilt liq. saturation'
+!      endif
+!      call VecGetArrayReadF90(elm_pf_idata%effporosity_elms, soilpor_elm_loc, ierr)  ! PF evolved 'soil porosity'
+!      call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
 
-     ! find the toppest air barrier layer
-     lair_barrier(:) = -1            ! (-1: no barrier, 0: ground snow/ice/water-layer barrier, >=1: barrier in soil column)
+!      ! find the toppest air barrier layer
+!      lair_barrier(:) = -1            ! (-1: no barrier, 0: ground snow/ice/water-layer barrier, >=1: barrier in soil column)
 
-     ! operating via 'filters'
-     gcount = -1
-     do fc = 1,filters(ifilter)%num_soilc
-       c = filters(ifilter)%soilc(fc)
-       g = cgridcell(c)
+!      ! operating via 'filters'
+!      gcount = -1
+!      do fc = 1,filters(ifilter)%num_soilc
+!        c = filters(ifilter)%soilc(fc)
+!        g = cgridcell(c)
 
-#ifdef COLUMN_MODE
-       if (mapped_gcount_skip(c-bounds%begc+1)) cycle   ! skip inactive column (and following numbering)
-       gcount = gcount + 1                              ! 0-based: cumulatively by not-skipped column
-#else
-       gcount = g - bounds%begg                 ! 0-based
-       if (mapped_gcount_skip(gcount+1)) cycle  ! skip inactive grid, but not numbering
-#endif
+! #ifdef COLUMN_MODE
+!        if (mapped_gcount_skip(c-bounds%begc+1)) cycle   ! skip inactive column (and following numbering)
+!        gcount = gcount + 1                              ! 0-based: cumulatively by not-skipped column
+! #else
+!        gcount = g - bounds%begg                 ! 0-based
+!        if (mapped_gcount_skip(gcount+1)) cycle  ! skip inactive grid, but not numbering
+! #endif
 
-      ! find the toppest air barrier layer for the current column at first
+!       ! find the toppest air barrier layer for the current column at first
 
-       if((frac_sno_eff(c)+ frac_h2osfc(c))>=0.95_r8) then
-         lair_barrier(c) = 0
-       endif
+!        if((frac_sno_eff(c)+ frac_h2osfc(c))>=0.95_r8) then
+!          lair_barrier(c) = 0
+!        endif
 
-       do j = 1, elm_pf_idata%nzelm_mapped
+!        do j = 1, elm_pf_idata%nzelm_mapped
 
-          cellcount = gcount*elm_pf_idata%nzelm_mapped+j
+!           cellcount = gcount*elm_pf_idata%nzelm_mapped+j
 
-          wfps = 0._r8
-          if (lair_barrier(c) >= 0) exit
+!           wfps = 0._r8
+!           if (lair_barrier(c) >= 0) exit
 
-          if (pf_frzmode) then
-             wfps =soillsat_elm_loc(cellcount)  &
-                    + soilisat_elm_loc(cellcount)
-          else
-             wfps =soillsat_elm_loc(cellcount)   ! note: 'lsat' from PF has been adjusted by 'isat' reduced porosity
-          endif
-          if (wfps > 0.95_r8) then             ! 95% total saturation as a critical-point for air-flow into deep soil
-              lair_barrier(c) = j
-          endif
-       enddo
+!           if (pf_frzmode) then
+!              wfps =soillsat_elm_loc(cellcount)  &
+!                     + soilisat_elm_loc(cellcount)
+!           else
+!              wfps =soillsat_elm_loc(cellcount)   ! note: 'lsat' from PF has been adjusted by 'isat' reduced porosity
+!           endif
+!           if (wfps > 0.95_r8) then             ! 95% total saturation as a critical-point for air-flow into deep soil
+!               lair_barrier(c) = j
+!           endif
+!        enddo
     
 
-    ! gas exchanges btw atm. and non-barrierred soil layer
-    ! only operating on soil column one by one, which then back to ELM-CN
+!     ! gas exchanges btw atm. and non-barrierred soil layer
+!     ! only operating on soil column one by one, which then back to ELM-CN
 
-       total_p = forc_pbot(g)
+!        total_p = forc_pbot(g)
 
-       do j = 1, nlevdecomp_full
+!        do j = 1, nlevdecomp_full
           
-          if(j <= elm_pf_idata%nzelm_mapped) then
-              cellcount = gcount*elm_pf_idata%nzelm_mapped+j
+!           if(j <= elm_pf_idata%nzelm_mapped) then
+!               cellcount = gcount*elm_pf_idata%nzelm_mapped+j
 
-              tc = soilt_elm_loc(cellcount)    ! soil layer tc (oC)
-              tk = tc+tfrz
+!               tc = soilt_elm_loc(cellcount)    ! soil layer tc (oC)
+!               tk = tc+tfrz
 
-              ! total_p is soil air pressure (soil water pressure if not less than atm. pressure)
-              total_p = max(total_p, soilpress_elm_loc(cellcount))
+!               ! total_p is soil air pressure (soil water pressure if not less than atm. pressure)
+!               total_p = max(total_p, soilpress_elm_loc(cellcount))
 
-              ! the following is for adjusting air space in soil (seems not right ?? -- off)
-              !air_vol = (1.0_r8 - soillsat_elm_loc(cellcount)) * &
-              !                    soilpor_elm_loc(cellcount)                 ! m3 air/m3 soil
-              !air_vol = max(air_vol, 0.01d0)            ! min. 0.01 to avoid math. issue
+!               ! the following is for adjusting air space in soil (seems not right ?? -- off)
+!               !air_vol = (1.0_r8 - soillsat_elm_loc(cellcount)) * &
+!               !                    soilpor_elm_loc(cellcount)                 ! m3 air/m3 soil
+!               !air_vol = max(air_vol, 0.01d0)            ! min. 0.01 to avoid math. issue
 
-              air_vol = 1.0_r8                          ! atm used if not commented out
-              air_molar = total_p*air_vol/rgas/tk       ! moles of air in a cell
+!               air_vol = 1.0_r8                          ! atm used if not commented out
+!               air_molar = total_p*air_vol/rgas/tk       ! moles of air in a cell
 
-              ! gas fluxes from  immobile PFLOTRAN evolving CO2imm, N2Oimm and N2imm, which are cumulative
-              ! CO2 -
-              cgas = gco2_vr_elms_loc(cellcount)       ! mol/m3 soil (evolving in PF, but not yet transport)
-              co2_p = forc_pco2(g)                              ! assuming atm. pco2 (pa) as directly equilibrated with soil CO2(g)
-              cgas_p = co2_p/forc_pbot(g) * air_molar
+!               ! gas fluxes from  immobile PFLOTRAN evolving CO2imm, N2Oimm and N2imm, which are cumulative
+!               ! CO2 -
+!               cgas = gco2_vr_elms_loc(cellcount)       ! mol/m3 soil (evolving in PF, but not yet transport)
+!               co2_p = forc_pco2(g)                              ! assuming atm. pco2 (pa) as directly equilibrated with soil CO2(g)
+!               cgas_p = co2_p/forc_pbot(g) * air_molar
 
-              f_co2_soil_vr(c,j) = cgas-cgas_p
-              cgas = cgas - f_co2_soil_vr(c,j)
-              if (j <= lair_barrier(c) .or. lair_barrier(c) < 0) then     ! above barrier OR no-barrier(-1)
-                 gco2_vr_elmp_loc(cellcount) = cgas_p  ! this refreshed-air will pass back to PF
-              else
-                 gco2_vr_elmp_loc(cellcount) = cgas    ! currently don't have air transport (TODO)
-              endif
+!               f_co2_soil_vr(c,j) = cgas-cgas_p
+!               cgas = cgas - f_co2_soil_vr(c,j)
+!               if (j <= lair_barrier(c) .or. lair_barrier(c) < 0) then     ! above barrier OR no-barrier(-1)
+!                  gco2_vr_elmp_loc(cellcount) = cgas_p  ! this refreshed-air will pass back to PF
+!               else
+!                  gco2_vr_elmp_loc(cellcount) = cgas    ! currently don't have air transport (TODO)
+!               endif
 
-              f_co2_soil_vr(c,j) = f_co2_soil_vr(c,j)*elm_pf_idata%C_molecular_weight                  ! moleCO2/m3 --> gC/m3 soil
-              f_co2_soil_vr(c,j) = f_co2_soil_vr(c,j)/dtime                               ! gC/m3/s
+!               f_co2_soil_vr(c,j) = f_co2_soil_vr(c,j)*elm_pf_idata%C_molecular_weight                  ! moleCO2/m3 --> gC/m3 soil
+!               f_co2_soil_vr(c,j) = f_co2_soil_vr(c,j)/dtime                               ! gC/m3/s
 
-              ! N2
-              cgas = gn2_vr_elms_loc(cellcount)       ! mol/m3 soil (evolving in PF, but not yet transport)
-              n2_p = 0.78084_r8                                ! assuming atm. pn2 as directly equilibrated with soil n2(g)
-              cgas_p = n2_p * air_molar           ! moleN2/m3
+!               ! N2
+!               cgas = gn2_vr_elms_loc(cellcount)       ! mol/m3 soil (evolving in PF, but not yet transport)
+!               n2_p = 0.78084_r8                                ! assuming atm. pn2 as directly equilibrated with soil n2(g)
+!               cgas_p = n2_p * air_molar           ! moleN2/m3
 
-              f_n2_soil_vr(c,j) = cgas-cgas_p
-              cgas = cgas - f_n2_soil_vr(c,j)
-              if (j <= lair_barrier(c) .or. lair_barrier(c) < 0) then     ! above barrier OR no-barrier(-1)
-                 gn2_vr_elmp_loc(cellcount) = cgas_p  ! this refreshed-air will pass back to PF
-              else
-                 gn2_vr_elmp_loc(cellcount) = cgas    ! currently don't have air transport (TODO)
-              endif
+!               f_n2_soil_vr(c,j) = cgas-cgas_p
+!               cgas = cgas - f_n2_soil_vr(c,j)
+!               if (j <= lair_barrier(c) .or. lair_barrier(c) < 0) then     ! above barrier OR no-barrier(-1)
+!                  gn2_vr_elmp_loc(cellcount) = cgas_p  ! this refreshed-air will pass back to PF
+!               else
+!                  gn2_vr_elmp_loc(cellcount) = cgas    ! currently don't have air transport (TODO)
+!               endif
 
-              f_n2_soil_vr(c,j) = f_n2_soil_vr(c,j)*elm_pf_idata%N_molecular_weight*2._r8    ! mole-N2/m3 --> g-N/m3 soil
-              f_n2_soil_vr(c,j) = f_n2_soil_vr(c,j)/dtime                 ! gN/m3/s
+!               f_n2_soil_vr(c,j) = f_n2_soil_vr(c,j)*elm_pf_idata%N_molecular_weight*2._r8    ! mole-N2/m3 --> g-N/m3 soil
+!               f_n2_soil_vr(c,j) = f_n2_soil_vr(c,j)/dtime                 ! gN/m3/s
 
-              ! N2O
-              cgas = gn2o_vr_elms_loc(cellcount)
-              n2o_p = 310e-9_r8                   ! assuming general atm. pN2O (310ppbv in 1990) as directly equilibrated with soil N2(aq)
-              cgas_p = n2o_p * air_molar          ! moleN2O/m3
+!               ! N2O
+!               cgas = gn2o_vr_elms_loc(cellcount)
+!               n2o_p = 310e-9_r8                   ! assuming general atm. pN2O (310ppbv in 1990) as directly equilibrated with soil N2(aq)
+!               cgas_p = n2o_p * air_molar          ! moleN2O/m3
 
-              f_n2o_soil_vr(c,j) = cgas-cgas_p
-              cgas = cgas - f_n2o_soil_vr(c,j)
-              if (j <= lair_barrier(c) .or. lair_barrier(c) < 0) then     ! above barrier OR no-barrier(-1)
-                 gn2o_vr_elmp_loc(cellcount) = cgas_p  ! this refreshed-air will pass back to PF
-              else
-                 gn2o_vr_elmp_loc(cellcount) = cgas    ! currently don't have air transport (TODO)
-              endif
+!               f_n2o_soil_vr(c,j) = cgas-cgas_p
+!               cgas = cgas - f_n2o_soil_vr(c,j)
+!               if (j <= lair_barrier(c) .or. lair_barrier(c) < 0) then     ! above barrier OR no-barrier(-1)
+!                  gn2o_vr_elmp_loc(cellcount) = cgas_p  ! this refreshed-air will pass back to PF
+!               else
+!                  gn2o_vr_elmp_loc(cellcount) = cgas    ! currently don't have air transport (TODO)
+!               endif
 
-              f_n2o_soil_vr(c,j) = f_n2o_soil_vr(c,j)*elm_pf_idata%N_molecular_weight*2._r8   ! mole-N2O/m3 --> g-N/m3 soil
-              f_n2o_soil_vr(c,j) = f_n2o_soil_vr(c,j)/dtime                ! gN/m3/s
+!               f_n2o_soil_vr(c,j) = f_n2o_soil_vr(c,j)*elm_pf_idata%N_molecular_weight*2._r8   ! mole-N2O/m3 --> g-N/m3 soil
+!               f_n2o_soil_vr(c,j) = f_n2o_soil_vr(c,j)/dtime                ! gN/m3/s
 
-              ! tracking HR from SOM-C reaction network
-              hr_vr(c,j)           = (acchr_vr_elm_loc(cellcount) &
-                                    * elm_pf_idata%C_molecular_weight)/dtime
+!               ! tracking HR from SOM-C reaction network
+!               hr_vr(c,j)           = (acchr_vr_elm_loc(cellcount) &
+!                                     * elm_pf_idata%C_molecular_weight)/dtime
 
-              ! tracking gaseous N production from N reaction network
-              f_ngas_decomp_vr(c,j)= (accngasmin_vr_elm_loc (cellcount) &
-                                    * elm_pf_idata%N_molecular_weight)/dtime
+!               ! tracking gaseous N production from N reaction network
+!               f_ngas_decomp_vr(c,j)= (accngasmin_vr_elm_loc (cellcount) &
+!                                     * elm_pf_idata%N_molecular_weight)/dtime
 
-              f_ngas_nitri_vr(c,j) = (accngasnitr_vr_elm_loc(cellcount) &
-                                    * elm_pf_idata%N_molecular_weight)/dtime
+!               f_ngas_nitri_vr(c,j) = (accngasnitr_vr_elm_loc(cellcount) &
+!                                     * elm_pf_idata%N_molecular_weight)/dtime
 
-              f_ngas_denit_vr(c,j) = (accngasdeni_vr_elm_loc(cellcount) &
-                                    * elm_pf_idata%N_molecular_weight)/dtime
+!               f_ngas_denit_vr(c,j) = (accngasdeni_vr_elm_loc(cellcount) &
+!                                     * elm_pf_idata%N_molecular_weight)/dtime
 
-          else    ! just in case 'elm_pf_idata%nzelm_mapped<nlevdecomp_full'
+!           else    ! just in case 'elm_pf_idata%nzelm_mapped<nlevdecomp_full'
 
-              f_co2_soil_vr(c,j)         = f_co2_soil_vr(c,elm_pf_idata%nzelm_mapped)
-              f_n2_soil_vr(c,j)          = f_n2_soil_vr(c,elm_pf_idata%nzelm_mapped)
-              f_n2o_soil_vr(c,j)         = f_n2o_soil_vr(c,elm_pf_idata%nzelm_mapped)
+!               f_co2_soil_vr(c,j)         = f_co2_soil_vr(c,elm_pf_idata%nzelm_mapped)
+!               f_n2_soil_vr(c,j)          = f_n2_soil_vr(c,elm_pf_idata%nzelm_mapped)
+!               f_n2o_soil_vr(c,j)         = f_n2o_soil_vr(c,elm_pf_idata%nzelm_mapped)
 
-              hr_vr(c,j)                 = 0._r8
-              f_ngas_decomp_vr(c,j)      = 0._r8
-              f_ngas_nitri_vr(c,j)       = 0._r8
-              f_ngas_denit_vr(c,j)       = 0._r8
+!               hr_vr(c,j)                 = 0._r8
+!               f_ngas_decomp_vr(c,j)      = 0._r8
+!               f_ngas_nitri_vr(c,j)       = 0._r8
+!               f_ngas_denit_vr(c,j)       = 0._r8
 
-          endif
-       enddo ! do j = 1, nlevdecomp_full
-     enddo ! do fc = 1,filters(ifilter)%num_soilc
+!           endif
+!        enddo ! do j = 1, nlevdecomp_full
+!      enddo ! do fc = 1,filters(ifilter)%num_soilc
 
-     call VecRestoreArrayReadF90(elm_pf_idata%gco2_vr_elms, gco2_vr_elms_loc, ierr)
-     call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
-     call VecRestoreArrayReadF90(elm_pf_idata%gn2_vr_elms, gn2_vr_elms_loc, ierr)
-     call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
-     call VecRestoreArrayReadF90(elm_pf_idata%gn2o_vr_elms, gn2o_vr_elms_loc, ierr)
-     call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
-     call VecRestoreArrayF90(elm_pf_idata%gco2_vr_elmp, gco2_vr_elmp_loc, ierr)
-     call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
-     call VecRestoreArrayF90(elm_pf_idata%gn2_vr_elmp, gn2_vr_elmp_loc, ierr)
-     call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
-     call VecRestoreArrayF90(elm_pf_idata%gn2o_vr_elmp, gn2o_vr_elmp_loc, ierr)
-     call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!      call VecRestoreArrayReadF90(elm_pf_idata%gco2_vr_elms, gco2_vr_elms_loc, ierr)
+!      call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!      call VecRestoreArrayReadF90(elm_pf_idata%gn2_vr_elms, gn2_vr_elms_loc, ierr)
+!      call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!      call VecRestoreArrayReadF90(elm_pf_idata%gn2o_vr_elms, gn2o_vr_elms_loc, ierr)
+!      call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!      call VecRestoreArrayF90(elm_pf_idata%gco2_vr_elmp, gco2_vr_elmp_loc, ierr)
+!      call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!      call VecRestoreArrayF90(elm_pf_idata%gn2_vr_elmp, gn2_vr_elmp_loc, ierr)
+!      call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!      call VecRestoreArrayF90(elm_pf_idata%gn2o_vr_elmp, gn2o_vr_elmp_loc, ierr)
+!      call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
 
-     if(elm_pf_idata%ispec_hrimm>0) then
-        call VecRestoreArrayReadF90(elm_pf_idata%acctothr_vr_elms, acchr_vr_elm_loc, ierr)
-        call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
-     else
-        call VecRestoreArrayReadF90(elm_pf_idata%acchr_vr_elms, acchr_vr_elm_loc, ierr)
-        call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
-     endif
+!      if(elm_pf_idata%ispec_hrimm>0) then
+!         call VecRestoreArrayReadF90(elm_pf_idata%acctothr_vr_elms, acchr_vr_elm_loc, ierr)
+!         call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!      else
+!         call VecRestoreArrayReadF90(elm_pf_idata%acchr_vr_elms, acchr_vr_elm_loc, ierr)
+!         call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!      endif
 
-     call VecRestoreArrayReadF90(elm_pf_idata%accngasmin_vr_elms, accngasmin_vr_elm_loc, ierr)
-     call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
-     call VecRestoreArrayReadF90(elm_pf_idata%accngasnitr_vr_elms, accngasnitr_vr_elm_loc, ierr)
-     call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
-     call VecRestoreArrayReadF90(elm_pf_idata%accngasdeni_vr_elms, accngasdeni_vr_elm_loc, ierr)
-     call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!      call VecRestoreArrayReadF90(elm_pf_idata%accngasmin_vr_elms, accngasmin_vr_elm_loc, ierr)
+!      call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!      call VecRestoreArrayReadF90(elm_pf_idata%accngasnitr_vr_elms, accngasnitr_vr_elm_loc, ierr)
+!      call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!      call VecRestoreArrayReadF90(elm_pf_idata%accngasdeni_vr_elms, accngasdeni_vr_elm_loc, ierr)
+!      call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
 
-     if (pf_tmode) then
-         call VecRestoreArrayReadF90(elm_pf_idata%soilt_elms, soilt_elm_loc, ierr)
-         call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
-     else
-         call VecRestoreArrayReadF90(elm_pf_idata%soilt_elmp, soilt_elm_loc, ierr)
-         call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)  ! for ELM, MPI vecs and Seq. vecs should be same
-     end if
-     if (pf_frzmode) then
-         call VecRestoreArrayReadF90(elm_pf_idata%soilisat_elms, soilisat_elm_loc, ierr)
-         call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
-     end if
+!      if (pf_tmode) then
+!          call VecRestoreArrayReadF90(elm_pf_idata%soilt_elms, soilt_elm_loc, ierr)
+!          call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!      else
+!          call VecRestoreArrayReadF90(elm_pf_idata%soilt_elmp, soilt_elm_loc, ierr)
+!          call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)  ! for ELM, MPI vecs and Seq. vecs should be same
+!      end if
+!      if (pf_frzmode) then
+!          call VecRestoreArrayReadF90(elm_pf_idata%soilisat_elms, soilisat_elm_loc, ierr)
+!          call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!      end if
 
-     if (pf_hmode) then
-         call VecRestoreArrayReadF90(elm_pf_idata%soillsat_elms, soillsat_elm_loc, ierr)
-         call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)     ! PF evolved 'soil liq. saturation'
-         call VecRestoreArrayReadF90(elm_pf_idata%press_elms, soilpress_elm_loc, ierr)
-         call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)     ! PF evolved 'soil liq. saturation'
-     else
-         call VecRestoreArrayReadF90(elm_pf_idata%soillsat_elmp, soillsat_elm_loc, ierr)
-         call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)! ELM evolved 'soil liq. saturation'
-         call VecRestoreArrayReadF90(elm_pf_idata%press_elmp, soilpress_elm_loc, ierr)
-         call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)! ELM evolved 'soil liq. saturation'
-     endif
-     call VecRestoreArrayReadF90(elm_pf_idata%effporosity_elms, soilpor_elm_loc, ierr)
-     call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
+!      if (pf_hmode) then
+!          call VecRestoreArrayReadF90(elm_pf_idata%soillsat_elms, soillsat_elm_loc, ierr)
+!          call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)     ! PF evolved 'soil liq. saturation'
+!          call VecRestoreArrayReadF90(elm_pf_idata%press_elms, soilpress_elm_loc, ierr)
+!          call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)     ! PF evolved 'soil liq. saturation'
+!      else
+!          call VecRestoreArrayReadF90(elm_pf_idata%soillsat_elmp, soillsat_elm_loc, ierr)
+!          call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)! ELM evolved 'soil liq. saturation'
+!          call VecRestoreArrayReadF90(elm_pf_idata%press_elmp, soilpress_elm_loc, ierr)
+!          call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)! ELM evolved 'soil liq. saturation'
+!      endif
+!      call VecRestoreArrayReadF90(elm_pf_idata%effporosity_elms, soilpor_elm_loc, ierr)
+!      call elm_pf_checkerr(ierr, subname, __FILE__, __LINE__)
 
-     ! need to reset the PF's internal gas concentration (ELM ==> PF)
-     call pflotranModelUpdateAqGasesfromELM(pflotran_m)
+!      ! need to reset the PF's internal gas concentration (ELM ==> PF)
+!      call pflotranModelUpdateAqGasesfromELM(pflotran_m)
 
-    end associate
-  end subroutine update_bgc_gaslosses_pf2elm
+!     end associate
+!   end subroutine update_bgc_gaslosses_pf2elm
 
   !-----------------------------------------------------------------------------
   !
@@ -4460,425 +4644,425 @@ contains
   end subroutine elm_pf_checkerr
 
 !--------------------------------------------------------------------------------------
-  subroutine elm_pf_BeginCBalance(elm_interface_data, bounds, filters, ifilter)
-    !
-    ! !DESCRIPTION:
-    ! On the radiation time step, calculate the beginning carbon balance for mass
-    ! conservation checks.
+  ! subroutine elm_pf_BeginCBalance(elm_interface_data, bounds, filters, ifilter)
+  !   !
+  !   ! !DESCRIPTION:
+  !   ! On the radiation time step, calculate the beginning carbon balance for mass
+  !   ! conservation checks.
 
-    use elm_varpar      , only : ndecomp_pools, nlevdecomp,nlevdecomp_full
-    use elm_varcon      , only : dzsoi_decomp
-    !
-    ! !ARGUMENTS:
-    type(bounds_type) , intent(in)    :: bounds      ! bounds of current process
-    type(clumpfilter) , intent(inout) :: filters(:)  ! filters on current process
-    integer           , intent(in)    :: ifilter     ! which filter to be operated
-    type(elm_interface_data_type), intent(inout) :: elm_interface_data
-    !
-    ! !LOCAL VARIABLES:
-    integer :: c,j,l     ! indices
-    integer :: fc        ! soil filter indices
+  !   use elm_varpar      , only : ndecomp_pools, nlevdecomp,nlevdecomp_full
+  !   use elm_varcon      , only : dzsoi_decomp
+  !   !
+  !   ! !ARGUMENTS:
+  !   type(bounds_type) , intent(in)    :: bounds      ! bounds of current process
+  !   type(clumpfilter) , intent(inout) :: filters(:)  ! filters on current process
+  !   integer           , intent(in)    :: ifilter     ! which filter to be operated
+  !   type(elm_interface_data_type), intent(inout) :: elm_interface_data
+  !   !
+  !   ! !LOCAL VARIABLES:
+  !   integer :: c,j,l     ! indices
+  !   integer :: fc        ! soil filter indices
 
-    !-----------------------------------------------------------------------
+  !   !-----------------------------------------------------------------------
 
-    associate(                                                              &
-         decomp_cpools_vr       => elm_interface_data%bgc%decomp_cpools_vr_col      , &
-         soil_begcb             => elm_interface_data%bgc%soil_begcb_col              & ! Output: [real(r8) (:)]  carbon mass, beginning of time step (gC/m**2)
-         )
-    ! calculate beginning column-level soil carbon balance, for mass conservation check
-      do fc = 1,filters(ifilter)%num_soilc
-         c = filters(ifilter)%soilc(fc)
-         soil_begcb(c) = 0._r8
-         do j = 1, nlevdecomp_full
-            do l = 1, ndecomp_pools
-                soil_begcb(c) = soil_begcb(c) + decomp_cpools_vr(c,j,l)*dzsoi_decomp(j)
-            end do
-         end do
-      end do
+  !   associate(                                                              &
+  !        decomp_cpools_vr       => elm_interface_data%bgc%decomp_cpools_vr_col      , &
+  !        soil_begcb             => elm_interface_data%bgc%soil_begcb_col              & ! Output: [real(r8) (:)]  carbon mass, beginning of time step (gC/m**2)
+  !        )
+  !   ! calculate beginning column-level soil carbon balance, for mass conservation check
+  !     do fc = 1,filters(ifilter)%num_soilc
+  !        c = filters(ifilter)%soilc(fc)
+  !        soil_begcb(c) = 0._r8
+  !        do j = 1, nlevdecomp_full
+  !           do l = 1, ndecomp_pools
+  !               soil_begcb(c) = soil_begcb(c) + decomp_cpools_vr(c,j,l)*dzsoi_decomp(j)
+  !           end do
+  !        end do
+  !     end do
 
-    end associate
+  !   end associate
 
-  end subroutine elm_pf_BeginCBalance
+  ! end subroutine elm_pf_BeginCBalance
 
 !--------------------------------------------------------------------------------------
 
-  subroutine elm_pf_BeginNBalance(elm_interface_data, bounds, filters, ifilter)
-    !
-    ! !DESCRIPTION:
-    ! On the radiation time step, calculate the beginning carbon balance for mass
-    ! conservation checks.
+  ! subroutine elm_pf_BeginNBalance(elm_interface_data, bounds, filters, ifilter)
+  !   !
+  !   ! !DESCRIPTION:
+  !   ! On the radiation time step, calculate the beginning carbon balance for mass
+  !   ! conservation checks.
 
-    use elm_varpar      , only : ndecomp_pools, nlevdecomp, nlevdecomp_full
-    use elm_varcon      , only : dzsoi_decomp
-    !
-    ! !ARGUMENTS:
-    type(bounds_type) , intent(in)    :: bounds      ! bounds of current process
-    type(clumpfilter) , intent(inout) :: filters(:)  ! filters on current process
-    integer           , intent(in)    :: ifilter     ! which filter to be operated
-    type(elm_interface_data_type), intent(inout) :: elm_interface_data
-    !
-    ! !LOCAL VARIABLES:
-    integer :: c,j,l     ! indices
-    integer :: fc        ! soil filter indices
-    integer :: nlev
+  !   use elm_varpar      , only : ndecomp_pools, nlevdecomp, nlevdecomp_full
+  !   use elm_varcon      , only : dzsoi_decomp
+  !   !
+  !   ! !ARGUMENTS:
+  !   type(bounds_type) , intent(in)    :: bounds      ! bounds of current process
+  !   type(clumpfilter) , intent(inout) :: filters(:)  ! filters on current process
+  !   integer           , intent(in)    :: ifilter     ! which filter to be operated
+  !   type(elm_interface_data_type), intent(inout) :: elm_interface_data
+  !   !
+  !   ! !LOCAL VARIABLES:
+  !   integer :: c,j,l     ! indices
+  !   integer :: fc        ! soil filter indices
+  !   integer :: nlev
 
-    !-----------------------------------------------------------------------
+  !   !-----------------------------------------------------------------------
 
-    associate(                                                              &
-         decomp_npools_vr       => elm_interface_data%bgc%decomp_npools_vr_col      , &
-         smin_no3_vr            => elm_interface_data%bgc%smin_no3_vr_col           , &
-         smin_nh4_vr            => elm_interface_data%bgc%smin_nh4_vr_col           , &
-         smin_nh4sorb_vr        => elm_interface_data%bgc%smin_nh4sorb_vr_col       , &
-         soil_begnb             => elm_interface_data%bgc%soil_begnb_col            , & ! Output: [real(r8) (:)]  carbon mass, beginning of time step (gC/m**2)
-         soil_begnb_org         => elm_interface_data%bgc%soil_begnb_org_col        , & !
-         soil_begnb_min         => elm_interface_data%bgc%soil_begnb_min_col          & !
-         )
-    ! calculate beginning column-level soil carbon balance, for mass conservation check
-    nlev = nlevdecomp_full
-    do fc = 1,filters(ifilter)%num_soilc
-        c = filters(ifilter)%soilc(fc)
-        soil_begnb(c)     = 0._r8
-        soil_begnb_org(c) = 0._r8
-        soil_begnb_min(c) = 0._r8
+  !   associate(                                                              &
+  !        decomp_npools_vr       => elm_interface_data%bgc%decomp_npools_vr_col      , &
+  !        smin_no3_vr            => elm_interface_data%bgc%smin_no3_vr_col           , &
+  !        smin_nh4_vr            => elm_interface_data%bgc%smin_nh4_vr_col           , &
+  !        smin_nh4sorb_vr        => elm_interface_data%bgc%smin_nh4sorb_vr_col       , &
+  !        soil_begnb             => elm_interface_data%bgc%soil_begnb_col            , & ! Output: [real(r8) (:)]  carbon mass, beginning of time step (gC/m**2)
+  !        soil_begnb_org         => elm_interface_data%bgc%soil_begnb_org_col        , & !
+  !        soil_begnb_min         => elm_interface_data%bgc%soil_begnb_min_col          & !
+  !        )
+  !   ! calculate beginning column-level soil carbon balance, for mass conservation check
+  !   nlev = nlevdecomp_full
+  !   do fc = 1,filters(ifilter)%num_soilc
+  !       c = filters(ifilter)%soilc(fc)
+  !       soil_begnb(c)     = 0._r8
+  !       soil_begnb_org(c) = 0._r8
+  !       soil_begnb_min(c) = 0._r8
 
-        do j = 1, nlev
-        !do NOT directly use sminn_vr(c,j), it does NOT always equal to (no3+nh4+nh4sorb) herein
-            soil_begnb_min(c) = soil_begnb_min(c) + smin_no3_vr(c,j)*dzsoi_decomp(j)    &
-                                                  + smin_nh4_vr(c,j)*dzsoi_decomp(j)    &
-                                                  + smin_nh4sorb_vr(c,j)*dzsoi_decomp(j)
-            do l = 1, ndecomp_pools
-                soil_begnb_org(c)   = soil_begnb_org(c)                         &
-                                    + decomp_npools_vr(c,j,l)*dzsoi_decomp(j)
-            end do
-        end do !j = 1, nlevdecomp
+  !       do j = 1, nlev
+  !       !do NOT directly use sminn_vr(c,j), it does NOT always equal to (no3+nh4+nh4sorb) herein
+  !           soil_begnb_min(c) = soil_begnb_min(c) + smin_no3_vr(c,j)*dzsoi_decomp(j)    &
+  !                                                 + smin_nh4_vr(c,j)*dzsoi_decomp(j)    &
+  !                                                 + smin_nh4sorb_vr(c,j)*dzsoi_decomp(j)
+  !           do l = 1, ndecomp_pools
+  !               soil_begnb_org(c)   = soil_begnb_org(c)                         &
+  !                                   + decomp_npools_vr(c,j,l)*dzsoi_decomp(j)
+  !           end do
+  !       end do !j = 1, nlevdecomp
 
-        soil_begnb(c) = soil_begnb_org(c) + soil_begnb_min(c)
-    end do
-    end associate
-    end subroutine elm_pf_BeginNBalance
+  !       soil_begnb(c) = soil_begnb_org(c) + soil_begnb_min(c)
+  !   end do
+  !   end associate
+  !   end subroutine elm_pf_BeginNBalance
 !--------------------------------------------------------------------------------------
 
-  subroutine elm_pf_CBalanceCheck(elm_interface_data,bounds, filters, ifilter)
-    !
-    ! !DESCRIPTION:
-    ! On the radiation time step, perform carbon mass conservation check for column and pft
-    !
-    ! !USES:
-    use elm_time_manager, only : get_step_size, get_nstep
-    use elm_varctl      , only : iulog, use_fates
-    use elm_varpar      , only : ndecomp_pools, nlevdecomp, nlevdecomp_full
-    use elm_varcon      , only : dzsoi_decomp
-    ! !ARGUMENTS:
-    type(bounds_type) , intent(in)    :: bounds      ! bounds of current process
-    type(clumpfilter) , intent(inout) :: filters(:)  ! filters on current process
-    integer           , intent(in)    :: ifilter     ! which filter to be operated
-    type(elm_interface_data_type), intent(inout) :: elm_interface_data
-    !
-    ! !LOCAL VARIABLES:
-    integer  :: c,j,l                                                               ! indices
-    integer  :: fc                                                                  ! lake filter indices
-    real(r8) :: dtime                                                               ! land model time step (sec)
-    integer  :: err_index                                                           ! indices
-    logical  :: err_found                                                           ! error flag
-    ! balance check varialbes:
-    real(r8) :: pf_cinputs(1:filters(ifilter)%num_soilc)
-    real(r8) :: pf_coutputs(1:filters(ifilter)%num_soilc)
-    real(r8) :: pf_cdelta(1:filters(ifilter)%num_soilc)
-    real(r8) :: pf_errcb(1:filters(ifilter)%num_soilc)
-    real(r8) :: pf_cbeg(1:filters(ifilter)%num_soilc)
-    real(r8) :: pf_cend(1:filters(ifilter)%num_soilc)
-    !-----------------------------------------------------------------------
+  ! subroutine elm_pf_CBalanceCheck(elm_interface_data,bounds, filters, ifilter)
+  !   !
+  !   ! !DESCRIPTION:
+  !   ! On the radiation time step, perform carbon mass conservation check for column and pft
+  !   !
+  !   ! !USES:
+  !   use elm_time_manager, only : get_step_size, get_nstep
+  !   use elm_varctl      , only : iulog, use_fates
+  !   use elm_varpar      , only : ndecomp_pools, nlevdecomp, nlevdecomp_full
+  !   use elm_varcon      , only : dzsoi_decomp
+  !   ! !ARGUMENTS:
+  !   type(bounds_type) , intent(in)    :: bounds      ! bounds of current process
+  !   type(clumpfilter) , intent(inout) :: filters(:)  ! filters on current process
+  !   integer           , intent(in)    :: ifilter     ! which filter to be operated
+  !   type(elm_interface_data_type), intent(inout) :: elm_interface_data
+  !   !
+  !   ! !LOCAL VARIABLES:
+  !   integer  :: c,j,l                                                               ! indices
+  !   integer  :: fc                                                                  ! lake filter indices
+  !   real(r8) :: dtime                                                               ! land model time step (sec)
+  !   integer  :: err_index                                                           ! indices
+  !   logical  :: err_found                                                           ! error flag
+  !   ! balance check varialbes:
+  !   real(r8) :: pf_cinputs(1:filters(ifilter)%num_soilc)
+  !   real(r8) :: pf_coutputs(1:filters(ifilter)%num_soilc)
+  !   real(r8) :: pf_cdelta(1:filters(ifilter)%num_soilc)
+  !   real(r8) :: pf_errcb(1:filters(ifilter)%num_soilc)
+  !   real(r8) :: pf_cbeg(1:filters(ifilter)%num_soilc)
+  !   real(r8) :: pf_cend(1:filters(ifilter)%num_soilc)
+  !   !-----------------------------------------------------------------------
 
-    associate(                                                                    &
-         externalc               => elm_interface_data%bgc%externalc_to_decomp_cpools_col , & ! Input:  [real(r8) (:) ]  (gC/m2)   total column carbon, incl veg and cpool
-         decomp_cpools_delta_vr  => elm_interface_data%bgc%decomp_cpools_sourcesink_col   , &
-         hr_vr                   => elm_interface_data%bgc%hr_vr_col                      , &
-         soil_begcb              => elm_interface_data%bgc%soil_begcb_col                   & ! Output: [real(r8) (:) ]  carbon mass, beginning of time step (gC/m**2)
-         )
+  !   associate(                                                                    &
+  !        externalc               => elm_interface_data%bgc%externalc_to_decomp_cpools_col , & ! Input:  [real(r8) (:) ]  (gC/m2)   total column carbon, incl veg and cpool
+  !        decomp_cpools_delta_vr  => elm_interface_data%bgc%decomp_cpools_sourcesink_col   , &
+  !        hr_vr                   => elm_interface_data%bgc%hr_vr_col                      , &
+  !        soil_begcb              => elm_interface_data%bgc%soil_begcb_col                   & ! Output: [real(r8) (:) ]  carbon mass, beginning of time step (gC/m**2)
+  !        )
 
-    ! ------------------------------------------------------------------------
-    dtime = real( get_step_size(), r8 )
-    ! pflotran mass blance check-Carbon
-    err_found = .false.
-    do fc = 1,filters(ifilter)%num_soilc
-        c = filters(ifilter)%soilc(fc)
-        pf_cbeg(fc)     = soil_begcb(c)
-        pf_cend(fc)     = 0._r8
-        pf_errcb(fc)    = 0._r8
+  !   ! ------------------------------------------------------------------------
+  !   dtime = real( get_step_size(), r8 )
+  !   ! pflotran mass blance check-Carbon
+  !   err_found = .false.
+  !   do fc = 1,filters(ifilter)%num_soilc
+  !       c = filters(ifilter)%soilc(fc)
+  !       pf_cbeg(fc)     = soil_begcb(c)
+  !       pf_cend(fc)     = 0._r8
+  !       pf_errcb(fc)    = 0._r8
 
-        pf_cinputs(fc)  = 0._r8
-        pf_coutputs(fc) = 0._r8
-        pf_cdelta(fc)   = 0._r8
+  !       pf_cinputs(fc)  = 0._r8
+  !       pf_coutputs(fc) = 0._r8
+  !       pf_cdelta(fc)   = 0._r8
 
-        do j = 1, nlevdecomp_full
-            pf_coutputs(fc) = pf_coutputs(fc) + hr_vr(c,j)*dzsoi_decomp(j)
-            do l = 1, ndecomp_pools
-                pf_cinputs(fc) = pf_cinputs(fc) + externalc(c,j,l)*dzsoi_decomp(j)
-                pf_cdelta(fc)  = pf_cdelta(fc)  + decomp_cpools_delta_vr(c,j,l)*dzsoi_decomp(j)
-            end do
-        end do
+  !       do j = 1, nlevdecomp_full
+  !           pf_coutputs(fc) = pf_coutputs(fc) + hr_vr(c,j)*dzsoi_decomp(j)
+  !           do l = 1, ndecomp_pools
+  !               pf_cinputs(fc) = pf_cinputs(fc) + externalc(c,j,l)*dzsoi_decomp(j)
+  !               pf_cdelta(fc)  = pf_cdelta(fc)  + decomp_cpools_delta_vr(c,j,l)*dzsoi_decomp(j)
+  !           end do
+  !       end do
 
-        pf_cend(fc) = pf_cbeg(fc) + pf_cdelta(fc)
-        pf_errcb(fc) = (pf_cinputs(fc) - pf_coutputs(fc))*dtime - pf_cdelta(fc)
+  !       pf_cend(fc) = pf_cbeg(fc) + pf_cdelta(fc)
+  !       pf_errcb(fc) = (pf_cinputs(fc) - pf_coutputs(fc))*dtime - pf_cdelta(fc)
 
-        ! check for significant errors
-        if (abs(pf_errcb(fc)) > 1e-8_r8) then
-            err_found = .true.
-            err_index = fc
-        end if
-    end do
+  !       ! check for significant errors
+  !       if (abs(pf_errcb(fc)) > 1e-8_r8) then
+  !           err_found = .true.
+  !           err_index = fc
+  !       end if
+  !   end do
 
-    if (.not. use_fates) then
-         if (err_found) then
-            fc = err_index
-            write(iulog,'(A,70(1h-))')">>>--------  PFLOTRAN Mass Balance Check:beg  "
-            write(iulog,'(A35,I15,A10,I20)')"Carbon Balance Error in Column = ",filters(ifilter)%soilc(fc), " @ nstep=",get_nstep()
-            write(iulog,'(10A15)')"errcb", "C_in-out", "Cdelta","Cinputs","Coutputs","Cbeg","Cend"
-            write(iulog,'(10E15.6)')pf_errcb(fc), (pf_cinputs(fc) - pf_coutputs(fc))*dtime, pf_cdelta(fc), &
-                                    pf_cinputs(fc)*dtime,pf_coutputs(fc)*dtime,pf_cbeg(fc),pf_cend(fc)
-            write(iulog,'(A,70(1h-))')">>>--------  PFLOTRAN Mass Balance Check:end  "
-         end if
-    end if !(.not. use_fates)
-    end associate
-    end subroutine elm_pf_CBalanceCheck
+  !   if (.not. use_fates) then
+  !        if (err_found) then
+  !           fc = err_index
+  !           write(iulog,'(A,70(1h-))')">>>--------  PFLOTRAN Mass Balance Check:beg  "
+  !           write(iulog,'(A35,I15,A10,I20)')"Carbon Balance Error in Column = ",filters(ifilter)%soilc(fc), " @ nstep=",get_nstep()
+  !           write(iulog,'(10A15)')"errcb", "C_in-out", "Cdelta","Cinputs","Coutputs","Cbeg","Cend"
+  !           write(iulog,'(10E15.6)')pf_errcb(fc), (pf_cinputs(fc) - pf_coutputs(fc))*dtime, pf_cdelta(fc), &
+  !                                   pf_cinputs(fc)*dtime,pf_coutputs(fc)*dtime,pf_cbeg(fc),pf_cend(fc)
+  !           write(iulog,'(A,70(1h-))')">>>--------  PFLOTRAN Mass Balance Check:end  "
+  !        end if
+  !   end if !(.not. use_fates)
+  !   end associate
+  !   end subroutine elm_pf_CBalanceCheck
 !--------------------------------------------------------------------------------------
 
-  subroutine elm_pf_NBalanceCheck(elm_interface_data,bounds, filters, ifilter)
-    !
-    ! !DESCRIPTION:
-    ! On the radiation time step, perform carbon mass conservation check for column and pft
-    !
-    ! !USES:
-    use elm_time_manager, only : get_step_size,get_nstep
-    use elm_varctl      , only : iulog, use_fates
-    use elm_varpar      , only : ndecomp_pools, nlevdecomp, nlevdecomp_full
-    use elm_varcon      , only : dzsoi_decomp
-    ! !ARGUMENTS:
-    type(bounds_type) , intent(in)    :: bounds      ! bounds of current process
-    type(clumpfilter) , intent(inout) :: filters(:)  ! filters on current process
-    integer           , intent(in)    :: ifilter     ! which filter to be operated
-    type(elm_interface_data_type), intent(inout) :: elm_interface_data
-    !
-    ! !LOCAL VARIABLES:
-    integer  :: nlev
-    integer  :: c,j,l                                                               ! indices
-    integer  :: fc                                                                  ! lake filter indices
-    real(r8) :: dtime                                                               ! land model time step (sec)
-    integer  :: err_index                                                           ! indices
-    logical  :: err_found                                                           ! error flag
+!   subroutine elm_pf_NBalanceCheck(elm_interface_data,bounds, filters, ifilter)
+!     !
+!     ! !DESCRIPTION:
+!     ! On the radiation time step, perform carbon mass conservation check for column and pft
+!     !
+!     ! !USES:
+!     use elm_time_manager, only : get_step_size,get_nstep
+!     use elm_varctl      , only : iulog, use_fates
+!     use elm_varpar      , only : ndecomp_pools, nlevdecomp, nlevdecomp_full
+!     use elm_varcon      , only : dzsoi_decomp
+!     ! !ARGUMENTS:
+!     type(bounds_type) , intent(in)    :: bounds      ! bounds of current process
+!     type(clumpfilter) , intent(inout) :: filters(:)  ! filters on current process
+!     integer           , intent(in)    :: ifilter     ! which filter to be operated
+!     type(elm_interface_data_type), intent(inout) :: elm_interface_data
+!     !
+!     ! !LOCAL VARIABLES:
+!     integer  :: nlev
+!     integer  :: c,j,l                                                               ! indices
+!     integer  :: fc                                                                  ! lake filter indices
+!     real(r8) :: dtime                                                               ! land model time step (sec)
+!     integer  :: err_index                                                           ! indices
+!     logical  :: err_found                                                           ! error flag
 
-    real(r8) :: pf_ninputs(1:filters(ifilter)%num_soilc)
-    real(r8) :: pf_noutputs(1:filters(ifilter)%num_soilc)
-    real(r8) :: pf_ndelta(1:filters(ifilter)%num_soilc)                             ! _ndelta: difference in pool sizes between end & beginning
-    real(r8) :: pf_errnb(1:filters(ifilter)%num_soilc)                              ! _errnb: mass balance error;
-    real(r8) :: pf_noutputs_gas(1:filters(ifilter)%num_soilc)
-    real(r8) :: pf_noutputs_veg(1:filters(ifilter)%num_soilc)                       ! _gas:nitrogen gases; _veg:plant uptake of NO3/NH4
-    real(r8) :: pf_noutputs_nit(1:filters(ifilter)%num_soilc)
-    real(r8) :: pf_noutputs_denit(1:filters(ifilter)%num_soilc)                     ! _gas = _nit + _denit
-    real(r8) :: pf_ninputs_org(1:filters(ifilter)%num_soilc)                        ! _org:organic; _min:mineral nitrogen
-    real(r8) :: pf_ninputs_min(1:filters(ifilter)%num_soilc)
-    real(r8) :: pf_ndelta_org(1:filters(ifilter)%num_soilc)
-    real(r8) :: pf_ndelta_min(1:filters(ifilter)%num_soilc)
-    real(r8) :: pf_nbeg(1:filters(ifilter)%num_soilc)                               ! _nbeg: Nitrogen mass at the beginning of time-step
-    real(r8) :: pf_nbeg_org(1:filters(ifilter)%num_soilc)
-    real(r8) :: pf_nbeg_min(1:filters(ifilter)%num_soilc)
-    real(r8) :: pf_nend(1:filters(ifilter)%num_soilc)                               ! _end: Nitrogen mass at the end of time-step
-    real(r8) :: pf_nend_org(1:filters(ifilter)%num_soilc)
-    real(r8) :: pf_nend_min(1:filters(ifilter)%num_soilc)
-    real(r8) :: pf_nend_no3(1:filters(ifilter)%num_soilc)                           ! 3 mineral N pools at the end of time-step
-    real(r8) :: pf_nend_nh4(1:filters(ifilter)%num_soilc)
-    real(r8) :: pf_nend_nh4sorb(1:filters(ifilter)%num_soilc)
-    real(r8) :: plant_ndemand(1:filters(ifilter)%num_soilc)
-    real(r8) :: potential_immob(1:filters(ifilter)%num_soilc)
-    real(r8) :: actual_immob(1:filters(ifilter)%num_soilc)
-    real(r8) :: gross_nmin(1:filters(ifilter)%num_soilc)                            ! _immob: N immobilization; _nmin: N mineralization
-    real(r8) :: pf_ngas_dec(1:filters(ifilter)%num_soilc)                           ! _ngas_dec: N gas from decomposition-mineralization
-    real(r8) :: pf_ngas_min(1:filters(ifilter)%num_soilc)                           ! _ngas_min: N gas from nitrification & denitrification
-    real(r8) :: pf_errnb_org(1:filters(ifilter)%num_soilc)
-    real(r8) :: pf_errnb_min(1:filters(ifilter)%num_soilc)
+!     real(r8) :: pf_ninputs(1:filters(ifilter)%num_soilc)
+!     real(r8) :: pf_noutputs(1:filters(ifilter)%num_soilc)
+!     real(r8) :: pf_ndelta(1:filters(ifilter)%num_soilc)                             ! _ndelta: difference in pool sizes between end & beginning
+!     real(r8) :: pf_errnb(1:filters(ifilter)%num_soilc)                              ! _errnb: mass balance error;
+!     real(r8) :: pf_noutputs_gas(1:filters(ifilter)%num_soilc)
+!     real(r8) :: pf_noutputs_veg(1:filters(ifilter)%num_soilc)                       ! _gas:nitrogen gases; _veg:plant uptake of NO3/NH4
+!     real(r8) :: pf_noutputs_nit(1:filters(ifilter)%num_soilc)
+!     real(r8) :: pf_noutputs_denit(1:filters(ifilter)%num_soilc)                     ! _gas = _nit + _denit
+!     real(r8) :: pf_ninputs_org(1:filters(ifilter)%num_soilc)                        ! _org:organic; _min:mineral nitrogen
+!     real(r8) :: pf_ninputs_min(1:filters(ifilter)%num_soilc)
+!     real(r8) :: pf_ndelta_org(1:filters(ifilter)%num_soilc)
+!     real(r8) :: pf_ndelta_min(1:filters(ifilter)%num_soilc)
+!     real(r8) :: pf_nbeg(1:filters(ifilter)%num_soilc)                               ! _nbeg: Nitrogen mass at the beginning of time-step
+!     real(r8) :: pf_nbeg_org(1:filters(ifilter)%num_soilc)
+!     real(r8) :: pf_nbeg_min(1:filters(ifilter)%num_soilc)
+!     real(r8) :: pf_nend(1:filters(ifilter)%num_soilc)                               ! _end: Nitrogen mass at the end of time-step
+!     real(r8) :: pf_nend_org(1:filters(ifilter)%num_soilc)
+!     real(r8) :: pf_nend_min(1:filters(ifilter)%num_soilc)
+!     real(r8) :: pf_nend_no3(1:filters(ifilter)%num_soilc)                           ! 3 mineral N pools at the end of time-step
+!     real(r8) :: pf_nend_nh4(1:filters(ifilter)%num_soilc)
+!     real(r8) :: pf_nend_nh4sorb(1:filters(ifilter)%num_soilc)
+!     real(r8) :: plant_ndemand(1:filters(ifilter)%num_soilc)
+!     real(r8) :: potential_immob(1:filters(ifilter)%num_soilc)
+!     real(r8) :: actual_immob(1:filters(ifilter)%num_soilc)
+!     real(r8) :: gross_nmin(1:filters(ifilter)%num_soilc)                            ! _immob: N immobilization; _nmin: N mineralization
+!     real(r8) :: pf_ngas_dec(1:filters(ifilter)%num_soilc)                           ! _ngas_dec: N gas from decomposition-mineralization
+!     real(r8) :: pf_ngas_min(1:filters(ifilter)%num_soilc)                           ! _ngas_min: N gas from nitrification & denitrification
+!     real(r8) :: pf_errnb_org(1:filters(ifilter)%num_soilc)
+!     real(r8) :: pf_errnb_min(1:filters(ifilter)%num_soilc)
 
-    real(r8) :: pf_errnb_org_vr  (1:filters(ifilter)%num_soilc, 1:nlevdecomp_full)
-    real(r8) :: pf_ndelta_org_vr (1:filters(ifilter)%num_soilc, 1:nlevdecomp_full)
-    real(r8) :: pf_ninputs_org_vr(1:filters(ifilter)%num_soilc, 1:nlevdecomp_full)
-    !-----------------------------------------------------------------------
+!     real(r8) :: pf_errnb_org_vr  (1:filters(ifilter)%num_soilc, 1:nlevdecomp_full)
+!     real(r8) :: pf_ndelta_org_vr (1:filters(ifilter)%num_soilc, 1:nlevdecomp_full)
+!     real(r8) :: pf_ninputs_org_vr(1:filters(ifilter)%num_soilc, 1:nlevdecomp_full)
+!     !-----------------------------------------------------------------------
 
-    associate(                                                                        &
-         externaln_to_decomp_npools   => elm_interface_data%bgc%externaln_to_decomp_npools_col, & ! Input:  [real(r8) (:) ]  (gC/m2)   total column carbon, incl veg and cpool
-         externaln_to_no3_vr          => elm_interface_data%bgc%externaln_to_no3_col          , &
-         externaln_to_nh4_vr          => elm_interface_data%bgc%externaln_to_nh4_col          , &
-         decomp_npools_delta_vr       => elm_interface_data%bgc%decomp_npools_sourcesink_col  , &
-         decomp_npools_vr             => elm_interface_data%bgc%decomp_npools_vr_col          , &
-         smin_no3_vr                  => elm_interface_data%bgc%smin_no3_vr_col               , &
-         smin_nh4_vr                  => elm_interface_data%bgc%smin_nh4_vr_col               , &
-         smin_nh4sorb_vr              => elm_interface_data%bgc%smin_nh4sorb_vr_col           , &
-         f_ngas_decomp_vr             => elm_interface_data%bgc%f_ngas_decomp_vr_col          , &
-         f_ngas_nitri_vr              => elm_interface_data%bgc%f_ngas_nitri_vr_col           , &
-         f_ngas_denit_vr              => elm_interface_data%bgc%f_ngas_denit_vr_col           , &
-         sminn_to_plant_vr            => elm_interface_data%bgc%sminn_to_plant_vr_col         , &
+!     associate(                                                                        &
+!          externaln_to_decomp_npools   => elm_interface_data%bgc%externaln_to_decomp_npools_col, & ! Input:  [real(r8) (:) ]  (gC/m2)   total column carbon, incl veg and cpool
+!          externaln_to_no3_vr          => elm_interface_data%bgc%externaln_to_no3_col          , &
+!          externaln_to_nh4_vr          => elm_interface_data%bgc%externaln_to_nh4_col          , &
+!          decomp_npools_delta_vr       => elm_interface_data%bgc%decomp_npools_sourcesink_col  , &
+!          decomp_npools_vr             => elm_interface_data%bgc%decomp_npools_vr_col          , &
+!          smin_no3_vr                  => elm_interface_data%bgc%smin_no3_vr_col               , &
+!          smin_nh4_vr                  => elm_interface_data%bgc%smin_nh4_vr_col               , &
+!          smin_nh4sorb_vr              => elm_interface_data%bgc%smin_nh4sorb_vr_col           , &
+!          f_ngas_decomp_vr             => elm_interface_data%bgc%f_ngas_decomp_vr_col          , &
+!          f_ngas_nitri_vr              => elm_interface_data%bgc%f_ngas_nitri_vr_col           , &
+!          f_ngas_denit_vr              => elm_interface_data%bgc%f_ngas_denit_vr_col           , &
+!          sminn_to_plant_vr            => elm_interface_data%bgc%sminn_to_plant_vr_col         , &
 
-         plant_ndemand_vr             => elm_interface_data%bgc%plant_ndemand_vr_col          , &
-         potential_immob_vr           => elm_interface_data%bgc%potential_immob_vr_col        , &
-         actual_immob_vr              => elm_interface_data%bgc%actual_immob_vr_col           , &
-         gross_nmin_vr                => elm_interface_data%bgc%gross_nmin_vr_col             , &
+!          plant_ndemand_vr             => elm_interface_data%bgc%plant_ndemand_vr_col          , &
+!          potential_immob_vr           => elm_interface_data%bgc%potential_immob_vr_col        , &
+!          actual_immob_vr              => elm_interface_data%bgc%actual_immob_vr_col           , &
+!          gross_nmin_vr                => elm_interface_data%bgc%gross_nmin_vr_col             , &
 
-         soil_begnb                   => elm_interface_data%bgc%soil_begnb_col                , & ! Output: [real(r8) (:) ]  carbon mass, beginning of time step (gC/m**2)
-         soil_begnb_org               => elm_interface_data%bgc%soil_begnb_org_col            , & !
-         soil_begnb_min               => elm_interface_data%bgc%soil_begnb_min_col              & !
-         )
+!          soil_begnb                   => elm_interface_data%bgc%soil_begnb_col                , & ! Output: [real(r8) (:) ]  carbon mass, beginning of time step (gC/m**2)
+!          soil_begnb_org               => elm_interface_data%bgc%soil_begnb_org_col            , & !
+!          soil_begnb_min               => elm_interface_data%bgc%soil_begnb_min_col              & !
+!          )
 
-    ! ------------------------------------------------------------------------
-    dtime = real( get_step_size(), r8 )
-    nlev = nlevdecomp_full
-    ! pflotran mass blance check-Carbon
-    err_found = .false.
-    do fc = 1,filters(ifilter)%num_soilc
-        c = filters(ifilter)%soilc(fc)
-        pf_nbeg_org(fc)         = soil_begnb_org(c)
-        pf_nbeg_min(fc)         = soil_begnb_min(c)
-        pf_nbeg(fc)             = soil_begnb(c)
+!     ! ------------------------------------------------------------------------
+!     dtime = real( get_step_size(), r8 )
+!     nlev = nlevdecomp_full
+!     ! pflotran mass blance check-Carbon
+!     err_found = .false.
+!     do fc = 1,filters(ifilter)%num_soilc
+!         c = filters(ifilter)%soilc(fc)
+!         pf_nbeg_org(fc)         = soil_begnb_org(c)
+!         pf_nbeg_min(fc)         = soil_begnb_min(c)
+!         pf_nbeg(fc)             = soil_begnb(c)
 
-        pf_nend_org(fc)         = 0._r8
-        pf_nend_min(fc)         = 0._r8
-        pf_nend_no3(fc)         = 0._r8
-        pf_nend_nh4(fc)         = 0._r8
-        pf_nend_nh4sorb(fc)     = 0._r8
-        pf_nend(fc)             = 0._r8
+!         pf_nend_org(fc)         = 0._r8
+!         pf_nend_min(fc)         = 0._r8
+!         pf_nend_no3(fc)         = 0._r8
+!         pf_nend_nh4(fc)         = 0._r8
+!         pf_nend_nh4sorb(fc)     = 0._r8
+!         pf_nend(fc)             = 0._r8
 
-        pf_ninputs_org(fc)      = 0._r8
-        pf_ninputs_min(fc)      = 0._r8
-        pf_ninputs(fc)          = 0._r8
+!         pf_ninputs_org(fc)      = 0._r8
+!         pf_ninputs_min(fc)      = 0._r8
+!         pf_ninputs(fc)          = 0._r8
 
-        pf_noutputs_nit(fc)     = 0._r8
-        pf_noutputs_denit(fc)   = 0._r8
-        pf_noutputs_gas(fc)     = 0._r8
-        pf_noutputs_veg(fc)     = 0._r8
-        pf_noutputs(fc)         = 0._r8
+!         pf_noutputs_nit(fc)     = 0._r8
+!         pf_noutputs_denit(fc)   = 0._r8
+!         pf_noutputs_gas(fc)     = 0._r8
+!         pf_noutputs_veg(fc)     = 0._r8
+!         pf_noutputs(fc)         = 0._r8
 
-        pf_ndelta_org(fc)       = 0._r8
-        pf_ndelta_min(fc)       = 0._r8
-        pf_ndelta(fc)           = 0._r8
+!         pf_ndelta_org(fc)       = 0._r8
+!         pf_ndelta_min(fc)       = 0._r8
+!         pf_ndelta(fc)           = 0._r8
 
-        plant_ndemand(fc)       = 0._r8
-        potential_immob(fc)     = 0._r8
-        actual_immob(fc)        = 0._r8
-        gross_nmin(fc)          = 0._r8
+!         plant_ndemand(fc)       = 0._r8
+!         potential_immob(fc)     = 0._r8
+!         actual_immob(fc)        = 0._r8
+!         gross_nmin(fc)          = 0._r8
 
-        pf_ngas_dec(fc)         = 0._r8
-        pf_ngas_min(fc)         = 0._r8
-        pf_errnb_org(fc)        = 0._r8
-        pf_errnb_min(fc)        = 0._r8
+!         pf_ngas_dec(fc)         = 0._r8
+!         pf_ngas_min(fc)         = 0._r8
+!         pf_errnb_org(fc)        = 0._r8
+!         pf_errnb_min(fc)        = 0._r8
 
-        do j = 1, nlev
-            ! sminn_vr(c,j) has been calculated above
-            pf_nend_no3(fc)     = pf_nend_no3(fc)     + smin_no3_vr(c,j)*dzsoi_decomp(j)
-            pf_nend_nh4(fc)     = pf_nend_nh4(fc)     + smin_nh4_vr(c,j)*dzsoi_decomp(j)
-            pf_nend_nh4sorb(fc) = pf_nend_nh4sorb(fc) + smin_nh4sorb_vr(c,j)*dzsoi_decomp(j)
+!         do j = 1, nlev
+!             ! sminn_vr(c,j) has been calculated above
+!             pf_nend_no3(fc)     = pf_nend_no3(fc)     + smin_no3_vr(c,j)*dzsoi_decomp(j)
+!             pf_nend_nh4(fc)     = pf_nend_nh4(fc)     + smin_nh4_vr(c,j)*dzsoi_decomp(j)
+!             pf_nend_nh4sorb(fc) = pf_nend_nh4sorb(fc) + smin_nh4sorb_vr(c,j)*dzsoi_decomp(j)
 
-            pf_ninputs_min(fc)  = pf_ninputs_min(fc)  + externaln_to_nh4_vr(c,j)*dzsoi_decomp(j) &
-                                                      + externaln_to_no3_vr(c,j)*dzsoi_decomp(j)
+!             pf_ninputs_min(fc)  = pf_ninputs_min(fc)  + externaln_to_nh4_vr(c,j)*dzsoi_decomp(j) &
+!                                                       + externaln_to_no3_vr(c,j)*dzsoi_decomp(j)
 
-            pf_noutputs_nit(fc) = pf_noutputs_nit(fc) + f_ngas_decomp_vr(c,j)*dzsoi_decomp(j) &
-                                                      + f_ngas_nitri_vr(c,j)*dzsoi_decomp(j)
-            pf_noutputs_denit(fc) = pf_noutputs_denit(fc) + f_ngas_denit_vr(c,j)*dzsoi_decomp(j)
-            pf_noutputs_veg(fc) = pf_noutputs_veg(fc) + sminn_to_plant_vr(c,j)*dzsoi_decomp(j)
+!             pf_noutputs_nit(fc) = pf_noutputs_nit(fc) + f_ngas_decomp_vr(c,j)*dzsoi_decomp(j) &
+!                                                       + f_ngas_nitri_vr(c,j)*dzsoi_decomp(j)
+!             pf_noutputs_denit(fc) = pf_noutputs_denit(fc) + f_ngas_denit_vr(c,j)*dzsoi_decomp(j)
+!             pf_noutputs_veg(fc) = pf_noutputs_veg(fc) + sminn_to_plant_vr(c,j)*dzsoi_decomp(j)
 
-            pf_ngas_dec(fc)     = pf_ngas_dec(fc)     + f_ngas_decomp_vr(c,j)*dzsoi_decomp(j)
-            pf_ngas_min(fc)     = pf_ngas_min(fc)     + f_ngas_denit_vr(c,j)*dzsoi_decomp(j) &
-                                                      + f_ngas_nitri_vr(c,j)*dzsoi_decomp(j)
-            do l = 1, ndecomp_pools
-                pf_ndelta_org(fc)  = pf_ndelta_org(fc)  + decomp_npools_delta_vr(c,j,l)*dzsoi_decomp(j)
-                pf_ninputs_org(fc) = pf_ninputs_org(fc) + externaln_to_decomp_npools(c,j,l)*dzsoi_decomp(j)
-            end do
+!             pf_ngas_dec(fc)     = pf_ngas_dec(fc)     + f_ngas_decomp_vr(c,j)*dzsoi_decomp(j)
+!             pf_ngas_min(fc)     = pf_ngas_min(fc)     + f_ngas_denit_vr(c,j)*dzsoi_decomp(j) &
+!                                                       + f_ngas_nitri_vr(c,j)*dzsoi_decomp(j)
+!             do l = 1, ndecomp_pools
+!                 pf_ndelta_org(fc)  = pf_ndelta_org(fc)  + decomp_npools_delta_vr(c,j,l)*dzsoi_decomp(j)
+!                 pf_ninputs_org(fc) = pf_ninputs_org(fc) + externaln_to_decomp_npools(c,j,l)*dzsoi_decomp(j)
+!             end do
 
-            plant_ndemand(fc)   = plant_ndemand(fc)   + plant_ndemand_vr(c,j)*dzsoi_decomp(j)
-            potential_immob(fc) = potential_immob(fc) + potential_immob_vr(c,j)*dzsoi_decomp(j)
-            actual_immob(fc)    = actual_immob(fc)    + actual_immob_vr(c,j)*dzsoi_decomp(j)
-            gross_nmin(fc)      = gross_nmin(fc)      + gross_nmin_vr(c,j)*dzsoi_decomp(j)
-        end do !j = 1, nlevdecomp
+!             plant_ndemand(fc)   = plant_ndemand(fc)   + plant_ndemand_vr(c,j)*dzsoi_decomp(j)
+!             potential_immob(fc) = potential_immob(fc) + potential_immob_vr(c,j)*dzsoi_decomp(j)
+!             actual_immob(fc)    = actual_immob(fc)    + actual_immob_vr(c,j)*dzsoi_decomp(j)
+!             gross_nmin(fc)      = gross_nmin(fc)      + gross_nmin_vr(c,j)*dzsoi_decomp(j)
+!         end do !j = 1, nlevdecomp
 
-        pf_nend_org(fc)     = pf_nbeg_org(fc)       + pf_ndelta_org(fc)   !pf_ndelta_org has been calculated
-        pf_nend_min(fc)     = pf_nend_no3(fc)       + pf_nend_nh4(fc) + pf_nend_nh4sorb(fc)
-        pf_nend(fc)         = pf_nend_org(fc)       + pf_nend_min(fc)
-        pf_ndelta_min(fc)   = pf_nend_min(fc)       - pf_nbeg_min(fc)
-        pf_ndelta(fc)       = pf_nend(fc)           - pf_nbeg(fc)         !pf_ndelta_org     + pf_ndelta_min
-        pf_ninputs(fc)      = pf_ninputs_org(fc)    + pf_ninputs_min(fc)
-        pf_noutputs_gas(fc) = pf_noutputs_nit(fc)   + pf_noutputs_denit(fc)
-        pf_noutputs(fc)     = pf_noutputs_gas(fc)   + pf_noutputs_veg(fc)
-        pf_errnb(fc)        = (pf_ninputs(fc) - pf_noutputs(fc))*dtime - pf_ndelta(fc)
+!         pf_nend_org(fc)     = pf_nbeg_org(fc)       + pf_ndelta_org(fc)   !pf_ndelta_org has been calculated
+!         pf_nend_min(fc)     = pf_nend_no3(fc)       + pf_nend_nh4(fc) + pf_nend_nh4sorb(fc)
+!         pf_nend(fc)         = pf_nend_org(fc)       + pf_nend_min(fc)
+!         pf_ndelta_min(fc)   = pf_nend_min(fc)       - pf_nbeg_min(fc)
+!         pf_ndelta(fc)       = pf_nend(fc)           - pf_nbeg(fc)         !pf_ndelta_org     + pf_ndelta_min
+!         pf_ninputs(fc)      = pf_ninputs_org(fc)    + pf_ninputs_min(fc)
+!         pf_noutputs_gas(fc) = pf_noutputs_nit(fc)   + pf_noutputs_denit(fc)
+!         pf_noutputs(fc)     = pf_noutputs_gas(fc)   + pf_noutputs_veg(fc)
+!         pf_errnb(fc)        = (pf_ninputs(fc) - pf_noutputs(fc))*dtime - pf_ndelta(fc)
 
-        pf_errnb_org(fc)    = (pf_ninputs_org(fc)                   &
-                            - gross_nmin(fc) + actual_immob(fc))*dtime  &
-                            - pf_ndelta_org(fc)
-        pf_errnb_min(fc)    = (pf_ninputs_min(fc) - pf_ngas_min(fc) - pf_ngas_dec(fc)        &
-                            + gross_nmin(fc) - actual_immob(fc) - pf_noutputs_veg(fc))*dtime &
-                            - pf_ndelta_min(fc)
-        ! check for significant errors
-        if (abs(pf_errnb(fc)) > 1e-8_r8) then
-            err_found = .true.
-            err_index = fc
-        end if
+!         pf_errnb_org(fc)    = (pf_ninputs_org(fc)                   &
+!                             - gross_nmin(fc) + actual_immob(fc))*dtime  &
+!                             - pf_ndelta_org(fc)
+!         pf_errnb_min(fc)    = (pf_ninputs_min(fc) - pf_ngas_min(fc) - pf_ngas_dec(fc)        &
+!                             + gross_nmin(fc) - actual_immob(fc) - pf_noutputs_veg(fc))*dtime &
+!                             - pf_ndelta_min(fc)
+!         ! check for significant errors
+!         if (abs(pf_errnb(fc)) > 1e-8_r8) then
+!             err_found = .true.
+!             err_index = fc
+!         end if
 
-        ! check SON balance at each layer,
-        pf_errnb_org_vr(fc,:) = 0._r8
-        pf_ndelta_org_vr(fc,:) = 0._r8
-        pf_ninputs_org_vr(fc,:) = 0._r8
-        do j = 1, nlev
-            do l = 1, ndecomp_pools
-                pf_ndelta_org_vr(fc,j)  = pf_ndelta_org_vr(fc,j)  + decomp_npools_delta_vr(c,j,l)
-                pf_ninputs_org_vr(fc,j) = pf_ninputs_org_vr(fc,j) + externaln_to_decomp_npools(c,j,l)
-            end do
-            pf_errnb_org_vr(fc,j)    = (pf_ninputs_org_vr(fc,j)                   &
-                        - gross_nmin_vr(c,j) + actual_immob_vr(c,j))*dtime  &
-                        - pf_ndelta_org_vr(fc,j)
-            pf_errnb_org_vr(fc,j)    = pf_errnb_org_vr(fc,j)*dzsoi_decomp(j)
-        end do
-    end do
+!         ! check SON balance at each layer,
+!         pf_errnb_org_vr(fc,:) = 0._r8
+!         pf_ndelta_org_vr(fc,:) = 0._r8
+!         pf_ninputs_org_vr(fc,:) = 0._r8
+!         do j = 1, nlev
+!             do l = 1, ndecomp_pools
+!                 pf_ndelta_org_vr(fc,j)  = pf_ndelta_org_vr(fc,j)  + decomp_npools_delta_vr(c,j,l)
+!                 pf_ninputs_org_vr(fc,j) = pf_ninputs_org_vr(fc,j) + externaln_to_decomp_npools(c,j,l)
+!             end do
+!             pf_errnb_org_vr(fc,j)    = (pf_ninputs_org_vr(fc,j)                   &
+!                         - gross_nmin_vr(c,j) + actual_immob_vr(c,j))*dtime  &
+!                         - pf_ndelta_org_vr(fc,j)
+!             pf_errnb_org_vr(fc,j)    = pf_errnb_org_vr(fc,j)*dzsoi_decomp(j)
+!         end do
+!     end do
 
-    if (.not. use_fates) then
-         if (err_found) then
-            fc = err_index
-            write(iulog,'(A,70(1h-))')">>>--------  PFLOTRAN Mass Balance Check:beg  "
-            write(iulog,'(A35,I15,A10,I20)')"Nitrogen Balance Error in Column = ",filters(ifilter)%soilc(fc), " @ nstep = ",get_nstep()
-            write(iulog,'(10A15)')  "errnb", "N_in-out", "Ndelta",                          &
-                                    "Ninputs","Noutputs", "Nbeg","Nend"
-            write(iulog,'(10E15.6)')pf_errnb(fc), (pf_ninputs(fc) - pf_noutputs(fc))*dtime, pf_ndelta(fc),  &
-                                    pf_ninputs(fc)*dtime,pf_noutputs(fc)*dtime,pf_nbeg(fc),pf_nend(fc)
-            write(iulog,*)
-            write(iulog,'(10A15)')  "errnb_org","Ndelta_org","Nbeg_org","Nend_org",         &
-                                    "gross_nmin", "actual_immob", "pot_immob"
-            write(iulog,'(10E15.6)')pf_errnb_org(fc),pf_ndelta_org(fc),pf_nbeg_org(fc),pf_nend_org(fc),     &
-                                    gross_nmin(fc)*dtime,actual_immob(fc)*dtime,potential_immob(fc)*dtime
-            write(iulog,*)
-            write(iulog,'(10A15)')  "errnb_min","Ndelta_min","Nbeg_min","Nend_min",         &
-                                    "Nend_no3","Nend_nh4", "Nend_nh4sorb"
-            write(iulog,'(10E15.6)')pf_errnb_min(fc), pf_ndelta_min(fc),pf_nbeg_min(fc),pf_nend_min(fc),    &
-                                    pf_nend_no3(fc),pf_nend_nh4(fc),pf_nend_nh4sorb(fc)
-            write(iulog,*)
-            write(iulog,'(10A15)')  "Ninputs_org","Ninputs_min",                            &
-                                    "Noutputs_nit","Noutputs_denit",                        &
-                                    "Noutputs_gas","Noutputs_veg",                          &
-                                    "plant_Ndemand","Ngas_dec","Ngas_min"
-            write(iulog,'(10E15.6)')pf_ninputs_org(fc)*dtime,pf_ninputs_min(fc)*dtime,              &
-                                    pf_noutputs_nit(fc)*dtime,pf_noutputs_denit(fc)*dtime,          &
-                                    pf_noutputs_gas(fc)*dtime,pf_noutputs_veg(fc)*dtime,            &
-                                    plant_ndemand(fc)*dtime,pf_ngas_dec(fc)*dtime,pf_ngas_min(fc)*dtime
-!            ! close output currently
-!            write(iulog,*)
-!            write(iulog,'(A10,20A15)')  "Layer","errbn_org","ndelta_org","ninputs","gross_nmin","actual_immob"
-!            do j = 1, nlev
-!                write(iulog,'(I10,15E15.6)')j,pf_errnb_org_vr(fc,j),                           &
-!                                            pf_ndelta_org_vr(fc,j)*dzsoi_decomp(j),            &
-!                                            pf_ninputs_org_vr(fc,j)*dtime*dzsoi_decomp(j),     &
-!                                            f_ngas_decomp_vr(c,j)*dtime*dzsoi_decomp(j),       &
-!                                            gross_nmin_vr(c,j)*dtime*dzsoi_decomp(j),          &
-!                                            actual_immob_vr(c,j)*dtime*dzsoi_decomp(j)
+!     if (.not. use_fates) then
+!          if (err_found) then
+!             fc = err_index
+!             write(iulog,'(A,70(1h-))')">>>--------  PFLOTRAN Mass Balance Check:beg  "
+!             write(iulog,'(A35,I15,A10,I20)')"Nitrogen Balance Error in Column = ",filters(ifilter)%soilc(fc), " @ nstep = ",get_nstep()
+!             write(iulog,'(10A15)')  "errnb", "N_in-out", "Ndelta",                          &
+!                                     "Ninputs","Noutputs", "Nbeg","Nend"
+!             write(iulog,'(10E15.6)')pf_errnb(fc), (pf_ninputs(fc) - pf_noutputs(fc))*dtime, pf_ndelta(fc),  &
+!                                     pf_ninputs(fc)*dtime,pf_noutputs(fc)*dtime,pf_nbeg(fc),pf_nend(fc)
+!             write(iulog,*)
+!             write(iulog,'(10A15)')  "errnb_org","Ndelta_org","Nbeg_org","Nend_org",         &
+!                                     "gross_nmin", "actual_immob", "pot_immob"
+!             write(iulog,'(10E15.6)')pf_errnb_org(fc),pf_ndelta_org(fc),pf_nbeg_org(fc),pf_nend_org(fc),     &
+!                                     gross_nmin(fc)*dtime,actual_immob(fc)*dtime,potential_immob(fc)*dtime
+!             write(iulog,*)
+!             write(iulog,'(10A15)')  "errnb_min","Ndelta_min","Nbeg_min","Nend_min",         &
+!                                     "Nend_no3","Nend_nh4", "Nend_nh4sorb"
+!             write(iulog,'(10E15.6)')pf_errnb_min(fc), pf_ndelta_min(fc),pf_nbeg_min(fc),pf_nend_min(fc),    &
+!                                     pf_nend_no3(fc),pf_nend_nh4(fc),pf_nend_nh4sorb(fc)
+!             write(iulog,*)
+!             write(iulog,'(10A15)')  "Ninputs_org","Ninputs_min",                            &
+!                                     "Noutputs_nit","Noutputs_denit",                        &
+!                                     "Noutputs_gas","Noutputs_veg",                          &
+!                                     "plant_Ndemand","Ngas_dec","Ngas_min"
+!             write(iulog,'(10E15.6)')pf_ninputs_org(fc)*dtime,pf_ninputs_min(fc)*dtime,              &
+!                                     pf_noutputs_nit(fc)*dtime,pf_noutputs_denit(fc)*dtime,          &
+!                                     pf_noutputs_gas(fc)*dtime,pf_noutputs_veg(fc)*dtime,            &
+!                                     plant_ndemand(fc)*dtime,pf_ngas_dec(fc)*dtime,pf_ngas_min(fc)*dtime
+! !            ! close output currently
+! !            write(iulog,*)
+! !            write(iulog,'(A10,20A15)')  "Layer","errbn_org","ndelta_org","ninputs","gross_nmin","actual_immob"
+! !            do j = 1, nlev
+! !                write(iulog,'(I10,15E15.6)')j,pf_errnb_org_vr(fc,j),                           &
+! !                                            pf_ndelta_org_vr(fc,j)*dzsoi_decomp(j),            &
+! !                                            pf_ninputs_org_vr(fc,j)*dtime*dzsoi_decomp(j),     &
+! !                                            f_ngas_decomp_vr(c,j)*dtime*dzsoi_decomp(j),       &
+! !                                            gross_nmin_vr(c,j)*dtime*dzsoi_decomp(j),          &
+! !                                            actual_immob_vr(c,j)*dtime*dzsoi_decomp(j)
 
-!            end do
-            write(iulog,'(A,70(1h-))')">>>--------  PFLOTRAN Mass Balance Check:end  "
-        end if
-    end if !(.not. use_fates)
-    end associate
-    end subroutine elm_pf_NBalanceCheck
+! !            end do
+!             write(iulog,'(A,70(1h-))')">>>--------  PFLOTRAN Mass Balance Check:end  "
+!         end if
+!     end if !(.not. use_fates)
+!     end associate
+!     end subroutine elm_pf_NBalanceCheck
 !--------------------------------------------------------------------------------------
 
 
