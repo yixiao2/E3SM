@@ -1293,7 +1293,12 @@ contains
        isinitpf = .FALSE.
     endif
 
-
+#ifdef DEBUG_ELMPFEH
+  if (masterproc) then
+     write(*,*) '[YX DEBUG][elm_interface_pflotranMod::pflotran_run_onestep] before pflotranModelUpdateFinalWaypoint'
+     !stop
+  endif
+#endif
     ! (0)
     if (isinitpf) then
       call calc_nestep()  ! nestep
@@ -1301,25 +1306,55 @@ contains
        ispfprint = .true.               ! turn-on or shut-off PF's *.h5 output
 
        call pflotranModelUpdateFinalWaypoint(pflotran_m, total_elmstep*dtime, dtime, ispfprint)
-
+#ifdef DEBUG_ELMPFEH
+  if (masterproc) then
+     write(*,*) '[YX DEBUG][elm_interface_pflotranMod::pflotran_run_onestep] pass pflotranModelUpdateFinalWaypoint'
+     !stop
+  endif
+#endif
        ! beg------------------------------------------------
        ! move from 'interface_init'
        ! force ELM soil domain into PFLOTRAN subsurface grids
        call get_elm_soil_dimension(elm_interface_data, bounds)
-
+#ifdef DEBUG_ELMPFEH
+  if (masterproc) then
+     write(*,*) '[YX DEBUG][elm_interface_pflotranMod::pflotran_run_onestep] pass get_elm_soil_dimension'
+     !stop
+  endif
+#endif
        ! Currently always set soil hydraulic/BGC properties from ELM to PF
        call get_elm_soil_properties(elm_interface_data, bounds, filters)
-
+#ifdef DEBUG_ELMPFEH
+  if (masterproc) then
+     write(*,*) '[YX DEBUG][elm_interface_pflotranMod::pflotran_run_onestep] pass get_elm_soil_properties'
+     !stop
+  endif
+#endif
        ! Get top surface area of 3-D pflotran subsurface domain
        call pflotranModelGetTopFaceArea(pflotran_m)
-
+#ifdef DEBUG_ELMPFEH
+  if (masterproc) then
+     write(*,*) '[YX DEBUG][elm_interface_pflotranMod::pflotran_run_onestep] pass pflotranModelGetTopFaceArea'
+     !stop
+  endif
+#endif
        ! end------------------------------------------------
 
        ! always initializing soil 'TH' states from ELM to pflotran
        call get_elm_soil_th(elm_interface_data, .not.initth_pf2elm, .not.initth_pf2elm, bounds, filters, ifilter)
-
+#ifdef DEBUG_ELMPFEH
+  if (masterproc) then
+     write(*,*) '[YX DEBUG][elm_interface_pflotranMod::pflotran_run_onestep] pass get_elm_soil_th'
+     !stop
+  endif
+#endif
        call pflotranModelUpdateTHfromELM(pflotran_m, .FALSE., .FALSE.)     ! pass TH to global_auxvar
-
+#ifdef DEBUG_ELMPFEH
+  if (masterproc) then
+     write(*,*) '[YX DEBUG][elm_interface_pflotranMod::pflotran_run_onestep] pass pflotranModelUpdateTHfromELM'
+     !stop
+  endif
+#endif
     endif
 
 

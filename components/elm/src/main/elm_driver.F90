@@ -1074,6 +1074,8 @@ contains
 #ifdef DEBUG_ELMPFEH
   if (masterproc) then
      write(*,*) '[YX DEBUG][elm_drver::elm_drv] start elm_pf_run'
+     write(*,*) '[YX DEBUG][elm_drver::elm_drv] use_pflotran=',use_pflotran
+       write(*,*) '[YX DEBUG][elm_drver::elm_drv] pf_cmode=',pf_cmode
      !stop
   endif
 #endif
@@ -1092,7 +1094,7 @@ contains
   if (masterproc) then
      write(*,*) '[YX DEBUG][elm_drver::elm_drv] complete elm_pf_run'
      write(*,*) '[YX DEBUG][elm_drver::elm_drv] start update_bgc_data_pf2elm'
-     !stop
+     stop
   endif
 #endif
                     ! STEP-3: update CLM from elm_interface_data
