@@ -1895,6 +1895,11 @@ Specifies the method for decomposing CLM grids across processors.
     pflotran file prefix.
 </entry>
 
+<entry id="use_pflotran_hmode_via_emi" type="logical" category="default_settings"
+    group="elm_inparm" valid_values="">
+    Runtime flag to turn on/off PFLOTRAN via EMI.
+</entry>
+
 <!-- ========================================================================================  -->
 <!-- Namelist options related to Variably Saturated Flow Model (VSFM)                          -->
 <!-- ========================================================================================  -->
