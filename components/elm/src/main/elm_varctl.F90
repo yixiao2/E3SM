@@ -391,6 +391,11 @@ module elm_varctl
   logical, public :: use_petsc_thermal_model = .false.
 
   !----------------------------------------------------------
+  ! use_pflotran_hmode/cmode_via_emi
+  !----------------------------------------------------------
+  logical, public :: use_pflotran_hmode_via_emi = .false.
+
+  !----------------------------------------------------------
   ! Stub EM switches
   !----------------------------------------------------------
   logical          , public :: use_em_stub = .false.
@@ -472,6 +477,8 @@ module elm_varctl
   !$acc declare copyin(pf_frzmode   )
   !$acc declare copyin(initth_pf2clm)
   !$acc declare copyin(pf_clmnstep0 )
+  logical, public :: pflotran_th_mode            = .false.
+  logical, public :: pflotran_th_freezing        = .false.
 
   ! cpl_bypass
    character(len=fname_len), public :: metdata_type   = ' '    ! metdata type for CPL_BYPASS mode

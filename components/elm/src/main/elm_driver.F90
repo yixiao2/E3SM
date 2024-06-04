@@ -16,6 +16,7 @@ module elm_driver
   use elm_varctl             , only : use_cn, use_lch4, use_voc, use_noio, use_c13, use_c14
   use elm_varctl             , only : use_erosion, use_fates_sp, use_fan
   use elm_varctl             , only : mpi_sync_nstep_freq
+  use elm_varctl             , only : use_pflotran_hmode_via_emi
   use elm_time_manager       , only : get_step_size, get_curr_date, get_ref_date, get_nstep, is_beg_curr_day, get_curr_time_string
   use elm_time_manager       , only : get_curr_calday, get_days_per_year
   use elm_varpar             , only : nlevsno, nlevgrnd, crop_prog
@@ -1309,21 +1310,22 @@ contains
        ! ============================================================================
        ! Check the energy and water balance, also carbon and nitrogen balance
        ! ============================================================================
+       if (.not. use_pflotran_hmode_via_emi) then
+          call t_startf('balchk')
+          call ColWaterBalanceCheck(bounds_clump, &
+               filter(nc)%num_do_smb_c, filter(nc)%do_smb_c, &
+               atm2lnd_vars, glc2lnd_vars, solarabs_vars,  &
+               energyflux_vars, canopystate_vars)
+          call t_stopf('balchk')
 
-       call t_startf('balchk')
-       call ColWaterBalanceCheck(bounds_clump, &
-            filter(nc)%num_do_smb_c, filter(nc)%do_smb_c, &
-            atm2lnd_vars, glc2lnd_vars, solarabs_vars,  &
-            energyflux_vars, canopystate_vars)
-       call t_stopf('balchk')
-
-       call t_startf('gridbalchk')
-       call GridBalanceCheck(bounds_clump                  , &
-            filter(nc)%num_do_smb_c, filter(nc)%do_smb_c   , &
-            atm2lnd_vars, glc2lnd_vars, solarabs_vars,       &
-            energyflux_vars, canopystate_vars              , &
-            soilhydrology_vars)
-       call t_stopf('gridbalchk')
+          call t_startf('gridbalchk')
+          call GridBalanceCheck(bounds_clump                  , &
+               filter(nc)%num_do_smb_c, filter(nc)%do_smb_c   , &
+               atm2lnd_vars, glc2lnd_vars, solarabs_vars,       &
+               energyflux_vars, canopystate_vars              , &
+               soilhydrology_vars)
+          call t_stopf('gridbalchk')
+       endif
 
        if (do_budgets) then
           call WaterBudget_SetEndingMonthlyStates(bounds_clump)

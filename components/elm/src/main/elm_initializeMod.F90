@@ -13,7 +13,7 @@ module elm_initializeMod
   use elm_varctl       , only : create_glacier_mec_landunit, iulog
   use elm_varctl       , only : use_lch4, use_cn, use_voc, use_c13, use_c14
   use elm_varctl       , only : use_fates, use_betr, use_fates_sp, use_fan
-  use elm_varsur       , only : wt_lunit, urban_valid, wt_nat_patch, wt_cft, wt_glc_mec, topo_glc_mec,firrig,f_surf,f_grd 
+  use elm_varsur       , only : wt_lunit, urban_valid, wt_nat_patch, wt_cft, wt_glc_mec, topo_glc_mec,firrig,f_surf,f_grd
   use elm_varsur       , only : fert_cft, fert_p_cft
   use elm_varsur       , only : wt_tunit, elv_tunit, slp_tunit,asp_tunit,num_tunit_per_grd
   use perf_mod         , only : t_startf, t_stopf
@@ -139,8 +139,8 @@ contains
        ! in the following call) for FATES runs
        call ELMFatesGlobals1()
        call update_pft_array_bounds()
-    end if    
-    
+    end if
+
     call elm_petsc_init()
     call init_soil_temperature()
 
@@ -240,23 +240,23 @@ contains
        endif
 
        call surfrd_get_topo(ldomain, flndtopo)  
-    endif    
-    
+    endif
+
     if (fsurdat /= " " .and. use_top_solar_rad) then
        if (masterproc) then
           write(iulog,*) 'Attempting to read topo parameters for TOP solar radiation parameterization from ',trim(fsurdat)
           call shr_sys_flush(iulog)
        endif
-       call surfrd_get_topo_for_solar_rad(ldomain, fsurdat)  
+       call surfrd_get_topo_for_solar_rad(ldomain, fsurdat)
 
     endif
-    
+
     !-------------------------------------------------------------------------
     ! Topounit
     !-------------------------------------------------------------------------
     call topounit_varcon_init(begg, endg,fsurdat,ldomain)  ! Topounits
     !-------------------------------------------------------------------------
-    
+
     !-------------------------------------------------------------------------
     ! Initialize urban model input (initialize urbinp data structure)
     ! This needs to be called BEFORE the call to surfrd_get_data since
@@ -266,7 +266,7 @@ contains
 
     ! Allocate surface grid dynamic memory (just gridcell bounds dependent)
 
-    allocate (wt_lunit     (begg:endg,1:max_topounits, max_lunit           )) 
+    allocate (wt_lunit     (begg:endg,1:max_topounits, max_lunit           ))
     allocate (urban_valid  (begg:endg,1:max_topounits                      ))
     allocate (wt_nat_patch (begg:endg,1:max_topounits, surfpft_lb:surfpft_ub ))
     allocate (wt_cft       (begg:endg,1:max_topounits, cft_lb:cft_ub       ))
@@ -279,8 +279,8 @@ contains
        allocate (wt_glc_mec  (1,1,1))
        allocate (topo_glc_mec(1,1,1))
     endif
-    
-    allocate (wt_tunit  (begg:endg,1:max_topounits  )) 
+
+    allocate (wt_tunit  (begg:endg,1:max_topounits  ))
     allocate (elv_tunit (begg:endg,1:max_topounits  ))
     allocate (slp_tunit (begg:endg,1:max_topounits  ))
     allocate (asp_tunit (begg:endg,1:max_topounits  ))
@@ -302,7 +302,7 @@ contains
     if (use_fates) then
        call FatesReadPFTs()
     end if
-    
+
     ! Read surface dataset and set up subgrid weight arrays
     call surfrd_get_data(begg, endg, ldomain, fsurdat)
 
@@ -343,9 +343,9 @@ contains
     
     ! Read topounit information from fsurdat
     if (has_topounit) then
-         call surfrd_topounit_data(begg, endg, fsurdat)         
+         call surfrd_topounit_data(begg, endg, fsurdat)
     end if
-    
+
     ! Initialize the topographic unit data types
     call top_pp%Init (bounds_proc%begt_all, bounds_proc%endt_all) ! topology and physical properties
     call top_as%Init (bounds_proc%begt_all, bounds_proc%endt_all) ! atmospheric state variables (forcings)
@@ -373,7 +373,7 @@ contains
     call initGridCells()
 
     ! Set global seg maps for gridcells, topounits, landlunits, columns and patches
-    !if(max_topounits > 1) then 
+    !if(max_topounits > 1) then
     !   if (create_glacier_mec_landunit) then
     !      call decompInit_gtlcp(ns, ni, nj, ldomain%glcmask,ldomain%num_tunits_per_grd)
     !   else
@@ -392,7 +392,7 @@ contains
     call t_startf('init_filters')
     call allocFilters()
     call t_stopf('init_filters')
-    
+
     nclumps = get_proc_clumps()
     !$OMP PARALLEL DO PRIVATE (nc, bounds_clump)
     do nc = 1, nclumps
@@ -580,14 +580,14 @@ contains
        call restFile_close( ncid=ncid )
        call timemgr_restart()
     end if
-    
+
     ! ------------------------------------------------------------------------
     ! Pass model timestep info to FATES
     ! ------------------------------------------------------------------------
     if(use_fates) then
        call ELMFatesTimesteps()
     end if
-    
+
     ! ------------------------------------------------------------------------
     ! Initialize daylength from the previous time step (needed so prev_dayl can be set correctly)
     ! ------------------------------------------------------------------------
@@ -714,7 +714,7 @@ contains
     end if
 
     call cnstate_vars%initAccBuffer(bounds_proc)
-    
+
     if (use_fates) then
       call alm_fates%InitAccBuffer(bounds_proc)
    end if
@@ -1085,6 +1085,7 @@ contains
     use elm_varctl               , only : vsfm_include_seepage_bc, vsfm_satfunc_type
     use elm_varctl               , only : vsfm_lateral_model_type
     use elm_varctl               , only : use_petsc_thermal_model
+    use elm_varctl               , only : use_pflotran_hmode_via_emi
     use elm_varctl               , only : lateral_connectivity
     use elm_varctl               , only : finidat
     use decompMod                , only : get_proc_clumps
@@ -1095,12 +1096,17 @@ contains
     use mpp_varctl               , only : mpp_varctl_init_petsc_thermal
     use mpp_bounds               , only : mpp_bounds_init_proc_bounds
     use mpp_bounds               , only : mpp_bounds_init_clump
-    use ExternalModelInterfaceMod, only : EMI_Init_EM
+    use ExternalModelInterfaceMod, only : EMI_Init_EM, EMI_ReadNameList_For_PFLOTRAN, EMI_Set_Restart_Stamp
     use ExternalModelConstants   , only : EM_ID_VSFM
     use ExternalModelConstants   , only : EM_ID_PTM
+    use ExternalModelConstants   , only : EM_ID_PFLOTRAN
+    use restFileMod              , only : restFile_getfile
+    use controlMod               , only : NLFilename
 
     implicit none
 
+    character(len=256)    :: fnamer       ! name of netcdf restart file
+    character(len=256)    :: pnamer       ! full pathname of netcdf restart file
     type(bounds_type) :: bounds_proc
     logical           :: restart_vsfm          ! does VSFM need to be restarted
 
@@ -1146,6 +1152,16 @@ contains
 
     if (use_petsc_thermal_model) then
        call EMI_Init_EM(EM_ID_PTM)
+    endif
+
+    if (use_pflotran_hmode_via_emi) then
+       call EMI_ReadNameList_For_PFLOTRAN(NLFilename)
+       if (nsrest /= nsrStartup) then
+          call restFile_getfile(file=fnamer, path=pnamer)
+          call EMI_Set_Restart_Stamp(fnamer)
+       end if
+
+       call EMI_Init_EM(EM_ID_PFLOTRAN)
     endif
 
     call t_stopf('elm_init3')
