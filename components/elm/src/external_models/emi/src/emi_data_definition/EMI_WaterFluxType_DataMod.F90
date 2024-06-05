@@ -25,7 +25,7 @@ contains
     ! !ARGUMENTS:
     integer            , intent(in)  :: data_id
     integer            , intent(out) :: id_val
-    character (len=*)  , intent(out) :: name_val
+    character (len=24) , intent(out) :: name_val
     character (len=128), intent(out) :: long_name_val
     character (len=24) , intent(out) :: units_val
     logical            , intent(out) :: is_int_type
@@ -39,7 +39,7 @@ contains
     character (len=24) , intent(out) :: dim3_end_name
     character (len=24) , intent(out) :: dim4_beg_name
     character (len=24) , intent(out) :: dim4_end_name
-    logical            , intent(out) :: data_found
+    logical            , intent(inout) :: data_found
 
     is_int_type    = .false.
     is_real_type   = .false.
