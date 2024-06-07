@@ -52,12 +52,12 @@ module ExternalModelPFLOTRANMod
 
      integer :: index_e2l_init_state_h2osoi_liq
      integer :: index_e2l_init_state_h2osoi_ice
-     integer :: index_e2l_init_state_h2osoi_vol
+     ! integer :: index_e2l_init_state_h2osoi_vol
      integer :: index_e2l_init_state_wtd
-     integer :: index_e2l_init_parameter_watsatc
-     integer :: index_e2l_init_parameter_hksatc
-     integer :: index_e2l_init_parameter_bswc
-     integer :: index_e2l_init_parameter_sucsatc
+     ! integer :: index_e2l_init_parameter_watsatc
+     ! integer :: index_e2l_init_parameter_hksatc
+     ! integer :: index_e2l_init_parameter_bswc
+     ! integer :: index_e2l_init_parameter_sucsatc
 
      integer :: index_e2l_init_flux_mflx_snowlyr_col
      integer :: index_l2e_init_flux_mflx_snowlyr_col
@@ -93,10 +93,10 @@ module ExternalModelPFLOTRANMod
      integer :: index_l2e_flux_drainage
 
      integer :: index_e2l_flux_qrecharge
-     integer :: index_e2l_flux_drain_perched
-     integer :: index_e2l_flux_drain
-     integer :: index_e2l_flux_qrgwl
-     integer :: index_e2l_flux_rsub_sat
+     ! integer :: index_e2l_flux_drain_perched
+     ! integer :: index_e2l_flux_drain
+     ! integer :: index_e2l_flux_qrgwl
+     ! integer :: index_e2l_flux_rsub_sat
 
      integer :: index_l2e_filter_hydrologyc
      integer :: index_l2e_filter_num_hydrologyc
@@ -117,6 +117,7 @@ module ExternalModelPFLOTRANMod
      procedure, public :: PreInit                 => EM_PFLOTRAN_PreInit
      procedure, public :: Init                    => EM_PFLOTRAN_Init
      procedure, public :: Solve                   => EM_PFLOTRAN_Solve
+     procedure, public :: Finalize                => EM_PFLOTRAN_Finalize
 
   end type em_pflotran_type
 
@@ -718,13 +719,13 @@ contains
 
     real(r8)    , pointer :: e2l_h2osoi_liq(:,:)
     real(r8)    , pointer :: e2l_h2osoi_ice(:,:)
-    real(r8)    , pointer :: e2l_h2osoi_vol(:,:)
+    ! real(r8)    , pointer :: e2l_h2osoi_vol(:,:)
     real(r8)    , pointer :: e2l_zwt(:)
     real(r8)    , pointer :: e2l_mflx_snowlyr_col(:)
     real(r8)    , pointer :: e2l_watsatc(:,:)
-    real(r8)    , pointer :: e2l_hksatc(:,:)
-    real(r8)    , pointer :: e2l_bswc(:,:)
-    real(r8)    , pointer :: e2l_sucsatc(:,:)
+    ! real(r8)    , pointer :: e2l_hksatc(:,:)
+    ! real(r8)    , pointer :: e2l_bswc(:,:)
+    ! real(r8)    , pointer :: e2l_sucsatc(:,:)
 
     real(r8)    , pointer :: dz(:,:)
 
@@ -754,13 +755,13 @@ contains
 
     call e2l_init_list%GetPointerToReal2D(this%index_e2l_init_state_h2osoi_liq      , e2l_h2osoi_liq       )
     call e2l_init_list%GetPointerToReal2D(this%index_e2l_init_state_h2osoi_ice      , e2l_h2osoi_ice       )
-    call e2l_init_list%GetPointerToReal2D(this%index_e2l_init_state_h2osoi_vol      , e2l_h2osoi_vol       )
+    ! call e2l_init_list%GetPointerToReal2D(this%index_e2l_init_state_h2osoi_vol      , e2l_h2osoi_vol       )
 
-    call e2l_init_list%GetPointerToReal2D(this%index_e2l_init_parameter_watsatc     , e2l_watsatc )
-    call e2l_init_list%GetPointerToReal2D(this%index_e2l_init_parameter_hksatc      , e2l_hksatc  )
-    call e2l_init_list%GetPointerToReal2D(this%index_e2l_init_parameter_bswc        , e2l_bswc    )
-    call e2l_init_list%GetPointerToReal2D(this%index_e2l_init_parameter_sucsatc     , e2l_sucsatc )
-    
+    ! call e2l_init_list%GetPointerToReal2D(this%index_e2l_init_parameter_watsatc     , e2l_watsatc )
+    ! call e2l_init_list%GetPointerToReal2D(this%index_e2l_init_parameter_hksatc      , e2l_hksatc  )
+    ! call e2l_init_list%GetPointerToReal2D(this%index_e2l_init_parameter_bswc        , e2l_bswc    )
+    ! call e2l_init_list%GetPointerToReal2D(this%index_e2l_init_parameter_sucsatc     , e2l_sucsatc )
+
     call pflotranModelGetSoilProp(this%pflotran_m)
 
     ! Set initial value of for ELM
@@ -768,7 +769,7 @@ contains
     e2l_zwt(:)              = 0._r8
 
     ! Initialize soil moisture
-    call VecGetArrayF90(elm_pf_idata%sat_elm      , sat_elm_loc    , ierr)
+    call VecGetArrayF90(elm_pf_idata%sat_elms      , sat_elm_loc    , ierr)
     call VecGetArrayF90(elm_pf_idata%watsat2_elm  , watsat_elm_loc , ierr)
     call VecGetArrayF90(elm_pf_idata%hksat_x2_elm , hksat_elm_loc  , ierr)
     call VecGetArrayF90(elm_pf_idata%bsw2_elm     , bsw_elm_loc    , ierr)
@@ -786,23 +787,23 @@ contains
                 if (j <= nlevmapped) then
                    e2l_h2osoi_liq(c,j) = sat_elm_loc(pf_j)*watsat_elm_loc(pf_j)*dz(c,j)*1.e3_r8
 
-                   e2l_h2osoi_vol(c,j) = e2l_h2osoi_liq(c,j)/dz(c,j)/denh2o + &
-                        l2e_h2osoi_ice(c,j)/dz(c,j)/denice
-                   e2l_h2osoi_vol(c,j) = min(e2l_h2osoi_vol(c,j),watsat_elm_loc(pf_j))
+                   ! e2l_h2osoi_vol(c,j) = e2l_h2osoi_liq(c,j)/dz(c,j)/denh2o + &
+                   !     l2e_h2osoi_ice(c,j)/dz(c,j)/denice
+                   ! e2l_h2osoi_vol(c,j) = min(e2l_h2osoi_vol(c,j),watsat_elm_loc(pf_j))
                    e2l_h2osoi_ice(c,j) = 0._r8
 
-                   e2l_watsatc(c,j) = watsat_elm_loc(pf_j)
-                   e2l_hksatc(c,j)  = hksat_elm_loc(pf_j)
-                   e2l_bswc(c,j)    = bsw_elm_loc(pf_j)
-                   e2l_sucsatc(c,j) = sucsat_elm_loc(pf_j)
+                   ! e2l_watsatc(c,j) = watsat_elm_loc(pf_j)
+                   ! e2l_hksatc(c,j)  = hksat_elm_loc(pf_j)
+                   ! e2l_bswc(c,j)    = bsw_elm_loc(pf_j)
+                   ! e2l_sucsatc(c,j) = sucsat_elm_loc(pf_j)
                 else
                    e2l_h2osoi_liq(c,j) = e2l_h2osoi_liq(c,nlevmapped)
-                   e2l_h2osoi_vol(c,j) = e2l_h2osoi_vol(c,nlevmapped)
+                   ! e2l_h2osoi_vol(c,j) = e2l_h2osoi_vol(c,nlevmapped)
                    e2l_h2osoi_ice(c,j) = 0._r8
-                   e2l_watsatc(c,j)    = e2l_watsatc(c,nlevmapped)
-                   e2l_hksatc(c,j)     = e2l_hksatc(c,nlevmapped)
-                   e2l_bswc(c,j)       = e2l_bswc(c,nlevmapped)
-                   e2l_sucsatc(c,j)    = e2l_sucsatc(c,nlevmapped)
+                   ! e2l_watsatc(c,j)    = e2l_watsatc(c,nlevmapped)
+                   ! e2l_hksatc(c,j)     = e2l_hksatc(c,nlevmapped)
+                   ! e2l_bswc(c,j)       = e2l_bswc(c,nlevmapped)
+                   ! e2l_sucsatc(c,j)    = e2l_sucsatc(c,nlevmapped)
                 end if
 
              enddo
@@ -813,7 +814,7 @@ contains
        endif
     enddo
 
-    call VecRestoreArrayF90(elm_pf_idata%sat_elm      , sat_elm_loc    , ierr)
+    call VecRestoreArrayF90(elm_pf_idata%sat_elms      , sat_elm_loc    , ierr)
     call VecRestoreArrayF90(elm_pf_idata%watsat2_elm  , watsat_elm_loc , ierr)
     call VecRestoreArrayF90(elm_pf_idata%hksat_x2_elm , hksat_elm_loc  , ierr)
     call VecRestoreArrayF90(elm_pf_idata%bsw2_elm     , bsw_elm_loc    , ierr)
@@ -846,11 +847,12 @@ contains
             bounds_clump)
 
     case default
-       write(iulog,*)'EM_FATES_Solve: Unknown em_stage.'
+       write(iulog,*)'EM_PFLOTRAN_Solve: Unknown em_stage.'
        call endrun(msg=errMsg(__FILE__, __LINE__))
     end select
 
   end subroutine EM_PFLOTRAN_Solve
+
 
     !------------------------------------------------------------------------
   subroutine EM_PFLOTRAN_Solve_Soil_Hydro(this, em_stage, dt, nstep, l2e_list, e2l_list, &
@@ -929,6 +931,7 @@ contains
     real(r8)  , pointer                  :: dmass_col              (:)            ! Change in mass of water after a VSFM solve
     real(r8)  , pointer                  :: mass_beg_col                (:)            ! Total mass before a VSFM solve
     real(r8)  , pointer                  :: mass_end_col                (:)            ! Total mass after a VSFM solve
+    real(r8)  , pointer                  :: mass_bal_error_col          (:)            ! Mass balance error for a VSFM solve
     integer                              :: ier                                                              ! error status
 
     integer                              :: begc, endc
@@ -965,6 +968,7 @@ contains
     PetscInt                             :: mass_bal_err_count                                               ! Number of time VSFM solver returns a solution that isn't within acceptable mass balance error threshold
     PetscReal                            :: abs_mass_error_col                                               ! Maximum absolute error for any active soil column
     PetscReal, parameter                 :: max_abs_mass_error_col  = 1.e-5                                  ! Acceptable mass balance error
+    PetscReal                            :: total_mass_bal_error                                             ! Sum of mass balance error for all active soil columns, only work for MPI=1
     PetscBool                            :: successful_step                                                  ! Is the solution return by VSFM acceptable
     PetscReal , pointer                  :: soilp_col_ghosted_1d(:)
     PetscReal , pointer                  :: fliq_col_ghosted_1d(:)
@@ -1002,10 +1006,12 @@ contains
     PetscScalar, pointer :: watsat_elm_loc(:)
     PetscScalar, pointer :: sat_elm_loc(:)
     PetscScalar, pointer :: mass_elm_loc(:)
-    PetscScalar, pointer :: e2l_drain_perched(:)
-    PetscScalar, pointer :: e2l_drain(:)
-    PetscScalar, pointer :: e2l_qrgwl(:)
-    PetscScalar, pointer :: e2l_rsub_sat(:)
+    ! PetscScalar, pointer :: e2l_drain_perched(:)
+    ! PetscScalar, pointer :: e2l_drain(:)
+    ! PetscScalar, pointer :: e2l_qrgwl(:)
+    ! PetscScalar, pointer :: e2l_rsub_sat(:)
+
+    PetscViewer :: viewer
 
     integer :: bounds_proc_begc, bounds_proc_endc
     integer :: nlevmapped
@@ -1044,10 +1050,10 @@ contains
     call e2l_list%GetPointerToReal2D(this%index_e2l_state_soilp      , e2l_soilp             )
 
     call e2l_list%GetPointerToReal1D(this%index_e2l_flux_qrecharge    , e2l_qrecharge        )
-    call e2l_list%GetPointerToReal1D(this%index_e2l_flux_drain_perched, e2l_drain_perched    )
-    call e2l_list%GetPointerToReal1D(this%index_e2l_flux_drain        , e2l_drain            )
-    call e2l_list%GetPointerToReal1D(this%index_e2l_flux_qrgwl        , e2l_qrgwl            )
-    call e2l_list%GetPointerToReal1D(this%index_e2l_flux_rsub_sat     , e2l_rsub_sat         )
+    ! call e2l_list%GetPointerToReal1D(this%index_e2l_flux_drain_perched, e2l_drain_perched    )
+    ! call e2l_list%GetPointerToReal1D(this%index_e2l_flux_drain        , e2l_drain            )
+    ! call e2l_list%GetPointerToReal1D(this%index_e2l_flux_qrgwl        , e2l_qrgwl            )
+    ! call e2l_list%GetPointerToReal1D(this%index_e2l_flux_rsub_sat     , e2l_rsub_sat         )
 
     begc = bounds_proc_begc
     endc = bounds_proc_endc
@@ -1067,6 +1073,7 @@ contains
     allocate(dmass_col              (begc:endc))
     allocate(mass_beg_col                (begc:endc))
     allocate(mass_end_col                (begc:endc))
+    allocate(mass_bal_error_col          (begc:endc))
 
     allocate(mflx_et_col_1d              ((endc-begc+1)*nlevgrnd))
     allocate(mflx_drain_col_1d           ((endc-begc+1)*nlevgrnd))
@@ -1104,6 +1111,7 @@ contains
 
     mass_beg_col(:)                  = 0.d0
     mass_end_col(:)                  = 0.d0
+    mass_bal_error_col(:)            = 0.d0
     total_mass_flux_col(:)           = 0.d0
     total_mass_flux_et_col(:)        = 0.d0
     total_mass_flux_infl_col(:)      = 0.d0
@@ -1112,6 +1120,7 @@ contains
     total_mass_flux_snowlyr_col(:)   = 0.d0
     total_mass_flux_sub_col(:)       = 0.d0
     total_mass_flux_lateral_col(:)   = 0.d0
+    total_mass_bal_error             = 0.d0
 
     mass_prev_col(:,:)          = 0.d0
     dmass_col(:)                = 0.d0
@@ -1121,8 +1130,8 @@ contains
     ! Get total mass
     call pflotranModelGetUpdatedData( this%pflotran_m )
 
-    call VecGetArrayF90(elm_pf_idata%mass_elm  , mass_elm_loc  , ierr); CHKERRQ(ierr)
-    call VecGetArrayF90(elm_pf_idata%area_top_face_elm, area_elm_loc, ierr); CHKERRQ(ierr)
+    call VecGetArrayF90(elm_pf_idata%mass_elms  , mass_elm_loc  , ierr); CHKERRQ(ierr)
+    call VecGetArrayF90(elm_pf_idata%area_top_face_elms, area_elm_loc, ierr); CHKERRQ(ierr)
 
     do fc = 1, l2e_num_hydrologyc
        c = l2e_filter_hydrologyc(fc)
@@ -1182,11 +1191,11 @@ contains
          total_mass_flux_snowlyr   + &
          total_mass_flux_sub       + &
          total_mass_flux_lateral
-    call VecRestoreArrayF90(elm_pf_idata%mass_elm  , mass_elm_loc  , ierr); CHKERRQ(ierr)
-    call VecRestoreArrayF90(elm_pf_idata%area_top_face_elm, area_elm_loc, ierr); CHKERRQ(ierr)
+    call VecRestoreArrayF90(elm_pf_idata%mass_elms  , mass_elm_loc  , ierr); CHKERRQ(ierr)
+    call VecRestoreArrayF90(elm_pf_idata%area_top_face_elms, area_elm_loc, ierr); CHKERRQ(ierr)
 
     call VecGetArrayF90(elm_pf_idata%qflx_elm, qflx_elm_loc, ierr); CHKERRQ(ierr)
-    call VecGetArrayF90(elm_pf_idata%area_top_face_elm, area_elm_loc, ierr); CHKERRQ(ierr)
+    call VecGetArrayF90(elm_pf_idata%area_top_face_elms, area_elm_loc, ierr); CHKERRQ(ierr)
     call VecGetArrayF90(elm_pf_idata%thetares2_elm, thetares2_elm_loc, ierr); CHKERRQ(ierr)
 
     frac_ice(:,:)       = 0.d0
@@ -1250,8 +1259,8 @@ contains
     call pflotranModelStepperRunTillPauseTime( this%pflotran_m, (nstep+1.0d0)*dtime )
     call pflotranModelGetUpdatedData( this%pflotran_m )
 
-    call VecGetArrayF90(elm_pf_idata%sat_elm   , sat_elm_loc   , ierr); CHKERRQ(ierr)
-    call VecGetArrayF90(elm_pf_idata%mass_elm  , mass_elm_loc  , ierr); CHKERRQ(ierr)
+    call VecGetArrayF90(elm_pf_idata%sat_elms   , sat_elm_loc   , ierr); CHKERRQ(ierr)
+    call VecGetArrayF90(elm_pf_idata%mass_elms  , mass_elm_loc  , ierr); CHKERRQ(ierr)
     call VecGetArrayF90(elm_pf_idata%watsat_elm, watsat_elm_loc, ierr); CHKERRQ(ierr)
 
     do fc = 1, l2e_num_hydrologyc
@@ -1275,13 +1284,23 @@ contains
 
        end do
 
+
        ! Find maximum water balance error over the column
-       !abs_mass_error_col = max(abs_mass_error_col,                     &
-       !     abs(mass_beg_col(c) - mass_end_col(c) + &
-       !     total_mass_flux_col(c)*dt))
+      !  abs_mass_error_col = max(abs_mass_error_col,                     &
+      !      abs(mass_beg_col(c) - mass_end_col(c) + &
+      !      total_mass_flux_col(c)*dt))
+       mass_bal_error_col(c) = mass_beg_col(c) - mass_end_col(c) + total_mass_flux_col(c)*dt
        e2l_qrecharge     (c) = 0._r8
 
        e2l_wtd(c) = l2e_zi(c,nlevmapped)
+! #ifdef DEBUG_ELMPFEH
+!       write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] water balance check col'
+!       write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] |- c=', c
+!       write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] |- mass_bal_error_col(c) =', mass_bal_error_col(c)
+!       write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] |- mass_beg_col(c) =', mass_beg_col(c)
+!       write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] |- mass_end_col(c) =', mass_end_col(c)
+!       write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] |- total_mass_flux_col(c)*dt =', total_mass_flux_col(c)*dt
+! #endif
     end do
 
     ! Save soil liquid pressure from VSFM for all (active+nonactive) cells.
@@ -1293,16 +1312,20 @@ contains
        end do
     end do
 
-    e2l_drain_perched (:) = 0._r8
-    e2l_drain         (:) = 0._r8
-    e2l_qrgwl         (:) = 0._r8
-    e2l_rsub_sat      (:) = 0._r8
-    
-    call VecRestoreArrayF90(elm_pf_idata%area_top_face_elm, area_elm_loc, ierr); CHKERRQ(ierr)
-    call VecRestoreArrayF90(elm_pf_idata%sat_elm   , sat_elm_loc   , ierr); CHKERRQ(ierr)
-    call VecRestoreArrayF90(elm_pf_idata%mass_elm  , mass_elm_loc  , ierr); CHKERRQ(ierr)
+    ! e2l_drain_perched (:) = 0._r8
+    ! e2l_drain         (:) = 0._r8
+    ! e2l_qrgwl         (:) = 0._r8
+    ! e2l_rsub_sat      (:) = 0._r8
+
+
+    call VecRestoreArrayF90(elm_pf_idata%area_top_face_elms, area_elm_loc, ierr); CHKERRQ(ierr)
+    call VecRestoreArrayF90(elm_pf_idata%sat_elms   , sat_elm_loc   , ierr); CHKERRQ(ierr)
+    call VecRestoreArrayF90(elm_pf_idata%mass_elms  , mass_elm_loc  , ierr); CHKERRQ(ierr)
     call VecRestoreArrayF90(elm_pf_idata%watsat_elm, watsat_elm_loc, ierr); CHKERRQ(ierr)
 
+#ifdef PRINT_INTERNALFLOW
+    call pflotranModelGetInternalflow( this%pflotran_m )
+#endif
 
     deallocate(frac_ice                    )
     deallocate(total_mass_flux_col         )
@@ -1319,6 +1342,7 @@ contains
     deallocate(dmass_col              )
     deallocate(mass_beg_col                )
     deallocate(mass_end_col                )
+    deallocate(mass_bal_error_col          )
 
     deallocate(mflx_et_col_1d              )
     deallocate(mflx_drain_col_1d           )
@@ -1335,6 +1359,31 @@ contains
     deallocate(sat_col_1d             )
 
   end subroutine EM_PFLOTRAN_Solve_Soil_Hydro
+
+  subroutine EM_PFLOTRAN_Finalize(this)
+  !
+  ! Finalizes the ELM-PFLOTRAN coupling
+  !
+  ! Author: Yi Xiao
+  ! Date: 8/23/2024
+  !
+    use pflotran_model_module         , only : pflotranModelDestroy, pflotranModelStepperRunFinalize
+    use elm_pflotran_interface_data   , only : ELMPFLOTRANIDataDestroy
+
+    implicit none
+    ! !ARGUMENTS:
+    class(em_pflotran_type)              :: this
+    PetscErrorCode                       :: ierr
+
+    !! Finalize PFLOTRAN Stepper
+    !call pflotranModelStepperRunFinalize(this%pflotran_m)
+
+    call ELMPFLOTRANIDataDestroy()
+
+    call pflotranModelDestroy(this%pflotran_m)
+
+    !call MPI_Finalize(ierr);CHKERRQ(ierr)
+  end subroutine EM_PFLOTRAN_Finalize
 
 #endif
 end module ExternalModelPFLOTRANMod

@@ -67,10 +67,16 @@ module ExternalModelInterfaceMod
   class(em_stub_type)                , pointer :: em_stub(:)
 
   public :: EMI_Determine_Active_EMs
-  public :: EMI_Init_EM
-  public :: EMI_Driver
   public :: EMI_Set_Restart_Stamp
   public :: EMI_ReadNameList_For_PFLOTRAN
+  private:: EMI_Setup_Data_List
+  private:: EMI_Setup_Data
+  public :: EMI_Init_EM
+  public :: EMI_Driver
+  private:: EMID_Reset_Data_for_EM
+  private:: EMID_Verify_All_Data_Is_Set
+  public :: EMI_Finalize_For_PFLOTRAN
+
 
 contains
 
@@ -959,6 +965,7 @@ contains
     use CNCarbonStateType      , only : carbonstate_type
     use ExternalModelBETRMod   , only : EM_BETR_Solve
     use decompMod              , only : get_clump_bounds
+    use ColumnDataType         , only : col_wf
     !
     implicit none
     !
@@ -1378,5 +1385,21 @@ contains
     enddo
 
   end subroutine EMID_Verify_All_Data_Is_Set
+
+!-----------------------------------------------------------------------
+  subroutine EMI_Finalize_For_PFLOTRAN()
+    !
+    ! !DESCRIPTION:
+    ! Finalize the External Model Interface for PFLOTRAN
+    !
+    implicit none
+    !
+    integer                       :: clump_rank
+#ifdef USE_PETSC_LIB
+   do clump_rank = 1, nclumps
+      call em_pflotran(clump_rank)%Finalize()
+   enddo
+#endif
+  end subroutine EMI_Finalize_For_PFLOTRAN
 
 end module ExternalModelInterfaceMod
