@@ -133,22 +133,7 @@ contains
       h2osoi_vol         =>    col_ws%h2osoi_vol        , & ! Output: [real(r8) (:,:) ] liquid water (kg/m2)
       h2osoi_liq         =>    col_ws%h2osoi_liq          & ! Output: [real(r8) (:,:) ] liquid water (kg/m2)
     )
-#ifdef DEBUG_ELMPFEH
-  !if (masterproc) then
-     write(*,*) '[YX DEBUG][SoilWaterMovementMod::SoilWater] soilroot_water_method = ', soilroot_water_method
-     !stop
-  !endif
-#ifdef USE_PETSC_LIB
-    write(*,*) '[YX DEBUG][SoilWaterMovementMod::SoilWater] USE_PETSC_LIB is defined '
-#else
-    write(*,*) '[YX DEBUG][SoilWaterMovementMod::SoilWater] USE_PETSC_LIB is NOT defined '
-#endif
-#ifdef _OPENACC
-    write(*,*) '[YX DEBUG][SoilWaterMovementMod::SoilWater] _OPENACC is defined '
-#else
-    write(*,*) '[YX DEBUG][SoilWaterMovementMod::SoilWater] _OPENACC is NOT defined '
-#endif
-#endif
+
     select case(soilroot_water_method)
 
     case (zengdecker_2009)
@@ -184,12 +169,7 @@ contains
        call Prepare_Data_for_EM_VSFM_Driver(bounds, num_hydrologyc, filter_hydrologyc, &
             soilhydrology_vars, soilstate_vars, &
             waterflux_vars, waterstate_vars, temperature_vars)
-#ifdef DEBUG_ELMPFEH
-  !if (masterproc) then
-     write(*,*) '[YX DEBUG][SoilWaterMovementMod::SoilWater] pass Prepare_Data_for_EM_VSFM_Driver '
-     !stop
-  !endif
-#endif
+
        call EMI_Driver(EM_ID_PFLOTRAN, EM_PFLOTRAN_SOIL_HYDRO_STAGE, dt = get_step_size()*1.0_r8, &
             number_step = get_nstep(), &
             clump_rank  = bounds%clump_index, &

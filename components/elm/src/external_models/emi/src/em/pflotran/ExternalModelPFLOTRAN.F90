@@ -52,12 +52,12 @@ module ExternalModelPFLOTRANMod
 
      integer :: index_e2l_init_state_h2osoi_liq
      integer :: index_e2l_init_state_h2osoi_ice
-     integer :: index_e2l_init_state_h2osoi_vol
+     ! integer :: index_e2l_init_state_h2osoi_vol
      integer :: index_e2l_init_state_wtd
-     integer :: index_e2l_init_parameter_watsatc
-     integer :: index_e2l_init_parameter_hksatc
-     integer :: index_e2l_init_parameter_bswc
-     integer :: index_e2l_init_parameter_sucsatc
+     ! integer :: index_e2l_init_parameter_watsatc
+     ! integer :: index_e2l_init_parameter_hksatc
+     ! integer :: index_e2l_init_parameter_bswc
+     ! integer :: index_e2l_init_parameter_sucsatc
 
      integer :: index_e2l_init_flux_mflx_snowlyr_col
      integer :: index_l2e_init_flux_mflx_snowlyr_col
@@ -147,11 +147,21 @@ contains
     id                                         = L2E_STATE_WTD
     call l2e_init_list%AddDataByID(id, number_em_stages, em_stages, index)
     this%index_l2e_init_state_wtd              = index
-
+#ifdef DEBUG_ELMPFEH
+   !if (masterproc) then
+       write(*,*) '[YX DEBUG][ExternalModelPFLOTRAN::EM_PFLOTRAN_Populate_L2E_Init_List] pass add L2E_STATE_WTD'
+       !stop
+   !endif
+#endif
     id                                         = L2E_STATE_VSFM_PROGNOSTIC_SOILP
     call l2e_init_list%AddDataByID(id, number_em_stages, em_stages, index)
     this%index_l2e_init_state_soilp            = index
-
+#ifdef DEBUG_ELMPFEH
+   !if (masterproc) then
+       write(*,*) '[YX DEBUG][ExternalModelPFLOTRAN::EM_PFLOTRAN_Populate_L2E_Init_List] pass add L2E_STATE_VSFM_PROGNOSTIC_SOILP'
+       !stop
+   !endif
+#endif
     id                                         = L2E_FLUX_RESTART_SNOW_LYR_DISAPPERANCE_MASS_FLUX
     call l2e_init_list%AddDataByID(id, number_em_stages, em_stages, index)
     this%index_l2e_init_flux_mflx_snowlyr_col  = index
@@ -482,22 +492,52 @@ contains
 
     ! Create ELM-PFLOTRAN mapping files
     call CreateELMPFLOTRANInterfaceDate(this, bounds_clump, elm_npts, elm_surf_npts)
-
+#ifdef DEBUG_ELMPFEH
+  !if (masterproc) then
+     write(*,*) '[YX DEBUG][ExternalModelPFLOTRAN::EMPFLOTRAN_Init] pass CreateELMPFLOTRANInterfaceDate'
+     !stop
+  !endif
+#endif
     ! Create ELM-PFLOTRAN mapping files
     call CreateELMPFLOTRANMaps(this, bounds_clump, elm_npts, elm_surf_npts)
-
+#ifdef DEBUG_ELMPFEH
+  !if (masterproc) then
+     write(*,*) '[YX DEBUG][ExternalModelPFLOTRAN::EMPFLOTRAN_Init] pass CreateELMPFLOTRANMaps'
+     !stop
+  !endif
+#endif
     ! Initialize PFLOTRAN states
     call pflotranModelStepperRunInit(this%pflotran_m)
-
+#ifdef DEBUG_ELMPFEH
+  !if (masterproc) then
+     write(*,*) '[YX DEBUG][ExternalModelPFLOTRAN::EMPFLOTRAN_Init] pass pflotranModelStepperRunInit'
+     !stop
+  !endif
+#endif
     ! Get top surface area
     call pflotranModelGetTopFaceArea(this%pflotran_m)
-
+#ifdef DEBUG_ELMPFEH
+  !if (masterproc) then
+     write(*,*) '[YX DEBUG][ExternalModelPFLOTRAN::EMPFLOTRAN_Init] pass pflotranModelGetTopFaceArea'
+     !stop
+  !endif
+#endif
     ! Get PFLOTRAN states
     call pflotranModelGetUpdatedData(this%pflotran_m)
-
+#ifdef DEBUG_ELMPFEH
+  !if (masterproc) then
+     write(*,*) '[YX DEBUG][ExternalModelPFLOTRAN::EMPFLOTRAN_Init] pass pflotranModelGetUpdatedData'
+     !stop
+  !endif
+#endif
     ! Save the data need by ELM
     call extract_data_for_elm(this, l2e_init_list, e2l_init_list, bounds_clump)
-
+#ifdef DEBUG_ELMPFEH
+  !if (masterproc) then
+     write(*,*) '[YX DEBUG][ExternalModelPFLOTRAN::EMPFLOTRAN_Init] pass extract_data_for_elm'
+     !stop
+  !endif
+#endif
   end subroutine EM_PFLOTRAN_Init
 
   !-----------------------------------------------------------------------
@@ -718,13 +758,13 @@ contains
 
     real(r8)    , pointer :: e2l_h2osoi_liq(:,:)
     real(r8)    , pointer :: e2l_h2osoi_ice(:,:)
-    real(r8)    , pointer :: e2l_h2osoi_vol(:,:)
+    ! real(r8)    , pointer :: e2l_h2osoi_vol(:,:)
     real(r8)    , pointer :: e2l_zwt(:)
     real(r8)    , pointer :: e2l_mflx_snowlyr_col(:)
     real(r8)    , pointer :: e2l_watsatc(:,:)
-    real(r8)    , pointer :: e2l_hksatc(:,:)
-    real(r8)    , pointer :: e2l_bswc(:,:)
-    real(r8)    , pointer :: e2l_sucsatc(:,:)
+    ! real(r8)    , pointer :: e2l_hksatc(:,:)
+    ! real(r8)    , pointer :: e2l_bswc(:,:)
+    ! real(r8)    , pointer :: e2l_sucsatc(:,:)
 
     real(r8)    , pointer :: dz(:,:)
 
@@ -754,13 +794,13 @@ contains
 
     call e2l_init_list%GetPointerToReal2D(this%index_e2l_init_state_h2osoi_liq      , e2l_h2osoi_liq       )
     call e2l_init_list%GetPointerToReal2D(this%index_e2l_init_state_h2osoi_ice      , e2l_h2osoi_ice       )
-    call e2l_init_list%GetPointerToReal2D(this%index_e2l_init_state_h2osoi_vol      , e2l_h2osoi_vol       )
+    ! call e2l_init_list%GetPointerToReal2D(this%index_e2l_init_state_h2osoi_vol      , e2l_h2osoi_vol       )
 
-    call e2l_init_list%GetPointerToReal2D(this%index_e2l_init_parameter_watsatc     , e2l_watsatc )
-    call e2l_init_list%GetPointerToReal2D(this%index_e2l_init_parameter_hksatc      , e2l_hksatc  )
-    call e2l_init_list%GetPointerToReal2D(this%index_e2l_init_parameter_bswc        , e2l_bswc    )
-    call e2l_init_list%GetPointerToReal2D(this%index_e2l_init_parameter_sucsatc     , e2l_sucsatc )
-    
+    ! call e2l_init_list%GetPointerToReal2D(this%index_e2l_init_parameter_watsatc     , e2l_watsatc )
+    ! call e2l_init_list%GetPointerToReal2D(this%index_e2l_init_parameter_hksatc      , e2l_hksatc  )
+    ! call e2l_init_list%GetPointerToReal2D(this%index_e2l_init_parameter_bswc        , e2l_bswc    )
+    ! call e2l_init_list%GetPointerToReal2D(this%index_e2l_init_parameter_sucsatc     , e2l_sucsatc )
+
     call pflotranModelGetSoilProp(this%pflotran_m)
 
     ! Set initial value of for ELM
@@ -786,23 +826,23 @@ contains
                 if (j <= nlevmapped) then
                    e2l_h2osoi_liq(c,j) = sat_elm_loc(pf_j)*watsat_elm_loc(pf_j)*dz(c,j)*1.e3_r8
 
-                   e2l_h2osoi_vol(c,j) = e2l_h2osoi_liq(c,j)/dz(c,j)/denh2o + &
-                        l2e_h2osoi_ice(c,j)/dz(c,j)/denice
-                   e2l_h2osoi_vol(c,j) = min(e2l_h2osoi_vol(c,j),watsat_elm_loc(pf_j))
+                   ! e2l_h2osoi_vol(c,j) = e2l_h2osoi_liq(c,j)/dz(c,j)/denh2o + &
+                   !     l2e_h2osoi_ice(c,j)/dz(c,j)/denice
+                   ! e2l_h2osoi_vol(c,j) = min(e2l_h2osoi_vol(c,j),watsat_elm_loc(pf_j))
                    e2l_h2osoi_ice(c,j) = 0._r8
 
-                   e2l_watsatc(c,j) = watsat_elm_loc(pf_j)
-                   e2l_hksatc(c,j)  = hksat_elm_loc(pf_j)
-                   e2l_bswc(c,j)    = bsw_elm_loc(pf_j)
-                   e2l_sucsatc(c,j) = sucsat_elm_loc(pf_j)
+                   ! e2l_watsatc(c,j) = watsat_elm_loc(pf_j)
+                   ! e2l_hksatc(c,j)  = hksat_elm_loc(pf_j)
+                   ! e2l_bswc(c,j)    = bsw_elm_loc(pf_j)
+                   ! e2l_sucsatc(c,j) = sucsat_elm_loc(pf_j)
                 else
                    e2l_h2osoi_liq(c,j) = e2l_h2osoi_liq(c,nlevmapped)
-                   e2l_h2osoi_vol(c,j) = e2l_h2osoi_vol(c,nlevmapped)
+                   ! e2l_h2osoi_vol(c,j) = e2l_h2osoi_vol(c,nlevmapped)
                    e2l_h2osoi_ice(c,j) = 0._r8
-                   e2l_watsatc(c,j)    = e2l_watsatc(c,nlevmapped)
-                   e2l_hksatc(c,j)     = e2l_hksatc(c,nlevmapped)
-                   e2l_bswc(c,j)       = e2l_bswc(c,nlevmapped)
-                   e2l_sucsatc(c,j)    = e2l_sucsatc(c,nlevmapped)
+                   ! e2l_watsatc(c,j)    = e2l_watsatc(c,nlevmapped)
+                   ! e2l_hksatc(c,j)     = e2l_hksatc(c,nlevmapped)
+                   ! e2l_bswc(c,j)       = e2l_bswc(c,nlevmapped)
+                   ! e2l_sucsatc(c,j)    = e2l_sucsatc(c,nlevmapped)
                 end if
 
              enddo

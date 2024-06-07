@@ -1198,7 +1198,7 @@ contains
 #ifdef DEBUG_ELMPFEH
   !if (masterproc) then
      write(*,*) '[YX DEBUG][ExternalModelInterfaceMod::EMI_Driver] before call em_pflotran%Solve'
-     stop
+     !stop
   !endif
 #endif
 #ifdef USE_PETSC_LIB
