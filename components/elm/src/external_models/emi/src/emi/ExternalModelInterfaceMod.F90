@@ -959,6 +959,7 @@ contains
     use CNCarbonStateType      , only : carbonstate_type
     use ExternalModelBETRMod   , only : EM_BETR_Solve
     use decompMod              , only : get_clump_bounds
+    use ColumnDataType         , only : col_wf
     !
     implicit none
     !
@@ -1016,7 +1017,14 @@ contains
     case default
        call endrun('Unknown External Model')
     end select
-
+#ifdef DEBUG_ELMPFEH
+     write(*,*) '[YX DEBUG][ExternalModelInterfaceMod::EMI_Driver] checkpoint -1'
+     write(*,*) '[YX DEBUG][ExternalModelInterfaceMod::EMI_Driver] |- col_wf%mflx_infl=', col_wf%mflx_infl
+     write(*,*) '[YX DEBUG][ExternalModelInterfaceMod::EMI_Driver] |- col_wf%mflx_dew=', col_wf%mflx_dew
+     write(*,*) '[YX DEBUG][ExternalModelInterfaceMod::EMI_Driver] |- col_wf%mflx_sub_snow=', col_wf%mflx_sub_snow
+     write(*,*) '[YX DEBUG][ExternalModelInterfaceMod::EMI_Driver] |- col_wf%mflx_snowlyr=', col_wf%mflx_snowlyr
+     !stop
+#endif
     ! ------------------------------------------------------------------------
     ! Pack the data for EM
     ! ------------------------------------------------------------------------
@@ -1033,13 +1041,23 @@ contains
     if ( present(temperature_vars) .and. &
          present(num_hydrologyc)   .and. &
          present(filter_hydrologyc)) then
-
+#ifdef DEBUG_ELMPFEH
+     write(*,*) '[YX DEBUG][ExternalModelInterfaceMod::EMI_Driver] EMI_Pack_TemperatureType_at_Column_Level_for_EM'
+     write(*,*) '[YX DEBUG][ExternalModelInterfaceMod::EMI_Driver] |- col_wf%mflx_infl=', col_wf%mflx_infl
+     write(*,*) '[YX DEBUG][ExternalModelInterfaceMod::EMI_Driver] |- col_wf%mflx_dew=', col_wf%mflx_dew
+     write(*,*) '[YX DEBUG][ExternalModelInterfaceMod::EMI_Driver] |- col_wf%mflx_sub_snow=', col_wf%mflx_sub_snow
+     write(*,*) '[YX DEBUG][ExternalModelInterfaceMod::EMI_Driver] |- col_wf%mflx_snowlyr=', col_wf%mflx_snowlyr
+     !stop
+#endif
        call EMI_Pack_TemperatureType_at_Column_Level_for_EM(l2e_driver_list(iem), em_stage, &
             num_hydrologyc, filter_hydrologyc, temperature_vars)
 
        elseif (present(num_nolakec_and_nourbanc)  .and. &
                present(filter_nolakec_and_nourbanc)) then
-
+#ifdef DEBUG_ELMPFEH
+     write(*,*) '[YX DEBUG][ExternalModelInterfaceMod::EMI_Driver] EMI_Pack_TemperatureType_at_Column_Level_for_EM2'
+     !stop
+#endif
        call EMI_Pack_TemperatureType_at_Column_Level_for_EM(l2e_driver_list(iem), em_stage, &
             num_nolakec_and_nourbanc, filter_nolakec_and_nourbanc, temperature_vars)
     endif
@@ -1047,13 +1065,19 @@ contains
     if ( present(waterstate_vars)) then
        if (present(num_hydrologyc)  .and. &
            present(filter_hydrologyc)) then
-
+#ifdef DEBUG_ELMPFEH
+     write(*,*) '[YX DEBUG][ExternalModelInterfaceMod::EMI_Driver] EMI_Pack_WaterStateType_at_Column_Level_for_EM'
+     !stop
+#endif
           call EMI_Pack_WaterStateType_at_Column_Level_for_EM(l2e_driver_list(iem), em_stage, &
                num_hydrologyc, filter_hydrologyc, waterstate_vars)
 
        elseif (present(num_nolakec_and_nourbanc)  .and. &
                present(filter_nolakec_and_nourbanc)) then
-
+#ifdef DEBUG_ELMPFEH
+     write(*,*) '[YX DEBUG][ExternalModelInterfaceMod::EMI_Driver] EMI_Pack_WaterStateType_at_Column_Level_for_EM2'
+     !stop
+#endif
           call EMI_Pack_WaterStateType_at_Column_Level_for_EM(l2e_driver_list(iem), em_stage, &
                num_nolakec_and_nourbanc, filter_nolakec_and_nourbanc, waterstate_vars)
        else
@@ -1068,7 +1092,10 @@ contains
           do ii = 1, num_filter_col
              filter_col(ii) = bounds_clump%begc + ii - 1
           enddo
-
+#ifdef DEBUG_ELMPFEH
+     write(*,*) '[YX DEBUG][ExternalModelInterfaceMod::EMI_Driver] EMI_Pack_WaterStateType_at_Column_Level_for_EM3'
+     !stop
+#endif
           call EMI_Pack_WaterStateType_at_Column_Level_for_EM(l2e_driver_list(iem), em_stage, &
                num_filter_col, filter_col, waterstate_vars)
           deallocate(filter_col)
@@ -1078,14 +1105,20 @@ contains
     if ( present(waterflux_vars) .and. &
          present(num_hydrologyc) .and. &
          present(filter_hydrologyc)) then
-
+#ifdef DEBUG_ELMPFEH
+     write(*,*) '[YX DEBUG][ExternalModelInterfaceMod::EMI_Driver] EMI_Pack_WaterFluxType_at_Column_Level_for_EM'
+     !stop
+#endif
        call EMI_Pack_WaterFluxType_at_Column_Level_for_EM(l2e_driver_list(iem), em_stage, &
             num_hydrologyc, filter_hydrologyc, waterflux_vars)
     endif
 
     if ( present(num_nolakec_and_nourbanc) .and. &
          present(filter_nolakec_and_nourbanc)) then
-
+#ifdef DEBUG_ELMPFEH
+     write(*,*) '[YX DEBUG][ExternalModelInterfaceMod::EMI_Driver] EMI_Pack_EnergyFluxType_at_Column_Level_for_EM'
+     !stop
+#endif
        call EMI_Pack_EnergyFluxType_at_Column_Level_for_EM(l2e_driver_list(iem), em_stage, &
             num_nolakec_and_nourbanc, filter_nolakec_and_nourbanc, energyflux_vars)
 
@@ -1093,7 +1126,10 @@ contains
 
     if ( present(num_hydrologyc) .and. &
          present(filter_hydrologyc)) then
-
+#ifdef DEBUG_ELMPFEH
+     write(*,*) '[YX DEBUG][ExternalModelInterfaceMod::EMI_Driver] EMI_Pack_Filter_for_EM'
+     !stop
+#endif
        call EMI_Pack_Filter_for_EM(l2e_driver_list(iem), em_stage, &
             num_hydrologyc, filter_hydrologyc)
 
@@ -1104,7 +1140,10 @@ contains
 
     if ( present(num_nolakec) .and. &
          present(filter_nolakec)) then
-
+#ifdef DEBUG_ELMPFEH
+     write(*,*) '[YX DEBUG][ExternalModelInterfaceMod::EMI_Driver] EMI_Pack_Filter_for_EM2'
+     !stop
+#endif
        call EMI_Pack_Filter_for_EM(l2e_driver_list(iem), em_stage, &
             num_nolakec, filter_nolakec)
 
@@ -1115,7 +1154,10 @@ contains
 
     if ( present(num_nolakec_and_nourbanc) .and. &
          present(filter_nolakec_and_nourbanc)) then
-
+#ifdef DEBUG_ELMPFEH
+     write(*,*) '[YX DEBUG][ExternalModelInterfaceMod::EMI_Driver] EMI_Pack_Filter_for_EM3'
+     !stop
+#endif
        call EMI_Pack_Filter_for_EM(l2e_driver_list(iem), em_stage, &
             num_nolakec_and_nourbanc, filter_nolakec_and_nourbanc)
 
@@ -1126,13 +1168,20 @@ contains
 
     if ( present(num_filter_lun) .and. &
          present(filter_lun)) then
-
+#ifdef DEBUG_ELMPFEH
+     write(*,*) '[YX DEBUG][ExternalModelInterfaceMod::EMI_Driver] EMI_Pack_Landunit_for_EM'
+     !stop
+#endif
        call EMI_Pack_Landunit_for_EM(l2e_driver_list(iem), em_stage, &
             num_filter_lun, filter_lun)
 
     endif
 
     if (present(atm2lnd_vars)) then
+#ifdef DEBUG_ELMPFEH
+     write(*,*) '[YX DEBUG][ExternalModelInterfaceMod::EMI_Driver] EMI_Pack_Atm2LndType_at_Grid_Level_for_EM'
+     !stop
+#endif
        ! GB_FIX_ME: Create a temporary filter
        if (present(clump_rank)) then
           call get_clump_bounds(clump_rank, bounds_clump)
@@ -1171,6 +1220,10 @@ contains
     if (present(carbonstate_vars)  .and. &
          present(num_hydrologyc)   .and. &
          present(filter_hydrologyc)) then
+#ifdef DEBUG_ELMPFEH
+     write(*,*) '[YX DEBUG][ExternalModelInterfaceMod::EMI_Driver] EMI_Pack_CNCarbonStateType_at_Column_Level_for_EM'
+     !stop
+#endif
        call EMI_Pack_CNCarbonStateType_at_Column_Level_for_EM(l2e_driver_list(iem), em_stage, &
             num_hydrologyc, filter_hydrologyc, carbonstate_vars)
     endif
@@ -1196,10 +1249,9 @@ contains
 
     case (EM_ID_PFLOTRAN)
 #ifdef DEBUG_ELMPFEH
-  !if (masterproc) then
      write(*,*) '[YX DEBUG][ExternalModelInterfaceMod::EMI_Driver] before call em_pflotran%Solve'
+     write(*,*) '[YX DEBUG][ExternalModelInterfaceMod::EMI_Driver] em_stage = ', em_stage
      !stop
-  !endif
 #endif
 #ifdef USE_PETSC_LIB
        call em_pflotran(clump_rank)%Solve(em_stage, dtime, nstep, clump_rank, &
@@ -1236,10 +1288,17 @@ contains
     ! ------------------------------------------------------------------------
     ! Unpack the data for EM
     ! ------------------------------------------------------------------------
+#ifdef DEBUG_ELMPFEH
+     write(*,*) '[YX DEBUG][ExternalModelInterfaceMod::EMI_Driver] before EMI_Unpack_xxx'
+     !stop
+#endif
     if ( present(waterstate_vars) .and. &
          present(num_hydrologyc)  .and. &
          present(filter_hydrologyc)) then
-
+#ifdef DEBUG_ELMPFEH
+     write(*,*) '[YX DEBUG][ExternalModelInterfaceMod::EMI_Driver] EMI_Unpack_WaterStateType_at_Column_Level_from_EM'
+     !stop
+#endif
        call EMI_Unpack_WaterStateType_at_Column_Level_from_EM(e2l_driver_list(iem), em_stage, &
             num_hydrologyc, filter_hydrologyc, waterstate_vars)
     endif
@@ -1247,7 +1306,10 @@ contains
     if ( present(waterflux_vars) .and. &
          present(num_hydrologyc) .and. &
          present(filter_hydrologyc)) then
-
+#ifdef DEBUG_ELMPFEH
+     write(*,*) '[YX DEBUG][ExternalModelInterfaceMod::EMI_Driver] EMI_Unpack_WaterFluxType_at_Column_Level_from_EM'
+     !stop
+#endif
        call EMI_Unpack_WaterFluxType_at_Column_Level_from_EM(e2l_driver_list(iem), em_stage, &
             num_hydrologyc, filter_hydrologyc, waterflux_vars)
     endif
@@ -1255,7 +1317,10 @@ contains
     if ( present(soilstate_vars) .and. &
          present(num_hydrologyc) .and. &
          present(filter_hydrologyc)) then
-
+#ifdef DEBUG_ELMPFEH
+     write(*,*) '[YX DEBUG][ExternalModelInterfaceMod::EMI_Driver] EMI_Unpack_SoilStateType_at_Column_Level_from_EM'
+     !stop
+#endif
        call EMI_Unpack_SoilStateType_at_Column_Level_from_EM(e2l_driver_list(iem), em_stage, &
             num_hydrologyc, filter_hydrologyc, soilstate_vars)
     endif
@@ -1263,12 +1328,19 @@ contains
     if ( present(soilhydrology_vars) .and. &
          present(num_hydrologyc)     .and. &
          present(filter_hydrologyc)) then
-
+#ifdef DEBUG_ELMPFEH
+     write(*,*) '[YX DEBUG][ExternalModelInterfaceMod::EMI_Driver] EMI_Unpack_SoilHydrologyType_at_Column_Level_from_EM'
+     !stop
+#endif
        call EMI_Unpack_SoilHydrologyType_at_Column_Level_from_EM(e2l_driver_list(iem), em_stage, &
             num_hydrologyc, filter_hydrologyc, soilhydrology_vars)
     endif
 
     if (present(canopystate_vars)) then
+#ifdef DEBUG_ELMPFEH
+     write(*,*) '[YX DEBUG][ExternalModelInterfaceMod::EMI_Driver] EMI_Unpack_CanopyStateType_at_Patch_Level_from_EM'
+     !stop
+#endif
           ! GB_FIX_ME: Create a temporary filter
           if (present(clump_rank)) then
              call get_clump_bounds(clump_rank, bounds_clump)
@@ -1288,7 +1360,10 @@ contains
     if ( present(temperature_vars) .and. &
          present(num_nolakec_and_nourbanc)     .and. &
          present(filter_nolakec_and_nourbanc)) then
-
+#ifdef DEBUG_ELMPFEH
+     write(*,*) '[YX DEBUG][ExternalModelInterfaceMod::EMI_Driver] EMI_Unpack_TemperatureType_at_Column_Level_from_EM'
+     !stop
+#endif
        call EMI_Unpack_TemperatureType_at_Column_Level_from_EM(e2l_driver_list(iem), em_stage, &
             num_nolakec_and_nourbanc, filter_nolakec_and_nourbanc, temperature_vars)
     endif
@@ -1296,6 +1371,10 @@ contains
     if (present(carbonstate_vars)  .and. &
          present(num_hydrologyc)   .and. &
          present(filter_hydrologyc)) then
+#ifdef DEBUG_ELMPFEH
+     write(*,*) '[YX DEBUG][ExternalModelInterfaceMod::EMI_Driver] EMI_Unpack_CNCarbonStateType_at_Column_Level_from_EM'
+     !stop
+#endif
        call EMI_Unpack_CNCarbonStateType_at_Column_Level_from_EM(e2l_driver_list(iem), em_stage, &
             num_hydrologyc, filter_hydrologyc, carbonstate_vars)
     endif

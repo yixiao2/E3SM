@@ -93,10 +93,10 @@ module ExternalModelPFLOTRANMod
      integer :: index_l2e_flux_drainage
 
      integer :: index_e2l_flux_qrecharge
-     integer :: index_e2l_flux_drain_perched
-     integer :: index_e2l_flux_drain
-     integer :: index_e2l_flux_qrgwl
-     integer :: index_e2l_flux_rsub_sat
+     ! integer :: index_e2l_flux_drain_perched
+     ! integer :: index_e2l_flux_drain
+     ! integer :: index_e2l_flux_qrgwl
+     ! integer :: index_e2l_flux_rsub_sat
 
      integer :: index_l2e_filter_hydrologyc
      integer :: index_l2e_filter_num_hydrologyc
@@ -465,8 +465,13 @@ contains
     character(len=*), intent(in) :: restart_stamp
     
     this%pflotran_m => pflotranModelCreate(mpicom, prefix)
+#ifdef DEBUG_ELMPFEH
+     write(*,*) '[YX DEBUG][ExternalModelPFLOTRAN::EM_PFLOTRAN_PreInit] pass pflotranModelCreate'
+#endif
     call pflotranModelSetupRestart(this%pflotran_m, restart_stamp)
-
+#ifdef DEBUG_ELMPFEH
+     write(*,*) '[YX DEBUG][ExternalModelPFLOTRAN::EM_PFLOTRAN_PreInit] pass pflotranModelSetupRestart'
+#endif
   end subroutine EM_PFLOTRAN_PreInit
 
   !------------------------------------------------------------------------
@@ -886,7 +891,7 @@ contains
             bounds_clump)
 
     case default
-       write(iulog,*)'EM_FATES_Solve: Unknown em_stage.'
+       write(iulog,*)'EM_PFLOTRAN_Solve: Unknown em_stage.'
        call endrun(msg=errMsg(__FILE__, __LINE__))
     end select
 
@@ -969,6 +974,7 @@ contains
     real(r8)  , pointer                  :: dmass_col              (:)            ! Change in mass of water after a VSFM solve
     real(r8)  , pointer                  :: mass_beg_col                (:)            ! Total mass before a VSFM solve
     real(r8)  , pointer                  :: mass_end_col                (:)            ! Total mass after a VSFM solve
+    real(r8)  , pointer                  :: mass_bal_error_col          (:)            ! Mass balance error for a VSFM solve
     integer                              :: ier                                                              ! error status
 
     integer                              :: begc, endc
@@ -1005,6 +1011,7 @@ contains
     PetscInt                             :: mass_bal_err_count                                               ! Number of time VSFM solver returns a solution that isn't within acceptable mass balance error threshold
     PetscReal                            :: abs_mass_error_col                                               ! Maximum absolute error for any active soil column
     PetscReal, parameter                 :: max_abs_mass_error_col  = 1.e-5                                  ! Acceptable mass balance error
+    PetscReal                            :: total_mass_bal_error                                             ! Sum of mass balance error for all active soil columns
     PetscBool                            :: successful_step                                                  ! Is the solution return by VSFM acceptable
     PetscReal , pointer                  :: soilp_col_ghosted_1d(:)
     PetscReal , pointer                  :: fliq_col_ghosted_1d(:)
@@ -1042,10 +1049,10 @@ contains
     PetscScalar, pointer :: watsat_elm_loc(:)
     PetscScalar, pointer :: sat_elm_loc(:)
     PetscScalar, pointer :: mass_elm_loc(:)
-    PetscScalar, pointer :: e2l_drain_perched(:)
-    PetscScalar, pointer :: e2l_drain(:)
-    PetscScalar, pointer :: e2l_qrgwl(:)
-    PetscScalar, pointer :: e2l_rsub_sat(:)
+    ! PetscScalar, pointer :: e2l_drain_perched(:)
+    ! PetscScalar, pointer :: e2l_drain(:)
+    ! PetscScalar, pointer :: e2l_qrgwl(:)
+    ! PetscScalar, pointer :: e2l_rsub_sat(:)
 
     integer :: bounds_proc_begc, bounds_proc_endc
     integer :: nlevmapped
@@ -1084,10 +1091,10 @@ contains
     call e2l_list%GetPointerToReal2D(this%index_e2l_state_soilp      , e2l_soilp             )
 
     call e2l_list%GetPointerToReal1D(this%index_e2l_flux_qrecharge    , e2l_qrecharge        )
-    call e2l_list%GetPointerToReal1D(this%index_e2l_flux_drain_perched, e2l_drain_perched    )
-    call e2l_list%GetPointerToReal1D(this%index_e2l_flux_drain        , e2l_drain            )
-    call e2l_list%GetPointerToReal1D(this%index_e2l_flux_qrgwl        , e2l_qrgwl            )
-    call e2l_list%GetPointerToReal1D(this%index_e2l_flux_rsub_sat     , e2l_rsub_sat         )
+    ! call e2l_list%GetPointerToReal1D(this%index_e2l_flux_drain_perched, e2l_drain_perched    )
+    ! call e2l_list%GetPointerToReal1D(this%index_e2l_flux_drain        , e2l_drain            )
+    ! call e2l_list%GetPointerToReal1D(this%index_e2l_flux_qrgwl        , e2l_qrgwl            )
+    ! call e2l_list%GetPointerToReal1D(this%index_e2l_flux_rsub_sat     , e2l_rsub_sat         )
 
     begc = bounds_proc_begc
     endc = bounds_proc_endc
@@ -1107,6 +1114,7 @@ contains
     allocate(dmass_col              (begc:endc))
     allocate(mass_beg_col                (begc:endc))
     allocate(mass_end_col                (begc:endc))
+    allocate(mass_bal_error_col          (begc:endc))
 
     allocate(mflx_et_col_1d              ((endc-begc+1)*nlevgrnd))
     allocate(mflx_drain_col_1d           ((endc-begc+1)*nlevgrnd))
@@ -1144,6 +1152,7 @@ contains
 
     mass_beg_col(:)                  = 0.d0
     mass_end_col(:)                  = 0.d0
+    mass_bal_error_col(:)            = 0.d0
     total_mass_flux_col(:)           = 0.d0
     total_mass_flux_et_col(:)        = 0.d0
     total_mass_flux_infl_col(:)      = 0.d0
@@ -1152,6 +1161,7 @@ contains
     total_mass_flux_snowlyr_col(:)   = 0.d0
     total_mass_flux_sub_col(:)       = 0.d0
     total_mass_flux_lateral_col(:)   = 0.d0
+    total_mass_bal_error             = 0.d0
 
     mass_prev_col(:,:)          = 0.d0
     dmass_col(:)                = 0.d0
@@ -1163,7 +1173,19 @@ contains
 
     call VecGetArrayF90(elm_pf_idata%mass_elm  , mass_elm_loc  , ierr); CHKERRQ(ierr)
     call VecGetArrayF90(elm_pf_idata%area_top_face_elm, area_elm_loc, ierr); CHKERRQ(ierr)
-
+#ifdef DEBUG_ELMPFEH
+    write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] check elm_pf_idata update-1'
+    write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] mass_elm_loc = ', mass_elm_loc
+    write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] area_elm_loc = ', area_elm_loc
+    write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] l2e_filter_hydrologyc = ', l2e_filter_hydrologyc
+    write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] l2e_num_hydrologyc = ', l2e_num_hydrologyc
+    write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] nlevmapped = ', nlevmapped
+    write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] l2e_mflux_infil = ', l2e_mflux_infil
+    write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] l2e_mflux_dew = ', l2e_mflux_dew
+    write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] l2e_mflux_sub_snow = ', l2e_mflux_sub_snow
+    write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] l2e_mflux_snowlyr = ', l2e_mflux_snowlyr
+    !stop
+#endif
     do fc = 1, l2e_num_hydrologyc
        c = l2e_filter_hydrologyc(fc)
        g = col_gridcell(c)
@@ -1228,7 +1250,14 @@ contains
     call VecGetArrayF90(elm_pf_idata%qflx_elm, qflx_elm_loc, ierr); CHKERRQ(ierr)
     call VecGetArrayF90(elm_pf_idata%area_top_face_elm, area_elm_loc, ierr); CHKERRQ(ierr)
     call VecGetArrayF90(elm_pf_idata%thetares2_elm, thetares2_elm_loc, ierr); CHKERRQ(ierr)
-
+#ifdef DEBUG_ELMPFEH
+    write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] check elm_pf_idata update0'
+    !write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] mass_elm_loc = ', mass_elm
+    !write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] area_elm_loc = ', area_top_face_elm
+    write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] qflx_elm_loc = ', qflx_elm_loc
+    write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] thetares2_elm_loc = ', thetares2_elm_loc
+    !stop
+#endif
     frac_ice(:,:)       = 0.d0
     do fc = 1, l2e_num_hydrologyc
        c = l2e_filter_hydrologyc(fc)
@@ -1244,7 +1273,11 @@ contains
           qflx_elm_loc(g_idx) = 0.0_r8
        end do
     end do
-
+#ifdef DEBUG_ELMPFEH
+    write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] check elm_pf_idata update0.1'
+    write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] qflx_elm_loc = ', qflx_elm_loc
+    !stop
+#endif
     ! Account for following fluxes in the top soil layer:
     ! - infiltration
     ! - dew
@@ -1268,7 +1301,15 @@ contains
        end if
        total_mass_flux_col(c) = 0.d0
     enddo
-
+#ifdef DEBUG_ELMPFEH
+    write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] check elm_pf_idata update0.2'
+    write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] qflx_elm_loc = ', qflx_elm_loc
+    write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] mflx_infl_col_1d = ', mflx_infl_col_1d
+    write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] mflx_dew_col_1d = ', mflx_dew_col_1d
+    write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] mflx_snowlyr_col_1d = ', mflx_snowlyr_col_1d
+    write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] mflx_sub_snow_col_1d = ', mflx_sub_snow_col_1d
+    !stop
+#endif
     ! Account for evapotranspiration flux
     do c = bounds_proc_begc, bounds_proc_endc
        do j = 1,nlevmapped
@@ -1282,18 +1323,45 @@ contains
           end if
        end do
     end do
-
+#ifdef DEBUG_ELMPFEH
+    write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] check elm_pf_idata update0.3'
+    write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] qflx_elm_loc = ', qflx_elm_loc
+    write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] mflx_et_col_1d = ', mflx_et_col_1d
+    write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] area_elm_loc = ', area_elm_loc
+    !stop
+#endif
+#ifdef DEBUG_ELMPFEH
+    write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] check elm_pf_idata update1'
+    write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] qflx_elm_loc = ', qflx_elm_loc
+    write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] thetares2_elm_loc = ', thetares2_elm_loc
+    !stop
+#endif
     call VecRestoreArrayF90(elm_pf_idata%qflx_elm, qflx_elm_loc, ierr); CHKERRQ(ierr)
     call VecRestoreArrayF90(elm_pf_idata%thetares2_elm, thetares2_elm_loc, ierr); CHKERRQ(ierr)
 
     call pflotranModelUpdateFlowConds( this%pflotran_m )
+#ifdef DEBUG_ELMPFEH
+    write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] before pflotranModelStepperRunTillPauseTime'
+    write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] nstep+1.0d0*dtime = ', (nstep+1.0d0)*dtime
+    !stop
+#endif
     call pflotranModelStepperRunTillPauseTime( this%pflotran_m, (nstep+1.0d0)*dtime )
     call pflotranModelGetUpdatedData( this%pflotran_m )
-
+#ifdef DEBUG_ELMPFEH
+    write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] pass pflotranModelStepperRunTillPauseTime'
+    write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] nstep+1.0d0*dtime = ', (nstep+1.0d0)*dtime
+    !stop
+#endif
     call VecGetArrayF90(elm_pf_idata%sat_elm   , sat_elm_loc   , ierr); CHKERRQ(ierr)
     call VecGetArrayF90(elm_pf_idata%mass_elm  , mass_elm_loc  , ierr); CHKERRQ(ierr)
     call VecGetArrayF90(elm_pf_idata%watsat_elm, watsat_elm_loc, ierr); CHKERRQ(ierr)
-
+#ifdef DEBUG_ELMPFEH
+    write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] check elm_pf_idata update2'
+    write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] sat_elm_loc = ', sat_elm_loc
+    write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] mass_elm_loc = ', mass_elm_loc
+    write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] watsat_elm_loc = ', watsat_elm_loc
+    !stop
+#endif
     do fc = 1, l2e_num_hydrologyc
        c = l2e_filter_hydrologyc(fc)
        g = col_gridcell(c)
@@ -1312,16 +1380,39 @@ contains
 
           mass_end        = mass_end        + mass_elm_loc(g_idx)/area_elm_loc(g_idx)
           mass_end_col(c) = mass_end_col(c) + mass_elm_loc(g_idx)/area_elm_loc(g_idx)
-
+! #ifdef DEBUG_ELMPFEH
+!       write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] checkpoint e2l_h2osoi_liq, in do-loop'
+!       write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] |- c=', c
+!       write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] |- g=', g
+!       write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] |- j=', j
+!       write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] |- g_idx=', g_idx
+!       write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] |- e2l_h2osoi_liq(c,j)=', e2l_h2osoi_liq(c,j)
+!       write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro]     |- frac_ice(c,j)(c,j)=', frac_ice(c,j)
+!       write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro]     |- mass_elm_loc(g_idx)=', mass_elm_loc(g_idx)
+!       write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro]     |- area_elm_loc(g_idx)=', area_elm_loc(g_idx)
+!       write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] |- e2l_h2osoi_ice(c,j)=', e2l_h2osoi_ice(c,j)
+! #endif
        end do
 
+
        ! Find maximum water balance error over the column
-       !abs_mass_error_col = max(abs_mass_error_col,                     &
-       !     abs(mass_beg_col(c) - mass_end_col(c) + &
-       !     total_mass_flux_col(c)*dt))
+      !  abs_mass_error_col = max(abs_mass_error_col,                     &
+      !      abs(mass_beg_col(c) - mass_end_col(c) + &
+      !      total_mass_flux_col(c)*dt))
+       mass_bal_error_col(c) = mass_beg_col(c) - mass_end_col(c) + total_mass_flux_col(c)*dt
+       total_mass_bal_error = total_mass_bal_error + mass_bal_error_col(c)
        e2l_qrecharge     (c) = 0._r8
 
        e2l_wtd(c) = l2e_zi(c,nlevmapped)
+#ifdef DEBUG_ELMPFEH
+      write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] water balance check col'
+      write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] |- c=', c
+      write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] |- mass_bal_error_col(c) =', mass_bal_error_col(c)
+      write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] |- mass_beg_col(c) =', mass_beg_col(c)
+      write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] |- mass_end_col(c) =', mass_end_col(c)
+      write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] |- total_mass_flux_col(c)*dt =', total_mass_flux_col(c)*dt
+      write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] |- total_mass_bal_error =', total_mass_bal_error
+#endif
     end do
 
     ! Save soil liquid pressure from VSFM for all (active+nonactive) cells.
@@ -1333,11 +1424,18 @@ contains
        end do
     end do
 
-    e2l_drain_perched (:) = 0._r8
-    e2l_drain         (:) = 0._r8
-    e2l_qrgwl         (:) = 0._r8
-    e2l_rsub_sat      (:) = 0._r8
-    
+    ! e2l_drain_perched (:) = 0._r8
+    ! e2l_drain         (:) = 0._r8
+    ! e2l_qrgwl         (:) = 0._r8
+    ! e2l_rsub_sat      (:) = 0._r8
+#ifdef DEBUG_ELMPFEH
+    write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] check elm_pf_idata update3'
+    write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] area_elm_loc = ', area_elm_loc
+    write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] sat_elm_loc = ', sat_elm_loc
+    write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] mass_elm_loc = ', mass_elm_loc
+    write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] watsat_elm_loc = ', watsat_elm_loc
+    !stop
+#endif
     call VecRestoreArrayF90(elm_pf_idata%area_top_face_elm, area_elm_loc, ierr); CHKERRQ(ierr)
     call VecRestoreArrayF90(elm_pf_idata%sat_elm   , sat_elm_loc   , ierr); CHKERRQ(ierr)
     call VecRestoreArrayF90(elm_pf_idata%mass_elm  , mass_elm_loc  , ierr); CHKERRQ(ierr)
@@ -1359,6 +1457,7 @@ contains
     deallocate(dmass_col              )
     deallocate(mass_beg_col                )
     deallocate(mass_end_col                )
+    deallocate(mass_bal_error_col          )
 
     deallocate(mflx_et_col_1d              )
     deallocate(mflx_drain_col_1d           )
