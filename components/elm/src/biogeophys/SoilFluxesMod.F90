@@ -180,7 +180,13 @@ contains
          else
             t_grnd0(c) = (1 - frac_h2osfc(c)) * tssbef(c,1) + frac_h2osfc(c) * t_h2osfc_bef(c)
          endif
-
+! #ifdef DEBUG_ELMPFEH
+!     write(*,*) '[YX DEBUG][SoilFluxesMod::SoilFluxes] checkpoint -1, in do-loop'
+!     write(*,*) '[YX DEBUG][SoilFluxesMod::SoilFluxes] |- c=', c
+!     write(*,*) '[YX DEBUG][SoilFluxesMod::SoilFluxes] |- tinc(c)=', tinc(c)
+!     write(*,*) '[YX DEBUG][SoilFluxesMod::SoilFluxes] |- t_grnd(c)=', t_grnd(c)
+!     write(*,*) '[YX DEBUG][SoilFluxesMod::SoilFluxes] |- t_grnd0(c)=', t_grnd0(c)
+! #endif
          tinc(c) = t_grnd(c) - t_grnd0(c)
 
          ! Determine ratio of topsoil_evap_tot
@@ -201,7 +207,10 @@ contains
       ! egirat holds the ratio of demand to availability if demand is
       ! greater than availability, or 1.0 otherwise.
       ! Correct fluxes to present soil temperature
-
+! #ifdef DEBUG_ELMPFEH
+!     write(*,*) '[YX DEBUG][SoilFluxesMod::SoilFluxes] checkpoint 1'
+!     write(*,*) '[YX DEBUG][SoilFluxesMod::SoilFluxes] |- qflx_ev_h2osfc=', qflx_ev_h2osfc
+! #endif
       do fp = 1,num_nolakep
          p = filter_nolakep(fp)
          c = veg_pp%column(p)
@@ -219,8 +228,22 @@ contains
             qflx_ev_soil(p) = qflx_ev_soil(p) + tinc(c)*cgrndl(p)
             qflx_ev_h2osfc(p) = qflx_ev_h2osfc(p) + tinc(c)*cgrndl(p)
          endif
+! #ifdef DEBUG_ELMPFEH
+!     write(*,*) '[YX DEBUG][SoilFluxesMod::SoilFluxes] checkpoint 1.5, in do-loop'
+!     write(*,*) '[YX DEBUG][SoilFluxesMod::SoilFluxes] |- num_nolakep=', num_nolakep
+!     write(*,*) '[YX DEBUG][SoilFluxesMod::SoilFluxes] |- fp=', fp
+!     write(*,*) '[YX DEBUG][SoilFluxesMod::SoilFluxes] |- p=', p
+!     write(*,*) '[YX DEBUG][SoilFluxesMod::SoilFluxes] |- c=', c
+!     write(*,*) '[YX DEBUG][SoilFluxesMod::SoilFluxes] |- l=', l
+!     write(*,*) '[YX DEBUG][SoilFluxesMod::SoilFluxes] |- qflx_ev_h2osfc(p) =', qflx_ev_h2osfc(p)
+!     write(*,*) '[YX DEBUG][SoilFluxesMod::SoilFluxes] |- tinc(c) =', tinc(c)
+!     write(*,*) '[YX DEBUG][SoilFluxesMod::SoilFluxes] |- cgrndl(p) =', cgrndl(p)
+! #endif
       end do
-
+! #ifdef DEBUG_ELMPFEH
+!     write(*,*) '[YX DEBUG][SoilFluxesMod::SoilFluxes] checkpoint 2'
+!     write(*,*) '[YX DEBUG][SoilFluxesMod::SoilFluxes] |- qflx_ev_h2osfc=', qflx_ev_h2osfc
+! #endif
       ! Set the column-average qflx_evap_soi as the weighted average over all patches
       ! but only count the patches that are evaporating
 
@@ -266,7 +289,10 @@ contains
 
          ! Correct soil fluxes for possible evaporation in excess of top layer water
          ! excess energy is added to the sensible heat flux from soil
-
+! #ifdef DEBUG_ELMPFEH
+!     write(*,*) '[YX DEBUG][SoilFluxesMod::SoilFluxes] checkpoint 3'
+!     write(*,*) '[YX DEBUG][SoilFluxesMod::SoilFluxes] |- qflx_ev_h2osfc=', qflx_ev_h2osfc
+! #endif
          if (egirat(c) < 1.0_r8) then
             save_qflx_evap_soi = qflx_evap_soi(p)
             qflx_evap_soi(p) = qflx_evap_soi(p) * egirat(c)
@@ -275,7 +301,10 @@ contains
             qflx_ev_soil(p) = qflx_ev_soil(p) * egirat(c)
             qflx_ev_h2osfc(p) = qflx_ev_h2osfc(p) * egirat(c)
          end if
-
+! #ifdef DEBUG_ELMPFEH
+!     write(*,*) '[YX DEBUG][SoilFluxesMod::SoilFluxes] checkpoint 4'
+!     write(*,*) '[YX DEBUG][SoilFluxesMod::SoilFluxes] |- qflx_ev_h2osfc=', qflx_ev_h2osfc
+! #endif
          ! Ground heat flux
 
          if (.not. lun_pp%urbpoi(l)) then

@@ -377,14 +377,22 @@ contains
       !------------------------------------------------------
 
       ! Thermal conductivity and Heat capacity
-
+! #ifdef DEBUG_ELMPFEH
+!       write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] checkpoint for tk_h2osfc, before SoilThermProp'
+!       write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- tk_h2osfc=', tk_h2osfc
+!       write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- soilstate_vars%thk_col=', soilstate_vars%thk_col
+! #endif
       tk_h2osfc(begc:endc) = spval
       call SoilThermProp(bounds, num_nolakec, filter_nolakec, &
            tk(begc:endc, :), &
            cv(begc:endc, :), &
            tk_h2osfc(begc:endc), &
            urbanparams_vars, soilstate_vars)
-
+! #ifdef DEBUG_ELMPFEH
+!       write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] checkpoint for tk_h2osfc, after SoilThermProp'
+!       write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- tk_h2osfc=', tk_h2osfc
+!       write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- soilstate_vars%thk_col=', soilstate_vars%thk_col
+! #endif
       ! Net ground heat flux into the surface and its temperature derivative
       ! Added a patches loop here to get the average of hs and dhsdT over
       ! all Patches on the column. Precalculate the terms that do not depend on PFT.
@@ -441,13 +449,25 @@ contains
          ! soil layers; top layer will have one offset and one extra coefficient
          tvector_nourbanc(c,1:nlevgrnd) = t_soisno(c,1:nlevgrnd)
          tvector_urbanc(c,1:nlevgrnd)   = t_soisno(c,1:nlevgrnd)
+! #ifdef DEBUG_ELMPFEH
+!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] checkpoint 1.1, in do-loop'
+!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- num_nolakec=', num_nolakec
+!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- c=', c
+!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- t_soisno(c,0:nlevgrnd) =', t_soisno(c,0:nlevgrnd)
+!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- tvector_nourbanc(c,0:nlevgrnd) =', tvector_nourbanc(c,0:nlevgrnd)
+! #endif
       enddo
 
 
       !
       ! Solve temperature for non-lake + non-urban columns
       !
-
+! #ifdef DEBUG_ELMPFEH
+!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] checkpoint 1.1.1'
+!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- thermal_model=', thermal_model
+!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- t_soisno(c,0:nlevgrnd) =', t_soisno(c,0:nlevgrnd)
+!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- tvector_nourbanc(c,0:nlevgrnd) =', tvector_nourbanc(c,0:nlevgrnd)
+! #endif
       update_temperature = .true.
       select case(thermal_model)
       case (default_thermal_model)
@@ -487,7 +507,14 @@ contains
              hs_h2osfc( begc:endc ),                &
              energyflux_vars                        &
              )
-
+! #ifdef DEBUG_ELMPFEH
+!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] checkpoint 1.1.2'
+!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- thermal_model=', thermal_model
+!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- default_thermal_model=', default_thermal_model
+!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- petsc_thermal_model=', petsc_thermal_model
+!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- t_soisno(c,0:nlevgrnd) =', t_soisno(c,0:nlevgrnd)
+!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- tvector_nourbanc(c,0:nlevgrnd) =', tvector_nourbanc(c,0:nlevgrnd)
+! #endif
         call EMI_Driver(EM_ID_PTM,                                      &
              EM_PTM_TBASED_SOLVE_STAGE,                                 &
               dt = dtime,                               &
@@ -501,7 +528,13 @@ contains
               temperature_vars = temperature_vars)
 #endif
       end select
-
+! #ifdef DEBUG_ELMPFEH
+!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] checkpoint 1.1.3'
+!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- t_soisno(c=1,0:nlevgrnd) =', t_soisno(1,0:nlevgrnd)
+!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- tvector_nourbanc(c=1,0:nlevgrnd) =', tvector_nourbanc(1,0:nlevgrnd)
+!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- EM_ID_PTM =', EM_ID_PTM
+!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- EM_PTM_TBASED_SOLVE_STAGE =', EM_PTM_TBASED_SOLVE_STAGE
+! #endif
       !
       ! Solve temperature for lake + urban column
       !
@@ -562,7 +595,19 @@ contains
             endif
 
          endif
-
+! #ifdef DEBUG_ELMPFEH
+!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] checkpoint 1.2, in do-loop'
+!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- num_nolakec=', num_nolakec
+!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- c=', c
+!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- l=', l
+!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- lun_pp%urbpoi(l) =', lun_pp%urbpoi(l)
+!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- update_temperature =', update_temperature
+!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- snl(c) =', snl(c)
+!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- frac_h2osfc(c) =', frac_h2osfc(c)
+!     !write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- t_soisno(c,snl(c)+1) =', t_soisno(c,snl(c)+1)
+!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- t_soisno(c,1) =', t_soisno(c,1)
+!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- tvector_nourbanc(c,1:nlevgrnd) =', tvector_nourbanc(c,1:nlevgrnd)
+! #endif
       enddo
 
       ! Melting or Freezing
@@ -653,6 +698,17 @@ contains
                t_grnd(c) = t_soisno(c,1)
             end if
          endif
+! #ifdef DEBUG_ELMPFEH
+!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] checkpoint 1.5, in do-loop'
+!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- num_nolakec=', num_nolakec
+!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- c=', c
+!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- snl(c) =', snl(c)
+!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- frac_h2osfc(c) =', frac_h2osfc(c)
+!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- frac_sno_eff(c) =', frac_sno_eff(c)
+!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- t_soisno(c,snl(c)+1) =', t_soisno(c,snl(c)+1)
+!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- t_soisno(c,1) =', t_soisno(c,1)
+!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- t_h2osfc(c) =', t_h2osfc(c)
+! #endif
       end do
 
       ! Initialize soil heat content
@@ -795,7 +851,21 @@ contains
          urban_column,                           &
          bmatrix( begc:endc, 1:, -nlevsno: ))
 
-
+! #ifdef DEBUG_ELMPFEH
+!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SolveTemperature] before BandDiagonal'
+!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SolveTemperature] |- bounds=', bounds
+!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SolveTemperature] |- nlevsno=', nlevsno
+!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SolveTemperature] |- nlevgrnd=', nlevgrnd
+!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SolveTemperature] |- jtop(begc:endc)=', jtop(begc:endc)
+!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SolveTemperature] |- jbot(begc:endc)=', jbot(begc:endc)
+!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SolveTemperature] |- num_filter=', num_filter
+!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SolveTemperature] |- filter=', filter
+!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SolveTemperature] |- dtime=', dtime
+!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SolveTemperature] |- nband=', nband
+!     !write(*,*) '[YX DEBUG][SoilTemperatureMod::SolveTemperature] |- bmatrix(begc:endc, :, :)', bmatrix(begc:endc, :, :)
+!     !write(*,*) '[YX DEBUG][SoilTemperatureMod::SolveTemperature] |- rvector(begc:endc, :)', rvector(begc:endc, :)
+!     !write(*,*) '[YX DEBUG][SoilTemperatureMod::SolveTemperature] |- tvector(begc:endc, :)', tvector(begc:endc, :)
+! #endif
     ! Solve the system
     event = 'SoilTempBandDiag'
     call t_start_lnd(event)
@@ -943,7 +1013,37 @@ contains
                   endif
                endif
             endif
-
+! #ifdef DEBUG_ELMPFEH
+!    if (j>=1) then
+!       write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilThermProp] checkpoint for thk, in do-loop'
+!       write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilThermProp] |- nlevsno=', nlevsno
+!       write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilThermProp] |- nlevgrnd=', nlevgrnd
+!       write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilThermProp] |- j=', j
+!       write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilThermProp] |- num_nolakec=', num_nolakec
+!       write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilThermProp] |- c=', c
+!       write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilThermProp] |- l=', l
+!       write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilThermProp] |- col_pp%itype(c)=', col_pp%itype(c)
+!       write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilThermProp] |- lun_pp%itype(l)=', lun_pp%itype(l)
+!       write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilThermProp] |- thk(c,j)=', thk(c,j)
+!       write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilThermProp] |- snl(c)=', snl(c)
+!       write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilThermProp] |- satw=', satw
+!       write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilThermProp] |- t_soisno(c,j) =', t_soisno(c,j)
+!       write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilThermProp] |- tfrz=', tfrz
+!       write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilThermProp]     |- dke=', dke
+!       write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilThermProp]     |- dksat=', dksat
+!       write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilThermProp]         |- tkmg(c,j)=', tkmg(c,j)
+!       write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilThermProp]         |- tkwat=', tkwat
+!       write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilThermProp]         |- fl=', fl
+!       write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilThermProp]             |- h2osoi_liq(c,j)=', h2osoi_liq(c,j)
+!       write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilThermProp]             |- h2osoi_ice(c,j)=', h2osoi_ice(c,j)
+!       write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilThermProp]             |- dz(c,j)=', dz(c,j)
+!       write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilThermProp]             |- denh2o=', denh2o
+!       write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilThermProp]             |- denice=', denice
+!       write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilThermProp]         |- watsat(c,j)=', watsat(c,j)
+!       write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilThermProp]         |- tkice=', tkice
+!       write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilThermProp]     |- tkdry(c,j)=', tkdry(c,j)
+!    end if
+! #endif
             ! Thermal conductivity of snow, which from Jordan (1991) pp. 18
             ! Only examine levels from snl(c)+1 -> 0 where snl(c) < 1
             if (snl(c)+1 < 1 .AND. (j >= snl(c)+1) .AND. (j <= 0)) then
@@ -989,6 +1089,16 @@ contains
          zh2osfc=1.0e-3*(0.5*h2osfc(c)) !convert to [m] from [mm]
          tk_h2osfc(c)= tkwat*thk(c,1)*(z(c,1)+zh2osfc) &
               /(tkwat*z(c,1)+thk(c,1)*zh2osfc)
+! #ifdef DEBUG_ELMPFEH
+!       write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilThermProp] checkpoint for tk_h2osfc, in do-loop'
+!       write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilThermProp] |- num_nolakec=', num_nolakec
+!       write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilThermProp] |- c=', c
+!       write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilThermProp] |- tk_h2osfc(c)=', tk_h2osfc(c)
+!       write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilThermProp] |- tkwat=', tkwat
+!       write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilThermProp] |- thk(c,1)=', thk(c,1)
+!       write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilThermProp] |- z(c,1)=', z(c,1)
+!       write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilThermProp] |- zh2osfc=', zh2osfc
+! #endif
       enddo
 
       ! Soil heat capacity, from de Vires (1963)
@@ -3046,7 +3156,6 @@ contains
     real(r8) :: bmatrix_soil_snow(bounds%begc:bounds%endc,nband, 1:1 )         ! off-diagonal matrix for soil-snow interaction
     real(r8) :: bmatrix_soil_ssw(bounds%begc:bounds%endc,nband, 1:1 )          ! off-diagonal matrix for soil-standing surface water interaction
     !-----------------------------------------------------------------------
-
     ! Enforce expected array sizes
 
     associate(                                              &
@@ -3124,7 +3233,19 @@ contains
            bmatrix_soil_snow( begc:endc, 1:, 1: ),                                   &
            bmatrix_soil_ssw( begc:endc, 1:, 1: ),                                    &
            bmatrix( begc:endc, 1:, -nlevsno: ))
-
+! #ifdef DEBUG_ELMPFEH
+!    write(*,*) '[YX DEBUG][SoilTemperatureMod::SetMatrix] check bmatrix and its components'
+!    !write(*,*) '[YX DEBUG][SoilTemperatureMod::SetMatrix] |- bmatrix_snow( begc:endc, 1:, -nlevsno: )=', bmatrix_snow( begc:endc, 1:, -nlevsno: )
+!    write(*,*) '[YX DEBUG][SoilTemperatureMod::SetMatrix] |- bmatrix_ssw( begc:endc, 1:, 0: )=', bmatrix_ssw( begc:endc, 1:, 0: )
+!    !write(*,*) '[YX DEBUG][SoilTemperatureMod::SetMatrix] |- bmatrix_soil( begc:endc, 1:, 1: )', bmatrix_soil( begc:endc, 1:, 1: )
+!    !write(*,*) '[YX DEBUG][SoilTemperatureMod::SetMatrix] |- bmatrix_snow_soil( begc:endc, 1:, -1: )', bmatrix_snow_soil( begc:endc, 1:, -1: )
+!    !write(*,*) '[YX DEBUG][SoilTemperatureMod::SetMatrix] |- bmatrix_ssw_soil( begc:endc, 1:, 0: )', bmatrix_ssw_soil( begc:endc, 1:, 0: )
+!    !write(*,*) '[YX DEBUG][SoilTemperatureMod::SetMatrix] |- bmatrix_soil_snow( begc:endc, 1:, 1: )', bmatrix_soil_snow( begc:endc, 1:, 1: )
+!    !write(*,*) '[YX DEBUG][SoilTemperatureMod::SetMatrix] |- bmatrix_soil_ssw( begc:endc, 1:, 1: )', bmatrix_soil_ssw( begc:endc, 1:, 1: )
+!    !write(*,*)
+!    !write(*,*)
+!    !write(*,*)
+! #endif
 
     end associate
 
@@ -4621,7 +4742,17 @@ contains
 
        bmatrix_ssw(c,3,0)= 1._r8+(1._r8-cnfac)*(dtime/c_h2osfc(c)) &
             *tk_h2osfc(c)/dzm -(dtime/c_h2osfc(c))*dhsdT(c) !interaction from atm
-
+! #ifdef DEBUG_ELMPFEH
+!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SetMatrix_StandingSurfaceWater] checkpoint, in do-loop'
+!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SetMatrix_StandingSurfaceWater] |- num_filter=', num_filter
+!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SetMatrix_StandingSurfaceWater] |- c=', c
+!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SetMatrix_StandingSurfaceWater] |- dz_h2osfc(c) =', dz_h2osfc(c)
+!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SetMatrix_StandingSurfaceWater] |- col_pp%z(c,1) =', col_pp%z(c,1)
+!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SetMatrix_StandingSurfaceWater] |- cnfac =', cnfac
+!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SetMatrix_StandingSurfaceWater] |- c_h2osfc(c) =', c_h2osfc(c)
+!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SetMatrix_StandingSurfaceWater] |- tk_h2osfc(c) =', tk_h2osfc(c)
+!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SetMatrix_StandingSurfaceWater] |- dhsdT(c) =', dhsdT(c)
+! #endif
     enddo
 
   end subroutine SetMatrix_StandingSurfaceWater

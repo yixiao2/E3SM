@@ -421,12 +421,24 @@ contains
                   frac_h2orof(c) = 1.0_r8 - fsno - frac_h2osfc(c)
                 endif
              endif
-
+! #ifdef DEBUG_ELMPFEH
+!      write(*,*) '[YX DEBUG][SoilHydriologyMod::Infiltration] check inside loop, step1, c= ', c
+!      write(*,*) '[YX DEBUG][SoilHydriologyMod::Infiltration] |- h2osfc(c)=', h2osfc(c)
+!      write(*,*) '[YX DEBUG][SoilHydriologyMod::Infiltration] |- qflx_h2osfc_drain(c)=', qflx_h2osfc_drain(c)
+!      write(*,*) '[YX DEBUG][SoilHydriologyMod::Infiltration] |- qflx_ev_h2osfc(c)=', qflx_ev_h2osfc(c)
+! #endif
              !1. partition surface inputs between soil and h2osfc
              qflx_in_soil(c) = (1._r8 - frac_h2osfc(c)) * (qflx_top_soil(c)  - qflx_surf(c))
              qflx_in_h2osfc(c) = frac_h2osfc(c) * (qflx_top_soil(c)  - qflx_surf(c))
              qflx_gross_infl_soil(c) = (1._r8 - frac_h2osfc(c)) * (qflx_top_soil(c)  - qflx_surf(c))
-
+! #ifdef DEBUG_ELMPFEH
+!      write(*,*) '[YX DEBUG][SoilHydriologyMod::Infiltration] check inside loop, step2, c= ', c
+!      write(*,*) '[YX DEBUG][SoilHydriologyMod::Infiltration] |- h2osfc(c)=', h2osfc(c)
+!      write(*,*) '[YX DEBUG][SoilHydriologyMod::Infiltration] |- qflx_h2osfc_drain(c)=', qflx_h2osfc_drain(c)
+!      write(*,*) '[YX DEBUG][SoilHydriologyMod::Infiltration] |- qflx_in_h2osfc(c)=', qflx_in_h2osfc(c)
+!      write(*,*) '[YX DEBUG][SoilHydriologyMod::Infiltration] |- frac_h2osfc(c)=', frac_h2osfc(c)
+!      write(*,*) '[YX DEBUG][SoilHydriologyMod::Infiltration] |- qflx_ev_h2osfc(c)=', qflx_ev_h2osfc(c)
+! #endif
              !2. remove evaporation (snow treated in SnowHydrology)
              qflx_in_soil(c) = qflx_in_soil(c) - (1.0_r8 - fsno - frac_h2osfc(c))*qflx_evap(c)
              qflx_in_h2osfc(c) = qflx_in_h2osfc(c) - frac_h2osfc(c) * qflx_ev_h2osfc(c)
@@ -437,7 +449,12 @@ contains
                 qflx_gross_evap_soil(c) = 0._r8
                 qflx_gross_infl_soil(c) = qflx_gross_infl_soil(c)-(1.0_r8 - fsno - frac_h2osfc(c))*qflx_evap(c)
              endif
-
+! #ifdef DEBUG_ELMPFEH
+!      write(*,*) '[YX DEBUG][SoilHydriologyMod::Infiltration] check inside loop, step3, c= ', c
+!      write(*,*) '[YX DEBUG][SoilHydriologyMod::Infiltration] |- h2osfc(c)=', h2osfc(c)
+!      write(*,*) '[YX DEBUG][SoilHydriologyMod::Infiltration] |- qflx_h2osfc_drain(c)=', qflx_h2osfc_drain(c)
+!      write(*,*) '[YX DEBUG][SoilHydriologyMod::Infiltration] |- qflx_in_h2osfc(c)=', qflx_in_h2osfc(c)
+! #endif
              !3. determine maximum infiltration rate
              if (use_vichydro) then
                 top_moist(c)= 0._r8
@@ -486,12 +503,22 @@ contains
              else
                 qflx_infl_excess(c) = max(0._r8,qflx_in_soil(c) -  (1.0_r8 - frac_h2osfc(c))*qinmax)
              endif
-
+! #ifdef DEBUG_ELMPFEH
+!      write(*,*) '[YX DEBUG][SoilHydriologyMod::Infiltration] check inside loop, step, c= ', c
+!      write(*,*) '[YX DEBUG][SoilHydriologyMod::Infiltration] |- h2osfc(c)=', h2osfc(c)
+!      write(*,*) '[YX DEBUG][SoilHydriologyMod::Infiltration] |- qflx_h2osfc_drain(c)=', qflx_h2osfc_drain(c)
+!      write(*,*) '[YX DEBUG][SoilHydriologyMod::Infiltration] |- qflx_in_h2osfc(c)=', qflx_in_h2osfc(c)
+! #endif
              !4. soil infiltration and h2osfc "run-on"
              qflx_infl(c) = qflx_in_soil(c) - qflx_infl_excess(c)
              qflx_in_h2osfc(c) =  qflx_in_h2osfc(c) + qflx_infl_excess(c)
              qflx_gross_infl_soil(c) = qflx_gross_infl_soil(c)- qflx_infl_excess(c)
-
+! #ifdef DEBUG_ELMPFEH
+!      write(*,*) '[YX DEBUG][SoilHydriologyMod::Infiltration] check inside loop, step5, c= ', c
+!      write(*,*) '[YX DEBUG][SoilHydriologyMod::Infiltration] |- h2osfc(c)=', h2osfc(c)
+!      write(*,*) '[YX DEBUG][SoilHydriologyMod::Infiltration] |- qflx_h2osfc_drain(c)=', qflx_h2osfc_drain(c)
+!      write(*,*) '[YX DEBUG][SoilHydriologyMod::Infiltration] |- qflx_in_h2osfc(c)=', qflx_in_h2osfc(c)
+! #endif
              !5. surface runoff from h2osfc
              if (h2osfcflag==1) then
                 ! calculate runoff from h2osfc  -------------------------------------
@@ -538,7 +565,12 @@ contains
              endif
 
              qflx_in_h2osfc(c) =  qflx_in_h2osfc(c) - qflx_h2osfc_surf(c)
-
+! #ifdef DEBUG_ELMPFEH
+!      write(*,*) '[YX DEBUG][SoilHydriologyMod::Infiltration] check inside loop, step6, c= ', c
+!      write(*,*) '[YX DEBUG][SoilHydriologyMod::Infiltration] |- h2osfc(c)=', h2osfc(c)
+!      write(*,*) '[YX DEBUG][SoilHydriologyMod::Infiltration] |- qflx_h2osfc_drain(c)=', qflx_h2osfc_drain(c)
+!      write(*,*) '[YX DEBUG][SoilHydriologyMod::Infiltration] |- qflx_in_h2osfc(c)=', qflx_in_h2osfc(c)
+! #endif
              !6. update h2osfc prior to calculating bottom drainage from h2osfc
              h2osfc(c) = h2osfc(c) + qflx_in_h2osfc(c) * dtime
 
@@ -565,11 +597,19 @@ contains
              if(h2osfcflag==0) then
                 qflx_h2osfc_drain(c)= max(0._r8,h2osfc(c)/dtime) !ensure no h2osfc
              endif
-
+! #ifdef DEBUG_ELMPFEH
+!      write(*,*) '[YX DEBUG][SoilHydriologyMod::Infiltration] check inside loop, step7, c= ', c
+!      write(*,*) '[YX DEBUG][SoilHydriologyMod::Infiltration] |- h2osfc(c)=', h2osfc(c)
+!      write(*,*) '[YX DEBUG][SoilHydriologyMod::Infiltration] |- qflx_h2osfc_drain(c)=', qflx_h2osfc_drain(c)
+! #endif
              !7. remove drainage from h2osfc and add to qflx_infl
              h2osfc(c) = h2osfc(c) - qflx_h2osfc_drain(c) * dtime
              qflx_infl(c) = qflx_infl(c) + qflx_h2osfc_drain(c)
-             
+! #ifdef DEBUG_ELMPFEH
+!      write(*,*) '[YX DEBUG][SoilHydriologyMod::Infiltration] check inside loop, step8, c= ', c
+!      write(*,*) '[YX DEBUG][SoilHydriologyMod::Infiltration] |- h2osfc(c)=', h2osfc(c)
+!      write(*,*) '[YX DEBUG][SoilHydriologyMod::Infiltration] |- qflx_h2osfc_drain(c)=', qflx_h2osfc_drain(c)
+! #endif
              !8. add drainage from river inundation to qflx_infl (land river two way coupling)
              if (use_lnd_rof_two_way) then
 
@@ -628,7 +668,20 @@ contains
              endif
           end if
        end do
-
+! #ifdef DEBUG_ELMPFEH
+!   !if (masterproc) then
+!      write(*,*) '[YX DEBUG][SoilHydriologyMod::Infiltration] check qflx_infl calclation '
+!      write(*,*) '[YX DEBUG][SoilHydriologyMod::Infiltration] |- qflx_infl=', qflx_infl
+!      write(*,*) '[YX DEBUG][SoilHydriologyMod::Infiltration] |- qflx_in_soil=', qflx_in_soil
+!      write(*,*) '[YX DEBUG][SoilHydriologyMod::Infiltration] |- qflx_infl_excess=', qflx_infl_excess
+!      write(*,*) '[YX DEBUG][SoilHydriologyMod::Infiltration] |- h2osfc=', h2osfc
+!      write(*,*) '[YX DEBUG][SoilHydriologyMod::Infiltration] |- qflx_h2osfc_drain=', qflx_h2osfc_drain
+!      write(*,*) '[YX DEBUG][SoilHydriologyMod::Infiltration] |- h2osfcflag=', h2osfcflag
+!      write(*,*) '[YX DEBUG][SoilHydriologyMod::Infiltration] |- use_vichydro=', use_vichydro
+!      write(*,*) '[YX DEBUG][SoilHydriologyMod::Infiltration] |- use_modified_infil=', use_modified_infil
+!      !stop
+!   !endif
+! #endif
     end associate
 
    end subroutine Infiltration

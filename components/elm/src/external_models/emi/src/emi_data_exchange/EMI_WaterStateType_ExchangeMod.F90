@@ -327,6 +327,12 @@ contains
                 c = filter(fc)
                 do j = 1, nlevgrnd
                    h2osoi_ice(c,j) = cur_data%data_real_2d(c,j)
+! #ifdef DEBUG_ELMPFEH
+!       write(*,*) '[YX DEBUG][EMI_WaterStateType_ExchangeMod::EMI_Unpack_WaterState_Type_xxx] in loop'
+!       write(*,*) '[YX DEBUG][EMI_WaterStateType_ExchangeMod::EMI_Unpack_WaterState_Type_xxx] |- c=', c
+!       write(*,*) '[YX DEBUG][EMI_WaterStateType_ExchangeMod::EMI_Unpack_WaterState_Type_xxx] |- j=', j
+!       write(*,*) '[YX DEBUG][EMI_WaterStateType_ExchangeMod::EMI_Unpack_WaterState_Type_xxx] |- cur_data%data_real_2d(c,j)=', cur_data%data_real_2d(c,j)
+! #endif
                 enddo
              enddo
              cur_data%is_set = .true.

@@ -163,13 +163,33 @@ contains
 #ifdef DEBUG_ELMPFEH
   !if (masterproc) then
      write(*,*) '[YX DEBUG][SoilWaterMovementMod::SoilWater] before Prepare_Data_for_EM_VSFM_Driver, USE_PETSC_LIB is defined, while _OPENACC is not defined'
+     write(*,*) '[YX DEBUG][SoilWaterMovementMod::SoilWater] |- col_wf%mflx_infl=', col_wf%mflx_infl
+     write(*,*) '[YX DEBUG][SoilWaterMovementMod::SoilWater] |- col_wf%mflx_dew=', col_wf%mflx_dew
+     write(*,*) '[YX DEBUG][SoilWaterMovementMod::SoilWater] |- col_wf%mflx_sub_snow=', col_wf%mflx_sub_snow
+     write(*,*) '[YX DEBUG][SoilWaterMovementMod::SoilWater] |- col_wf%mflx_snowlyr=', col_wf%mflx_snowlyr
+     write(*,*) '[YX DEBUG][SoilWaterMovementMod::SoilWater] |- col_wf%qflx_infl=', col_wf%qflx_infl
+     write(*,*) '[YX DEBUG][SoilWaterMovementMod::SoilWater] |- col_wf%qflx_dew_snow=', col_wf%qflx_dew_snow
+     write(*,*) '[YX DEBUG][SoilWaterMovementMod::SoilWater] |- col_wf%qflx_dew_grnd=', col_wf%qflx_dew_grnd
+     write(*,*) '[YX DEBUG][SoilWaterMovementMod::SoilWater] |- col_ws%frac_h2osfc=', col_ws%frac_h2osfc
      !stop
   !endif
 #endif
        call Prepare_Data_for_EM_VSFM_Driver(bounds, num_hydrologyc, filter_hydrologyc, &
             soilhydrology_vars, soilstate_vars, &
             waterflux_vars, waterstate_vars, temperature_vars)
-
+#ifdef DEBUG_ELMPFEH
+  !if (masterproc) then
+     write(*,*) '[YX DEBUG][SoilWaterMovementMod::SoilWater] before EMI_Driver '
+     write(*,*) '[YX DEBUG][SoilWaterMovementMod::SoilWater] |- col_wf%mflx_infl=', col_wf%mflx_infl
+     write(*,*) '[YX DEBUG][SoilWaterMovementMod::SoilWater] |- col_wf%mflx_dew=', col_wf%mflx_dew
+     write(*,*) '[YX DEBUG][SoilWaterMovementMod::SoilWater] |- col_wf%mflx_sub_snow=', col_wf%mflx_sub_snow
+     write(*,*) '[YX DEBUG][SoilWaterMovementMod::SoilWater] |- col_wf%mflx_snowlyr=', col_wf%mflx_snowlyr
+     write(*,*) '[YX DEBUG][SoilWaterMovementMod::SoilWater] |- col_wf%qflx_infl=', col_wf%qflx_infl
+     write(*,*) '[YX DEBUG][SoilWaterMovementMod::SoilWater] |- col_wf%qflx_dew_snow=', col_wf%qflx_dew_snow
+     write(*,*) '[YX DEBUG][SoilWaterMovementMod::SoilWater] |- col_wf%qflx_dew_grnd=', col_wf%qflx_dew_grnd
+     !stop
+  !endif
+#endif
        call EMI_Driver(EM_ID_PFLOTRAN, EM_PFLOTRAN_SOIL_HYDRO_STAGE, dt = get_step_size()*1.0_r8, &
             number_step = get_nstep(), &
             clump_rank  = bounds%clump_index, &
@@ -180,6 +200,13 @@ contains
 #ifdef DEBUG_ELMPFEH
   !if (masterproc) then
      write(*,*) '[YX DEBUG][SoilWaterMovementMod::SoilWater] pass EMI_Driver '
+     write(*,*) '[YX DEBUG][SoilWaterMovementMod::SoilWater] |- col_wf%mflx_infl=', col_wf%mflx_infl
+     write(*,*) '[YX DEBUG][SoilWaterMovementMod::SoilWater] |- col_wf%mflx_dew=', col_wf%mflx_dew
+     write(*,*) '[YX DEBUG][SoilWaterMovementMod::SoilWater] |- col_wf%mflx_sub_snow=', col_wf%mflx_sub_snow
+     write(*,*) '[YX DEBUG][SoilWaterMovementMod::SoilWater] |- col_wf%mflx_snowlyr=', col_wf%mflx_snowlyr
+     write(*,*) '[YX DEBUG][SoilWaterMovementMod::SoilWater] |- col_wf%qflx_infl=', col_wf%qflx_infl
+     write(*,*) '[YX DEBUG][SoilWaterMovementMod::SoilWater] |- col_wf%qflx_dew_snow=', col_wf%qflx_dew_snow
+     write(*,*) '[YX DEBUG][SoilWaterMovementMod::SoilWater] |- col_wf%qflx_dew_grnd=', col_wf%qflx_dew_grnd
      !stop
   !endif
 #endif
@@ -935,12 +962,7 @@ contains
      real(r8)             :: qflx_drain_layer              ! Drainage flux from a soil layer (mm H2O/s)
      real(r8)             :: qflx_drain_tot                ! Cummulative drainage flux from soil layers within a column (mm H2O/s)
      !-----------------------------------------------------------------------
-#ifdef DEBUG_ELMPFEH
-  !if (masterproc) then
-     write(*,*) '[YX DEBUG][SoilWaterMovementMod::SoilWater] debugging Prepare_Data_for_EM_VSFM_Driver '
-     !stop
-  !endif
-#endif
+
      associate( &
           zi                        =>    col_pp%zi                                     , & ! Input:  [real(r8) (:,:) ]  interface level below a "z" level (m)
           dz                        =>    col_pp%dz                                     , & ! Input:  [real(r8) (:,:) ]  layer thickness (m)

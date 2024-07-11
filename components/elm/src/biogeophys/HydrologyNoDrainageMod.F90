@@ -172,7 +172,20 @@ contains
          dtime = dtime_mod
       ! Determine initial snow/no-snow filters (will be modified possibly by
       ! routines CombineSnowLayers and DivideSnowLayers below
-
+#ifdef DEBUG_ELMPFEH
+  !if (masterproc) then
+     write(*,*) '[YX DEBUG][HydrologyNoDrainageMod::HydrologyNoDrainage] check 0 at beginning'
+     write(*,*) '[YX DEBUG][HydrologyNoDrainageMod::HydrologyNoDrainage] |- col_wf%mflx_infl=', col_wf%mflx_infl
+     write(*,*) '[YX DEBUG][HydrologyNoDrainageMod::HydrologyNoDrainage] |- col_wf%mflx_dew=', col_wf%mflx_dew
+     write(*,*) '[YX DEBUG][HydrologyNoDrainageMod::HydrologyNoDrainage] |- col_wf%mflx_sub_snow=', col_wf%mflx_sub_snow
+     write(*,*) '[YX DEBUG][HydrologyNoDrainageMod::HydrologyNoDrainage] |- col_wf%mflx_snowlyr=', col_wf%mflx_snowlyr
+     write(*,*) '[YX DEBUG][HydrologyNoDrainageMod::HydrologyNoDrainage] |- col_wf%qflx_infl=', col_wf%qflx_infl
+     write(*,*) '[YX DEBUG][HydrologyNoDrainageMod::HydrologyNoDrainage] |- col_wf%qflx_dew_snow=', col_wf%qflx_dew_snow
+     write(*,*) '[YX DEBUG][HydrologyNoDrainageMod::HydrologyNoDrainage] |- col_wf%qflx_dew_grnd=', col_wf%qflx_dew_grnd
+     write(*,*) '[YX DEBUG][HydrologyNoDrainageMod::HydrologyNoDrainage] |- col_wf%qflx_ev_h2osfc=', col_wf%qflx_ev_h2osfc
+     !stop
+  !endif
+#endif
       call BuildSnowFilter(bounds, num_nolakec, filter_nolakec, &
            num_snowc, filter_snowc, num_nosnowc, filter_nosnowc)
 
@@ -207,7 +220,19 @@ contains
       !------------------------------------------------------------------------------------
       end if
       !------------------------------------------------------------------------------------
-
+#ifdef DEBUG_ELMPFEH
+  !if (masterproc) then
+     write(*,*) '[YX DEBUG][HydrologyNoDrainageMod::HydrologyNoDrainage] check 1 after Infiltration'
+     write(*,*) '[YX DEBUG][HydrologyNoDrainageMod::HydrologyNoDrainage] |- col_wf%mflx_infl=', col_wf%mflx_infl
+     write(*,*) '[YX DEBUG][HydrologyNoDrainageMod::HydrologyNoDrainage] |- col_wf%mflx_dew=', col_wf%mflx_dew
+     write(*,*) '[YX DEBUG][HydrologyNoDrainageMod::HydrologyNoDrainage] |- col_wf%mflx_sub_snow=', col_wf%mflx_sub_snow
+     write(*,*) '[YX DEBUG][HydrologyNoDrainageMod::HydrologyNoDrainage] |- col_wf%mflx_snowlyr=', col_wf%mflx_snowlyr
+     write(*,*) '[YX DEBUG][HydrologyNoDrainageMod::HydrologyNoDrainage] |- col_wf%qflx_infl=', col_wf%qflx_infl
+     write(*,*) '[YX DEBUG][HydrologyNoDrainageMod::HydrologyNoDrainage] |- col_wf%qflx_dew_snow=', col_wf%qflx_dew_snow
+     write(*,*) '[YX DEBUG][HydrologyNoDrainageMod::HydrologyNoDrainage] |- col_wf%qflx_dew_grnd=', col_wf%qflx_dew_grnd
+     !stop
+  !endif
+#endif
       !!TODO:  need to fix the waterstate_vars dependence here.
 #ifndef _OPENACC
       if (use_betr) then
