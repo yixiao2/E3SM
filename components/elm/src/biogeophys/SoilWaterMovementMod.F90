@@ -1028,7 +1028,12 @@ contains
 
           ! [mm/s] --> [kg/s]   [m^2] [kg/m^3]  [m/mm]
           flux_unit_conversion     = area * denh2o * 1.0d-3
-
+! #ifdef DEBUG_ELMPFEH
+!      write(*,*) '[YX DEBUG][SoilWaterMovementMod::Prepare_Data_for_EM_VSFM_Driver] lateral_connectivity = ',lateral_connectivity
+!      write(*,*) '[YX DEBUG][SoilWaterMovementMod::Prepare_Data_for_EM_VSFM_Driver] flux_unit_conversion = ',flux_unit_conversion
+!      write(*,*) '[YX DEBUG][SoilWaterMovementMod::Prepare_Data_for_EM_VSFM_Driver] |- area = ',area
+!      write(*,*) '[YX DEBUG][SoilWaterMovementMod::Prepare_Data_for_EM_VSFM_Driver] |- denh2o = ',denh2o
+! #endif
           do j = 1, nlevsoi
              ! ET sink
              mflx_et_col(c,j) = -qflx_rootsoi_col(c,j)*flux_unit_conversion

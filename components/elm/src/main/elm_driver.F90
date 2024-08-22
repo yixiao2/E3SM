@@ -750,7 +750,10 @@ contains
        ! Determine leaf temperature and surface fluxes based on ground
        ! temperature from previous time step.
        ! ============================================================================
-
+#ifdef DEBUG_ELMPFEH
+    write(*,*) '[YX DEBUG][elm_driver::elm_drv] before CanopyTemperature'
+    write(*,*) '[YX DEBUG][elm_driver::elm_drv] |- col_es%t_grnd=', col_es%t_grnd
+#endif
        call t_startf('bgp1')
        call CanopyTemperature(bounds_clump,                                   &
             filter(nc)%num_nolakec, filter(nc)%nolakec,                       &
@@ -758,7 +761,10 @@ contains
             atm2lnd_vars, canopystate_vars, soilstate_vars, frictionvel_vars, &
             energyflux_vars)
        call t_stopf('bgp1')
-
+#ifdef DEBUG_ELMPFEH
+    write(*,*) '[YX DEBUG][elm_driver::elm_drv] before CanopyTemperature'
+    write(*,*) '[YX DEBUG][elm_driver::elm_drv] |- col_es%t_grnd=', col_es%t_grnd
+#endif
        ! ============================================================================
        ! Determine fluxes
        ! ============================================================================
@@ -768,17 +774,29 @@ contains
        call col_wf%Reset(bounds_clump, filter(nc)%num_nolakec , filter(nc)%nolakec)
 
        ! Bareground fluxes for all patches except lakes and urban landunits
-
+#ifdef DEBUG_ELMPFEH
+    write(*,*) '[YX DEBUG][elm_driver::elm_drv] before BareGroundFluxes'
+    write(*,*) '[YX DEBUG][elm_driver::elm_drv] |- col_wf%qflx_ev_h2osfc=', col_wf%qflx_ev_h2osfc
+    write(*,*) '[YX DEBUG][elm_driver::elm_drv] |- veg_wf%qflx_ev_h2osfc=', veg_wf%qflx_ev_h2osfc
+#endif
        call BareGroundFluxes(bounds_clump,                                 &
             filter(nc)%num_nolakeurbanp, filter(nc)%nolakeurbanp,          &
             atm2lnd_vars, canopystate_vars, soilstate_vars,                &
             frictionvel_vars, ch4_vars  )
        call t_stopf('bgflux')
-
+#ifdef DEBUG_ELMPFEH
+    write(*,*) '[YX DEBUG][elm_driver::elm_drv] after BareGroundFluxes'
+    write(*,*) '[YX DEBUG][elm_driver::elm_drv] |- col_wf%qflx_ev_h2osfc=', col_wf%qflx_ev_h2osfc
+    write(*,*) '[YX DEBUG][elm_driver::elm_drv] |- veg_wf%qflx_ev_h2osfc=', veg_wf%qflx_ev_h2osfc
+#endif
        ! non-bareground fluxes for all patches except lakes and urban landunits
        ! Calculate canopy temperature, latent and sensible fluxes from the canopy,
        ! and leaf water change by evapotranspiration
-
+#ifdef DEBUG_ELMPFEH
+    write(*,*) '[YX DEBUG][elm_driver::elm_drv] before CanopyFluxes'
+    write(*,*) '[YX DEBUG][elm_driver::elm_drv] |- col_wf%qflx_ev_h2osfc=', col_wf%qflx_ev_h2osfc
+    write(*,*) '[YX DEBUG][elm_driver::elm_drv] |- veg_wf%qflx_ev_h2osfc=', veg_wf%qflx_ev_h2osfc
+#endif
        call t_startf('canflux')
        call CanopyFluxes(bounds_clump,                                                   &
             filter(nc)%num_nolakeurbanp, filter(nc)%nolakeurbanp,                        &
@@ -786,7 +804,11 @@ contains
             frictionvel_vars, soilstate_vars, solarabs_vars, surfalb_vars,               &
             ch4_vars, photosyns_vars )
        call t_stopf('canflux')
-
+#ifdef DEBUG_ELMPFEH
+    write(*,*) '[YX DEBUG][elm_driver::elm_drv] after CanopyFluxes'
+    write(*,*) '[YX DEBUG][elm_driver::elm_drv] |- col_wf%qflx_ev_h2osfc=', col_wf%qflx_ev_h2osfc
+    write(*,*) '[YX DEBUG][elm_driver::elm_drv] |- veg_wf%qflx_ev_h2osfc=', veg_wf%qflx_ev_h2osfc
+#endif
        ! Fluxes for all urban landunits
 
        call t_startf('uflux')
@@ -851,7 +873,11 @@ contains
        call t_stopf('bgplake')
 
        ! Set soil/snow temperatures including ground temperature
-
+#ifdef DEBUG_ELMPFEH
+    write(*,*) '[YX DEBUG][elm_driver::elm_drv] before SoilTemperature'
+    write(*,*) '[YX DEBUG][elm_driver::elm_drv] |- col_es%t_grnd=', col_es%t_grnd
+    write(*,*) '[YX DEBUG][elm_driver::elm_drv] |- col_es%t_soisno(:,1)=', col_es%t_soisno(:,1)
+#endif
        call t_startf('soiltemperature')
        call SoilTemperature(bounds_clump,                     &
             filter(nc)%num_urbanl  , filter(nc)%urbanl,       &
@@ -859,7 +885,11 @@ contains
             atm2lnd_vars, urbanparams_vars, canopystate_vars, &
             solarabs_vars, soilstate_vars, energyflux_vars )
        call t_stopf('soiltemperature')
-
+#ifdef DEBUG_ELMPFEH
+    write(*,*) '[YX DEBUG][elm_driver::elm_drv] after SoilTemperature'
+    write(*,*) '[YX DEBUG][elm_driver::elm_drv] |- col_es%t_grnd=', col_es%t_grnd
+    write(*,*) '[YX DEBUG][elm_driver::elm_drv] |- col_es%t_soisno(:,1)=', col_es%t_soisno(:,1)
+#endif
 
        if(use_betr)then
          call ep_betr%BeTRSetBiophysForcing(bounds_clump, col_pp, veg_pp, 1, nlevsoi, waterstate_vars=col_ws)
@@ -868,7 +898,12 @@ contains
        ! ============================================================================
        ! update surface fluxes for new ground temperature.
        ! ============================================================================
-
+#ifdef DEBUG_ELMPFEH
+    write(*,*) '[YX DEBUG][elm_driver::elm_drv] before SoilFluxes'
+    write(*,*) '[YX DEBUG][elm_driver::elm_drv] |- col_wf%qflx_ev_h2osfc=', col_wf%qflx_ev_h2osfc
+    write(*,*) '[YX DEBUG][elm_driver::elm_drv] |- veg_wf%qflx_ev_h2osfc=', veg_wf%qflx_ev_h2osfc
+    write(*,*) '[YX DEBUG][elm_driver::elm_drv] |- col_es%t_grnd=', col_es%t_grnd
+#endif
        call t_startf('bgp2')
        call SoilFluxes(bounds_clump,                       &
             filter(nc)%num_urbanl,  filter(nc)%urbanl,     &
@@ -877,7 +912,11 @@ contains
             atm2lnd_vars, solarabs_vars, canopystate_vars, &
             energyflux_vars )
        call t_stopf('bgp2')
-
+#ifdef DEBUG_ELMPFEH
+    write(*,*) '[YX DEBUG][elm_driver::elm_drv] after SoilFluxes'
+    write(*,*) '[YX DEBUG][elm_driver::elm_drv] |- col_wf%qflx_ev_h2osfc=', col_wf%qflx_ev_h2osfc
+    write(*,*) '[YX DEBUG][elm_driver::elm_drv] |- veg_wf%qflx_ev_h2osfc=', veg_wf%qflx_ev_h2osfc
+#endif
        ! ============================================================================
        ! Perform averaging from patch level to column level
        ! ============================================================================
@@ -892,7 +931,13 @@ contains
 
        ! Note that filter_snowc and filter_nosnowc are returned by
        ! LakeHydrology after the new snow filter is built
-
+#ifdef DEBUG_ELMPFEH
+    write(*,*) '[YX DEBUG][elm_driver::elm_drv] before HydrologyNoDrainage'
+    write(*,*) '[YX DEBUG][elm_driver::elm_drv] |- col_wf%qflx_ev_h2osfc=', col_wf%qflx_ev_h2osfc
+    write(*,*) '[YX DEBUG][elm_driver::elm_drv] |- veg_wf%qflx_ev_h2osfc=', veg_wf%qflx_ev_h2osfc
+    write(*,*) '[YX DEBUG][elm_driver::elm_drv] |- col_es%t_grnd=', col_es%t_grnd
+    write(*,*) '[YX DEBUG][elm_driver::elm_drv] |- col_ws%h2osoi_liq(1:2,1:nlevgrnd)=', col_ws%h2osoi_liq(1:2,1:nlevgrnd)
+#endif
        call t_startf('hydro without drainage')
 
        call HydrologyNoDrainage(bounds_clump,                                &
@@ -904,7 +949,18 @@ contains
             filter(nc)%num_nosnowc, filter(nc)%nosnowc,canopystate_vars,     &
             atm2lnd_vars, lnd2atm_vars, soilstate_vars, energyflux_vars,     &
             soilhydrology_vars, aerosol_vars )
-
+#ifdef DEBUG_ELMPFEH
+    write(*,*) '[YX DEBUG][elm_driver::elm_drv] pass HydrologyNoDrainage'
+    write(*,*) '[YX DEBUG][elm_driver::elm_drv] |- col_wf%mflx_infl=', col_wf%mflx_infl
+    write(*,*) '[YX DEBUG][elm_driver::elm_drv] |- col_wf%mflx_dew=', col_wf%mflx_dew
+    write(*,*) '[YX DEBUG][elm_driver::elm_drv] |- col_wf%mflx_sub_snow=', col_wf%mflx_sub_snow
+    write(*,*) '[YX DEBUG][elm_driver::elm_drv] |- col_wf%mflx_snowlyr=', col_wf%mflx_snowlyr
+    write(*,*) '[YX DEBUG][elm_driver::elm_drv] |- col_wf%qflx_infl=', col_wf%qflx_infl
+    write(*,*) '[YX DEBUG][elm_driver::elm_drv] |- col_wf%qflx_dew_snow=', col_wf%qflx_dew_snow
+    write(*,*) '[YX DEBUG][elm_driver::elm_drv] |- col_wf%qflx_dew_grnd=', col_wf%qflx_dew_grnd
+    write(*,*) '[YX DEBUG][elm_driver::elm_drv] |- col_es%t_grnd=', col_es%t_grnd
+    write(*,*) '[YX DEBUG][elm_driver::elm_drv] |- col_ws%h2osoi_liq(1:2,1:nlevgrnd)=', col_ws%h2osoi_liq(1:2,1:nlevgrnd)
+#endif
        !  Calculate column-integrated aerosol masses, and
        !  mass concentrations for radiative calculations and output
        !  (based on new snow level state, after SnowFilter is rebuilt.
@@ -1237,7 +1293,16 @@ contains
        end if
 
        call t_stopf('hydro2 drainage')
-
+#ifdef DEBUG_ELMPFEH
+    write(*,*) '[YX DEBUG][elm_driver::elm_drv] pass HydrologyDrainage'
+    write(*,*) '[YX DEBUG][elm_driver::elm_drv] |- col_wf%mflx_infl=', col_wf%mflx_infl
+    write(*,*) '[YX DEBUG][elm_driver::elm_drv] |- col_wf%mflx_dew=', col_wf%mflx_dew
+    write(*,*) '[YX DEBUG][elm_driver::elm_drv] |- col_wf%mflx_sub_snow=', col_wf%mflx_sub_snow
+    write(*,*) '[YX DEBUG][elm_driver::elm_drv] |- col_wf%mflx_snowlyr=', col_wf%mflx_snowlyr
+    write(*,*) '[YX DEBUG][elm_driver::elm_drv] |- col_wf%qflx_infl=', col_wf%qflx_infl
+    write(*,*) '[YX DEBUG][elm_driver::elm_drv] |- col_wf%qflx_dew_snow=', col_wf%qflx_dew_snow
+    write(*,*) '[YX DEBUG][elm_driver::elm_drv] |- col_wf%qflx_dew_grnd=', col_wf%qflx_dew_grnd
+#endif
        if (use_betr) then
           call t_startf('betr drainage')
           call ep_betr%StepWithDrainage(bounds_clump, col_pp)

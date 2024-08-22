@@ -40,6 +40,10 @@ contains
     PetscErrorCode        :: ierr
 
     if (use_vsfm .or. use_pflotran_hmode_via_emi) then
+#ifdef DEBUG_ELMPFEH
+      write(*,*) '[YX DEBUG][elm_finalizeMod::final]'
+      stop
+#endif
        call PetscFinalize(ierr)
     endif
 #endif

@@ -1053,6 +1053,15 @@ contains
     ! PetscScalar, pointer :: e2l_drain(:)
     ! PetscScalar, pointer :: e2l_qrgwl(:)
     ! PetscScalar, pointer :: e2l_rsub_sat(:)
+#ifdef PRINT_INTERNALFLOW
+    PetscScalar, pointer :: mflx_infl_elm_loc4print(:)
+    PetscScalar, pointer :: mflx_et_elm_loc4print(:)
+    PetscScalar, pointer :: mflx_dew_elm_loc4print(:)
+    PetscScalar, pointer :: mflx_sub_snow_elm_loc4print(:)
+    PetscScalar, pointer :: mflx_snowlyr_disp_elm_loc4print(:)
+    PetscScalar, pointer :: mflx_drain_elm_loc4print(:)
+#endif
+    PetscViewer :: viewer
 
     integer :: bounds_proc_begc, bounds_proc_endc
     integer :: nlevmapped
@@ -1324,20 +1333,68 @@ contains
        end do
     end do
 #ifdef DEBUG_ELMPFEH
-    write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] check elm_pf_idata update0.3'
+    write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] check elm_pf_idata update1'
     write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] qflx_elm_loc = ', qflx_elm_loc
     write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] mflx_et_col_1d = ', mflx_et_col_1d
     write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] area_elm_loc = ', area_elm_loc
-    !stop
-#endif
-#ifdef DEBUG_ELMPFEH
-    write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] check elm_pf_idata update1'
-    write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] qflx_elm_loc = ', qflx_elm_loc
     write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] thetares2_elm_loc = ', thetares2_elm_loc
     !stop
 #endif
     call VecRestoreArrayF90(elm_pf_idata%qflx_elm, qflx_elm_loc, ierr); CHKERRQ(ierr)
     call VecRestoreArrayF90(elm_pf_idata%thetares2_elm, thetares2_elm_loc, ierr); CHKERRQ(ierr)
+
+#ifdef PRINT_INTERNALFLOW
+    call VecGetArrayF90(elm_pf_idata%mflx_infl_elm, mflx_infl_elm_loc4print, ierr); CHKERRQ(ierr)
+    call VecGetArrayF90(elm_pf_idata%mflx_et_elm, mflx_et_elm_loc4print, ierr); CHKERRQ(ierr)
+    call VecGetArrayF90(elm_pf_idata%mflx_dew_elm, mflx_dew_elm_loc4print, ierr); CHKERRQ(ierr)
+    call VecGetArrayF90(elm_pf_idata%mflx_sub_snow_elm, mflx_sub_snow_elm_loc4print, ierr); CHKERRQ(ierr)
+    call VecGetArrayF90(elm_pf_idata%mflx_snowlyr_disp_elm, mflx_snowlyr_disp_elm_loc4print, ierr); CHKERRQ(ierr)
+    call VecGetArrayF90(elm_pf_idata%mflx_drain_elm, mflx_drain_elm_loc4print, ierr); CHKERRQ(ierr)
+
+   ! infl/dew/snowlyr/sub_snow/et
+    j = 1
+    do c = bounds_proc_begc, bounds_proc_endc
+       if (col_active(c) == 1) then
+          ! Set gridcell indices
+          g = col_gridcell(c)
+          g_idx = (g - bounds_clump%begg)*nlevmapped + j
+          c_idx = c - begc+1
+          mflx_infl_elm_loc4print(g_idx) = mflx_infl_col_1d(c_idx)
+          mflx_dew_elm_loc4print(g_idx) = mflx_dew_col_1d(c_idx)
+          mflx_snowlyr_disp_elm_loc4print(g_idx) = mflx_snowlyr_col_1d(c_idx)
+          mflx_sub_snow_elm_loc4print(g_idx) = mflx_sub_snow_col_1d(c_idx)
+       end if
+       total_mass_flux_col(c) = 0.d0
+    enddo
+
+    do c = bounds_proc_begc, bounds_proc_endc
+       do j = 1,nlevmapped
+          g = col_gridcell(c)
+          g_idx = (g - bounds_clump%begg)*nlevmapped + j
+          c_idx = (c - bounds_proc_begc)*nlevgrnd+j
+          if (col_active(c) == 1) then
+             mflx_et_elm_loc4print(g_idx) = mflx_et_col_1d(c_idx)
+             mflx_drain_elm_loc4print(g_idx) = mflx_drain_col_1d(c_idx) ! although it is not used in calculation of qflx_elm
+          end if
+       end do
+    end do
+
+    write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] check elm_pf_idata update1.2'
+    write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] mflx_infl_elm_loc4print = ', mflx_infl_elm_loc4print
+    write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] mflx_dew_elm_loc4print = ', mflx_dew_elm_loc4print
+    write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] mflx_snowlyr_disp_elm_loc4print = ', mflx_snowlyr_disp_elm_loc4print
+    write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] mflx_sub_snow_elm_loc4print = ', mflx_sub_snow_elm_loc4print
+    write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] mflx_et_elm_loc4print = ', mflx_et_elm_loc4print
+    write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] mflx_drain_elm_loc4print = ', mflx_drain_elm_loc4print
+
+    call VecRestoreArrayF90(elm_pf_idata%mflx_infl_elm, mflx_infl_elm_loc4print, ierr); CHKERRQ(ierr)
+    call VecRestoreArrayF90(elm_pf_idata%mflx_et_elm, mflx_et_elm_loc4print, ierr); CHKERRQ(ierr)
+    call VecRestoreArrayF90(elm_pf_idata%mflx_dew_elm, mflx_dew_elm_loc4print, ierr); CHKERRQ(ierr)
+    call VecRestoreArrayF90(elm_pf_idata%mflx_sub_snow_elm, mflx_sub_snow_elm_loc4print, ierr); CHKERRQ(ierr)
+    call VecRestoreArrayF90(elm_pf_idata%mflx_snowlyr_disp_elm, mflx_snowlyr_disp_elm_loc4print, ierr); CHKERRQ(ierr)
+    call VecRestoreArrayF90(elm_pf_idata%mflx_drain_elm, mflx_drain_elm_loc4print, ierr); CHKERRQ(ierr)
+#endif
+
 
     call pflotranModelUpdateFlowConds( this%pflotran_m )
 #ifdef DEBUG_ELMPFEH
@@ -1347,6 +1404,7 @@ contains
 #endif
     call pflotranModelStepperRunTillPauseTime( this%pflotran_m, (nstep+1.0d0)*dtime )
     call pflotranModelGetUpdatedData( this%pflotran_m )
+
 #ifdef DEBUG_ELMPFEH
     write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] pass pflotranModelStepperRunTillPauseTime'
     write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] nstep+1.0d0*dtime = ', (nstep+1.0d0)*dtime
@@ -1380,18 +1438,19 @@ contains
 
           mass_end        = mass_end        + mass_elm_loc(g_idx)/area_elm_loc(g_idx)
           mass_end_col(c) = mass_end_col(c) + mass_elm_loc(g_idx)/area_elm_loc(g_idx)
-! #ifdef DEBUG_ELMPFEH
-!       write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] checkpoint e2l_h2osoi_liq, in do-loop'
-!       write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] |- c=', c
-!       write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] |- g=', g
-!       write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] |- j=', j
-!       write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] |- g_idx=', g_idx
-!       write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] |- e2l_h2osoi_liq(c,j)=', e2l_h2osoi_liq(c,j)
-!       write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro]     |- frac_ice(c,j)(c,j)=', frac_ice(c,j)
-!       write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro]     |- mass_elm_loc(g_idx)=', mass_elm_loc(g_idx)
-!       write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro]     |- area_elm_loc(g_idx)=', area_elm_loc(g_idx)
-!       write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] |- e2l_h2osoi_ice(c,j)=', e2l_h2osoi_ice(c,j)
-! #endif
+#ifdef DEBUG_ELMPFEH
+      write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] checkpoint e2l_h2osoi_liq, in do-loop'
+      write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] |- c=', c
+      write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] |- g=', g
+      write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] |- j=', j
+      write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] |- g_idx=', g_idx
+      write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] |- e2l_h2osoi_liq(c,j)=', e2l_h2osoi_liq(c,j)
+      write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro]     |- frac_ice(c,j)(c,j)=', frac_ice(c,j)
+      write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro]     |- mass_elm_loc(g_idx)=', mass_elm_loc(g_idx)
+      write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro]     |- area_elm_loc(g_idx)=', area_elm_loc(g_idx)
+      write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro]     |- ratio=', mass_elm_loc(g_idx)/area_elm_loc(g_idx)
+      write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] |- e2l_h2osoi_ice(c,j)=', e2l_h2osoi_ice(c,j)
+#endif
        end do
 
 
@@ -1436,6 +1495,48 @@ contains
     write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] watsat_elm_loc = ', watsat_elm_loc
     !stop
 #endif
+
+#ifdef PRINT_INTERNALFLOW
+   !  !print nstep or time to file
+   !  !if (masterproc) then
+   !    open(unit=10, file='pf_internalflow.out', action='write', position='append')
+   !    write(10,*)
+   !    write(10,*) 'nstep=', nstep
+   !    close(10)
+   !  !end if
+    call pflotranModelGetInternalflow( this%pflotran_m )
+#endif
+
+#ifdef PRINT_INTERNALFLOW
+    ! print elm_pf_idata%mass_elm to file
+    call PetscViewerCreate(this%pflotran_m%option%mycomm, viewer, ierr);CHKERRQ(ierr)
+    call PetscViewerSetType(viewer,PETSCVIEWERASCII,ierr);CHKERRQ(ierr)
+    call PetscViewerFileSetMode(viewer,FILE_MODE_APPEND,ierr);CHKERRQ(ierr)
+    call PetscViewerFileSetName(viewer,'elm_pf_idata_mass_elm.out',ierr);CHKERRQ(ierr)
+    call PetscViewerPushFormat(viewer,PETSC_VIEWER_ASCII_COMMON,ierr);CHKERRQ(ierr)
+    call VecView(elm_pf_idata%mass_elm,viewer,ierr);CHKERRQ(ierr)
+    call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
+
+    ! print elm_pf_idata%area_top_face_elm to file
+    call PetscViewerCreate(this%pflotran_m%option%mycomm, viewer, ierr);CHKERRQ(ierr)
+    call PetscViewerSetType(viewer,PETSCVIEWERASCII,ierr);CHKERRQ(ierr)
+    call PetscViewerFileSetMode(viewer,FILE_MODE_APPEND,ierr);CHKERRQ(ierr)
+    call PetscViewerFileSetName(viewer,'elm_pf_idata_area_top_face_elm.out',ierr);CHKERRQ(ierr)
+    call PetscViewerPushFormat(viewer,PETSC_VIEWER_ASCII_COMMON,ierr);CHKERRQ(ierr)
+    call VecView(elm_pf_idata%area_top_face_elm,viewer,ierr);CHKERRQ(ierr)
+    call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
+
+    ! print elm_pf_idata%qflx_elm to file
+    call PetscViewerCreate(this%pflotran_m%option%mycomm, viewer, ierr);CHKERRQ(ierr)
+    call PetscViewerSetType(viewer,PETSCVIEWERASCII,ierr);CHKERRQ(ierr)
+    call PetscViewerFileSetMode(viewer,FILE_MODE_APPEND,ierr);CHKERRQ(ierr)
+    call PetscViewerFileSetName(viewer,'elm_pf_idata_qflx_elm.out',ierr);CHKERRQ(ierr)
+    call PetscViewerPushFormat(viewer,PETSC_VIEWER_ASCII_COMMON,ierr);CHKERRQ(ierr)
+    call VecView(elm_pf_idata%qflx_elm,viewer,ierr);CHKERRQ(ierr)
+    call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
+
+#endif
+
     call VecRestoreArrayF90(elm_pf_idata%area_top_face_elm, area_elm_loc, ierr); CHKERRQ(ierr)
     call VecRestoreArrayF90(elm_pf_idata%sat_elm   , sat_elm_loc   , ierr); CHKERRQ(ierr)
     call VecRestoreArrayF90(elm_pf_idata%mass_elm  , mass_elm_loc  , ierr); CHKERRQ(ierr)
