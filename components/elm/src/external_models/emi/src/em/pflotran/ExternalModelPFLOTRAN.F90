@@ -1379,6 +1379,7 @@ contains
        end do
     end do
 
+#ifdef DEBUG_ELMPFEH
     write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] check elm_pf_idata update1.2'
     write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] mflx_infl_elm_loc4print = ', mflx_infl_elm_loc4print
     write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] mflx_dew_elm_loc4print = ', mflx_dew_elm_loc4print
@@ -1386,6 +1387,7 @@ contains
     write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] mflx_sub_snow_elm_loc4print = ', mflx_sub_snow_elm_loc4print
     write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] mflx_et_elm_loc4print = ', mflx_et_elm_loc4print
     write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] mflx_drain_elm_loc4print = ', mflx_drain_elm_loc4print
+#endif
 
     call VecRestoreArrayF90(elm_pf_idata%mflx_infl_elm, mflx_infl_elm_loc4print, ierr); CHKERRQ(ierr)
     call VecRestoreArrayF90(elm_pf_idata%mflx_et_elm, mflx_et_elm_loc4print, ierr); CHKERRQ(ierr)
