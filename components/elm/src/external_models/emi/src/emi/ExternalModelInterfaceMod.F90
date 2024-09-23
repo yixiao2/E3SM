@@ -67,10 +67,16 @@ module ExternalModelInterfaceMod
   class(em_stub_type)                , pointer :: em_stub(:)
 
   public :: EMI_Determine_Active_EMs
-  public :: EMI_Init_EM
-  public :: EMI_Driver
   public :: EMI_Set_Restart_Stamp
   public :: EMI_ReadNameList_For_PFLOTRAN
+  private:: EMI_Setup_Data_List
+  private:: EMI_Setup_Data
+  public :: EMI_Init_EM
+  public :: EMI_Driver
+  private:: EMID_Reset_Data_for_EM
+  private:: EMID_Verify_All_Data_Is_Set
+  public :: EMI_Finalize_For_PFLOTRAN
+
 
 contains
 
@@ -439,7 +445,17 @@ contains
           ! Reset values in the data list
           call EMID_Reset_Data_for_EM(l2e_init_list(clump_rank), em_stage)
           call EMID_Reset_Data_for_EM(e2l_init_list(clump_rank), em_stage)
-
+#ifdef DEBUG_ELMPFEH
+   ! write(*,*) '[YX DEBUG][ExternalModelInterfaceMod::EMI_Init_EM]: num_filter_col = ', num_filter_col
+   ! write(*,*) '[YX DEBUG][ExternalModelInterfaceMod::EMI_Init_EM]:   |- bounds_clump%begc = ', bounds_clump%begc
+   ! write(*,*) '[YX DEBUG][ExternalModelInterfaceMod::EMI_Init_EM]:   |- bounds_clump%endc = ', bounds_clump%endc
+   ! write(*,*) '[YX DEBUG][ExternalModelInterfaceMod::EMI_Init_EM]: num_filter_lun = ', num_filter_lun
+   ! write(*,*) '[YX DEBUG][ExternalModelInterfaceMod::EMI_Init_EM]:   |- bounds_clump%begl = ', bounds_clump%begl
+   ! write(*,*) '[YX DEBUG][ExternalModelInterfaceMod::EMI_Init_EM]:   |- bounds_clump%endl = ', bounds_clump%endl
+   ! write(*,*) '[YX DEBUG][ExternalModelInterfaceMod::EMI_Init_EM]: clump_rank = ', clump_rank
+   ! write(*,*) '[YX DEBUG][ExternalModelInterfaceMod::EMI_Init_EM]: filter_col = ', filter_col
+   ! write(*,*) '[YX DEBUG][ExternalModelInterfaceMod::EMI_Init_EM]: filter_lun = ', filter_lun
+#endif
           ! Pack all ALM data needed by the external model
           call EMI_Pack_WaterStateType_at_Column_Level_for_EM(l2e_init_list(clump_rank), em_stage, &
                num_filter_col, filter_col, waterstate_vars)
@@ -1017,14 +1033,7 @@ contains
     case default
        call endrun('Unknown External Model')
     end select
-#ifdef DEBUG_ELMPFEH
-     write(*,*) '[YX DEBUG][ExternalModelInterfaceMod::EMI_Driver] checkpoint -1'
-     write(*,*) '[YX DEBUG][ExternalModelInterfaceMod::EMI_Driver] |- col_wf%mflx_infl=', col_wf%mflx_infl
-     write(*,*) '[YX DEBUG][ExternalModelInterfaceMod::EMI_Driver] |- col_wf%mflx_dew=', col_wf%mflx_dew
-     write(*,*) '[YX DEBUG][ExternalModelInterfaceMod::EMI_Driver] |- col_wf%mflx_sub_snow=', col_wf%mflx_sub_snow
-     write(*,*) '[YX DEBUG][ExternalModelInterfaceMod::EMI_Driver] |- col_wf%mflx_snowlyr=', col_wf%mflx_snowlyr
-     !stop
-#endif
+
     ! ------------------------------------------------------------------------
     ! Pack the data for EM
     ! ------------------------------------------------------------------------
@@ -1043,11 +1052,6 @@ contains
          present(filter_hydrologyc)) then
 #ifdef DEBUG_ELMPFEH
      write(*,*) '[YX DEBUG][ExternalModelInterfaceMod::EMI_Driver] EMI_Pack_TemperatureType_at_Column_Level_for_EM'
-     write(*,*) '[YX DEBUG][ExternalModelInterfaceMod::EMI_Driver] |- col_wf%mflx_infl=', col_wf%mflx_infl
-     write(*,*) '[YX DEBUG][ExternalModelInterfaceMod::EMI_Driver] |- col_wf%mflx_dew=', col_wf%mflx_dew
-     write(*,*) '[YX DEBUG][ExternalModelInterfaceMod::EMI_Driver] |- col_wf%mflx_sub_snow=', col_wf%mflx_sub_snow
-     write(*,*) '[YX DEBUG][ExternalModelInterfaceMod::EMI_Driver] |- col_wf%mflx_snowlyr=', col_wf%mflx_snowlyr
-     !stop
 #endif
        call EMI_Pack_TemperatureType_at_Column_Level_for_EM(l2e_driver_list(iem), em_stage, &
             num_hydrologyc, filter_hydrologyc, temperature_vars)
@@ -1213,6 +1217,11 @@ contains
     do ii = 1, num_filter_col
        filter_col(ii) = bounds_clump%begc + ii - 1
     enddo
+#ifdef DEBUG_ELMPFEH
+   !   write(*,*) '[YX DEBUG][ExternalModelInterfaceMod::EMI_Driver] before EMI_Pack_ColumnType_for_EM'
+   !   write(*,*) '[YX DEBUG][ExternalModelInterfaceMod::EMI_Driver] |- num_filter_col=', num_filter_col
+   !   write(*,*) '[YX DEBUG][ExternalModelInterfaceMod::EMI_Driver] |- filter_col=', filter_col
+#endif
     call EMI_Pack_ColumnType_for_EM(l2e_driver_list(iem), em_stage, &
             num_filter_col, filter_col)
     deallocate(filter_col)
@@ -1249,8 +1258,9 @@ contains
 
     case (EM_ID_PFLOTRAN)
 #ifdef DEBUG_ELMPFEH
-     write(*,*) '[YX DEBUG][ExternalModelInterfaceMod::EMI_Driver] before call em_pflotran%Solve'
-     write(*,*) '[YX DEBUG][ExternalModelInterfaceMod::EMI_Driver] em_stage = ', em_stage
+   !   write(*,*) '[YX DEBUG][ExternalModelInterfaceMod::EMI_Driver] before call em_pflotran%Solve'
+   !   write(*,*) '[YX DEBUG][ExternalModelInterfaceMod::EMI_Driver] em_stage = ', em_stage
+   !   write(*,*) '[YX DEBUG][ExternalModelInterfaceMod::EMI_Driver] clump_rank = ', clump_rank
      !stop
 #endif
 #ifdef USE_PETSC_LIB
@@ -1463,5 +1473,21 @@ contains
     enddo
 
   end subroutine EMID_Verify_All_Data_Is_Set
+
+!-----------------------------------------------------------------------
+  subroutine EMI_Finalize_For_PFLOTRAN()
+    !
+    ! !DESCRIPTION:
+    ! Finalize the External Model Interface for PFLOTRAN
+    !
+    implicit none
+    !
+    integer                       :: clump_rank
+#ifdef USE_PETSC_LIB
+   do clump_rank = 1, nclumps
+      call em_pflotran(clump_rank)%Finalize()
+   enddo
+#endif
+  end subroutine EMI_Finalize_For_PFLOTRAN
 
 end module ExternalModelInterfaceMod
