@@ -392,6 +392,11 @@ contains
 !       write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] checkpoint for tk_h2osfc, after SoilThermProp'
 !       write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- tk_h2osfc=', tk_h2osfc
 !       write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- soilstate_vars%thk_col=', soilstate_vars%thk_col
+
+!       write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] debug fn( begc:endc, -nlevsno+1: ) =', fn( begc:endc, -nlevsno+1: )
+!       write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- tk( begc:endc, -nlevsno+1: ) =', tk( begc:endc, -nlevsno+1: )
+!       write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- t_soisno( begc:endc, -nlevsno+1: ) =', t_soisno( begc:endc, -nlevsno+1: )
+!       write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- z( begc:endc, 1: ) =', z( begc:endc, 1: )
 ! #endif
       ! Net ground heat flux into the surface and its temperature derivative
       ! Added a patches loop here to get the average of hs and dhsdT over
@@ -449,13 +454,13 @@ contains
          ! soil layers; top layer will have one offset and one extra coefficient
          tvector_nourbanc(c,1:nlevgrnd) = t_soisno(c,1:nlevgrnd)
          tvector_urbanc(c,1:nlevgrnd)   = t_soisno(c,1:nlevgrnd)
-! #ifdef DEBUG_ELMPFEH
-!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] checkpoint 1.1, in do-loop'
-!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- num_nolakec=', num_nolakec
-!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- c=', c
-!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- t_soisno(c,0:nlevgrnd) =', t_soisno(c,0:nlevgrnd)
-!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- tvector_nourbanc(c,0:nlevgrnd) =', tvector_nourbanc(c,0:nlevgrnd)
-! #endif
+#ifdef DEBUG_ELMPFEH
+   !  write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] checkpoint 1.1, in do-loop'
+   !  write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- num_nolakec=', num_nolakec
+   !  write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- c=', c
+   !  write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- t_soisno(c,0:nlevgrnd) =', t_soisno(c,0:nlevgrnd)
+   !  write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- tvector_nourbanc(c,0:nlevgrnd) =', tvector_nourbanc(c,0:nlevgrnd)
+#endif
       enddo
 
 
@@ -467,6 +472,7 @@ contains
 !     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- thermal_model=', thermal_model
 !     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- t_soisno(c,0:nlevgrnd) =', t_soisno(c,0:nlevgrnd)
 !     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- tvector_nourbanc(c,0:nlevgrnd) =', tvector_nourbanc(c,0:nlevgrnd)
+!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- fn(c, -nlevsno+1: ) =', fn(c, -nlevsno+1: )
 ! #endif
       update_temperature = .true.
       select case(thermal_model)
@@ -530,8 +536,8 @@ contains
       end select
 ! #ifdef DEBUG_ELMPFEH
 !     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] checkpoint 1.1.3'
-!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- t_soisno(c=1,0:nlevgrnd) =', t_soisno(1,0:nlevgrnd)
-!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- tvector_nourbanc(c=1,0:nlevgrnd) =', tvector_nourbanc(1,0:nlevgrnd)
+!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- t_soisno(c,0:nlevgrnd) =', t_soisno(c,0:nlevgrnd)
+!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- tvector_nourbanc(c,0:nlevgrnd) =', tvector_nourbanc(c,0:nlevgrnd)
 !     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- EM_ID_PTM =', EM_ID_PTM
 !     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- EM_PTM_TBASED_SOLVE_STAGE =', EM_PTM_TBASED_SOLVE_STAGE
 ! #endif
@@ -595,19 +601,19 @@ contains
             endif
 
          endif
-! #ifdef DEBUG_ELMPFEH
-!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] checkpoint 1.2, in do-loop'
-!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- num_nolakec=', num_nolakec
-!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- c=', c
-!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- l=', l
-!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- lun_pp%urbpoi(l) =', lun_pp%urbpoi(l)
-!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- update_temperature =', update_temperature
-!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- snl(c) =', snl(c)
-!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- frac_h2osfc(c) =', frac_h2osfc(c)
-!     !write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- t_soisno(c,snl(c)+1) =', t_soisno(c,snl(c)+1)
-!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- t_soisno(c,1) =', t_soisno(c,1)
-!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- tvector_nourbanc(c,1:nlevgrnd) =', tvector_nourbanc(c,1:nlevgrnd)
-! #endif
+#ifdef DEBUG_ELMPFEH
+   !  write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] checkpoint 1.2, in do-loop'
+   !  write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- num_nolakec=', num_nolakec
+   !  write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- c=', c
+   !  write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- l=', l
+   !  write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- lun_pp%urbpoi(l) =', lun_pp%urbpoi(l)
+   !  write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- update_temperature =', update_temperature
+   !  write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- snl(c) =', snl(c)
+   !  write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- frac_h2osfc(c) =', frac_h2osfc(c)
+   !  !write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- t_soisno(c,snl(c)+1) =', t_soisno(c,snl(c)+1)
+   !  write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- t_soisno(c,1) =', t_soisno(c,1)
+   !  write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- tvector_nourbanc(c,1:nlevgrnd) =', tvector_nourbanc(c,1:nlevgrnd)
+#endif
       enddo
 
       ! Melting or Freezing
@@ -698,17 +704,17 @@ contains
                t_grnd(c) = t_soisno(c,1)
             end if
          endif
-! #ifdef DEBUG_ELMPFEH
-!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] checkpoint 1.5, in do-loop'
-!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- num_nolakec=', num_nolakec
-!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- c=', c
-!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- snl(c) =', snl(c)
-!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- frac_h2osfc(c) =', frac_h2osfc(c)
-!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- frac_sno_eff(c) =', frac_sno_eff(c)
-!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- t_soisno(c,snl(c)+1) =', t_soisno(c,snl(c)+1)
-!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- t_soisno(c,1) =', t_soisno(c,1)
-!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- t_h2osfc(c) =', t_h2osfc(c)
-! #endif
+#ifdef DEBUG_ELMPFEH
+   !  write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] checkpoint 1.5, in do-loop'
+   !  write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- num_nolakec=', num_nolakec
+   !  write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- c=', c
+   !  write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- snl(c) =', snl(c)
+   !  write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- frac_h2osfc(c) =', frac_h2osfc(c)
+   !  write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- frac_sno_eff(c) =', frac_sno_eff(c)
+   !  write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- t_soisno(c,snl(c)+1) =', t_soisno(c,snl(c)+1)
+   !  write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- t_soisno(c,1) =', t_soisno(c,1)
+   !  write(*,*) '[YX DEBUG][SoilTemperatureMod::SoilTemperature] |- t_h2osfc(c) =', t_h2osfc(c)
+#endif
       end do
 
       ! Initialize soil heat content
@@ -862,9 +868,9 @@ contains
 !     write(*,*) '[YX DEBUG][SoilTemperatureMod::SolveTemperature] |- filter=', filter
 !     write(*,*) '[YX DEBUG][SoilTemperatureMod::SolveTemperature] |- dtime=', dtime
 !     write(*,*) '[YX DEBUG][SoilTemperatureMod::SolveTemperature] |- nband=', nband
-!     !write(*,*) '[YX DEBUG][SoilTemperatureMod::SolveTemperature] |- bmatrix(begc:endc, :, :)', bmatrix(begc:endc, :, :)
-!     !write(*,*) '[YX DEBUG][SoilTemperatureMod::SolveTemperature] |- rvector(begc:endc, :)', rvector(begc:endc, :)
-!     !write(*,*) '[YX DEBUG][SoilTemperatureMod::SolveTemperature] |- tvector(begc:endc, :)', tvector(begc:endc, :)
+!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SolveTemperature] |- bmatrix(begc:endc, 1:, -nlevsno:)', bmatrix(begc:endc, 1:, -nlevsno:)
+!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SolveTemperature] |- rvector(begc:endc, -nlevsno:)', rvector(begc:endc, -nlevsno:)
+!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SolveTemperature] |- tvector(begc:endc, -nlevsno:)', tvector(begc:endc, -nlevsno:)
 ! #endif
     ! Solve the system
     event = 'SoilTempBandDiag'
@@ -873,7 +879,12 @@ contains
          num_filter, filter, nband, bmatrix(begc:endc, :, :), &
          rvector(begc:endc, :), tvector(begc:endc, :))
     call t_stop_lnd(event)
-
+! #ifdef DEBUG_ELMPFEH
+!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SolveTemperature] after BandDiagonal'
+!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SolveTemperature] |- bmatrix(begc:endc, 1:, -nlevsno:)', bmatrix(begc:endc, 1:, -nlevsno:)
+!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SolveTemperature] |- rvector(begc:endc, -nlevsno:)', rvector(begc:endc, -nlevsno:)
+!     write(*,*) '[YX DEBUG][SoilTemperatureMod::SolveTemperature] |- tvector(begc:endc, -nlevsno:)', tvector(begc:endc, -nlevsno:)
+! #endif
   end associate
 
   end subroutine SolveTemperature
@@ -2087,6 +2098,15 @@ contains
                      fact(c,j) = dtime/cv(c,j)
                      fn(c,j) = tk(c,j)*(t_soisno(c,j+1)-t_soisno(c,j))/(z(c,j+1)-z(c,j))
                      dzm     = (z(c,j)-z(c,j-1))
+! #ifdef DEBUG_ELMPFEH
+!    write(*,*) '[debug fn] j, c, ', j, c
+!    write(*,*) '[debug fn] fn(c,j)=', fn(c,j)
+!    write(*,*) '[debug fn] tk(c,j)=', tk(c,j)
+!    write(*,*) '[debug fn] t_soisno(c,j+1)=', t_soisno(c,j+1)
+!    write(*,*) '[debug fn] t_soisno(c,j)=', t_soisno(c,j)
+!    write(*,*) '[debug fn] z(c,j+1)=', z(c,j+1)
+!    write(*,*) '[debug fn] z(c,j)=', z(c,j)
+! #endif
                   else if (j == nlevgrnd) then
                      fact(c,j) = dtime/cv(c,j)
                      fn(c,j) = eflx_bot(c)
@@ -2218,6 +2238,19 @@ contains
          rvector(c, -nlevsno:-1) = rt_snow(c, -nlevsno:-1)
          rvector(c, 0         )  = rt_ssw(c, 1          )
          rvector(c, 1:nlevgrnd)  = rt_soil(c, 1:nlevgrnd )
+! #ifdef DEBUG_ELMPFEH
+!    write(*,*) '[YX DEBUG][SetRHSVec] fc=',fc
+!    write(*,*) '                      num_filter=',num_filter
+!    write(*,*) '                      filter=',filter
+!    write(*,*) '                      c=',c
+!    write(*,*) '[YX DEBUG][SetRHSVec] rvector=',rvector(c, -nlevsno:nlevgrnd)
+!    write(*,*) '[YX DEBUG][SetRHSVec] rt_snow=',rt_snow(c, -nlevsno:-1)
+!    write(*,*) '[YX DEBUG][SetRHSVec] rt_ssw=',rt_ssw(c, 1)
+!    write(*,*) '[YX DEBUG][SetRHSVec] rt_soil=',rt_soil(c, 1:nlevgrnd)
+!    write(*,*) '[YX DEBUG][SetRHSVec] t_soisno(c, -nlevsno+1: )=',t_soisno ( c, -nlevsno+1: )
+!    write(*,*) '[YX DEBUG][SetRHSVec] fact(c, -nlevsno+1: )=',fact(c, -nlevsno+1: )
+!    write(*,*) '[YX DEBUG][SetRHSVec] fn(c, -nlevsno+1: )=',fn(c, -nlevsno+1: )
+! #endif
       end do
 
     end associate
