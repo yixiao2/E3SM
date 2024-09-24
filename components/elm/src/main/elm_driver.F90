@@ -933,10 +933,10 @@ contains
        ! LakeHydrology after the new snow filter is built
 #ifdef DEBUG_ELMPFEH
     write(*,*) '[YX DEBUG][elm_driver::elm_drv] before HydrologyNoDrainage'
-    write(*,*) '[YX DEBUG][elm_driver::elm_drv] |- col_wf%qflx_ev_h2osfc=', col_wf%qflx_ev_h2osfc
-    write(*,*) '[YX DEBUG][elm_driver::elm_drv] |- veg_wf%qflx_ev_h2osfc=', veg_wf%qflx_ev_h2osfc
-    write(*,*) '[YX DEBUG][elm_driver::elm_drv] |- col_es%t_grnd=', col_es%t_grnd
-    write(*,*) '[YX DEBUG][elm_driver::elm_drv] |- col_ws%h2osoi_liq(:,1:nlevgrnd)=', col_ws%h2osoi_liq(:,1:nlevgrnd)
+   !  write(*,*) '[YX DEBUG][elm_driver::elm_drv] |- col_wf%qflx_ev_h2osfc=', col_wf%qflx_ev_h2osfc
+   !  write(*,*) '[YX DEBUG][elm_driver::elm_drv] |- veg_wf%qflx_ev_h2osfc=', veg_wf%qflx_ev_h2osfc
+   !  write(*,*) '[YX DEBUG][elm_driver::elm_drv] |- col_es%t_grnd=', col_es%t_grnd
+   !  write(*,*) '[YX DEBUG][elm_driver::elm_drv] |- col_ws%h2osoi_liq(:,1:nlevgrnd)=', col_ws%h2osoi_liq(:,1:nlevgrnd)
 #endif
        call t_startf('hydro without drainage')
 
@@ -951,15 +951,15 @@ contains
             soilhydrology_vars, aerosol_vars )
 #ifdef DEBUG_ELMPFEH
     write(*,*) '[YX DEBUG][elm_driver::elm_drv] pass HydrologyNoDrainage'
-    write(*,*) '[YX DEBUG][elm_driver::elm_drv] |- col_wf%mflx_infl=', col_wf%mflx_infl
-    write(*,*) '[YX DEBUG][elm_driver::elm_drv] |- col_wf%mflx_dew=', col_wf%mflx_dew
-    write(*,*) '[YX DEBUG][elm_driver::elm_drv] |- col_wf%mflx_sub_snow=', col_wf%mflx_sub_snow
-    write(*,*) '[YX DEBUG][elm_driver::elm_drv] |- col_wf%mflx_snowlyr=', col_wf%mflx_snowlyr
-    write(*,*) '[YX DEBUG][elm_driver::elm_drv] |- col_wf%qflx_infl=', col_wf%qflx_infl
-    write(*,*) '[YX DEBUG][elm_driver::elm_drv] |- col_wf%qflx_dew_snow=', col_wf%qflx_dew_snow
-    write(*,*) '[YX DEBUG][elm_driver::elm_drv] |- col_wf%qflx_dew_grnd=', col_wf%qflx_dew_grnd
-    write(*,*) '[YX DEBUG][elm_driver::elm_drv] |- col_es%t_grnd=', col_es%t_grnd
-    write(*,*) '[YX DEBUG][elm_driver::elm_drv] |- col_ws%h2osoi_liq(:,1:nlevgrnd)=', col_ws%h2osoi_liq(:,1:nlevgrnd)
+   !  write(*,*) '[YX DEBUG][elm_driver::elm_drv] |- col_wf%mflx_infl=', col_wf%mflx_infl
+   !  write(*,*) '[YX DEBUG][elm_driver::elm_drv] |- col_wf%mflx_dew=', col_wf%mflx_dew
+   !  write(*,*) '[YX DEBUG][elm_driver::elm_drv] |- col_wf%mflx_sub_snow=', col_wf%mflx_sub_snow
+   !  write(*,*) '[YX DEBUG][elm_driver::elm_drv] |- col_wf%mflx_snowlyr=', col_wf%mflx_snowlyr
+   !  write(*,*) '[YX DEBUG][elm_driver::elm_drv] |- col_wf%qflx_infl=', col_wf%qflx_infl
+   !  write(*,*) '[YX DEBUG][elm_driver::elm_drv] |- col_wf%qflx_dew_snow=', col_wf%qflx_dew_snow
+   !  write(*,*) '[YX DEBUG][elm_driver::elm_drv] |- col_wf%qflx_dew_grnd=', col_wf%qflx_dew_grnd
+   !  write(*,*) '[YX DEBUG][elm_driver::elm_drv] |- col_es%t_grnd=', col_es%t_grnd
+   !  write(*,*) '[YX DEBUG][elm_driver::elm_drv] |- col_ws%h2osoi_liq(:,1:nlevgrnd)=', col_ws%h2osoi_liq(:,1:nlevgrnd)
 #endif
        !  Calculate column-integrated aerosol masses, and
        !  mass concentrations for radiative calculations and output
