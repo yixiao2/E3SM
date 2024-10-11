@@ -7,6 +7,7 @@ set(EMI_CONSTANTS_SOURCES
   EMI_EnergyFluxType_Constants.F90
   EMI_Filter_Constants.F90
   EMI_Landunit_Constants.F90
+  EMI_GridcellType_Constants.F90
   EMI_SoilHydrologyType_Constants.F90
   EMI_SoilStateType_Constants.F90
   EMI_TemperatureType_Constants.F90

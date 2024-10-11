@@ -7,6 +7,7 @@ set(EMI_EMI_DATA_EXCHANGE_SOURCES
   EMI_EnergyFluxType_ExchangeMod.F90
   EMI_Filter_ExchangeMod.F90
   EMI_Landunit_ExchangeMod.F90
+  EMI_GridcellType_ExchangeMod.F90
   EMI_SoilHydrologyType_ExchangeMod.F90
   EMI_SoilStateType_ExchangeMod.F90
   EMI_TemperatureType_ExchangeMod.F90

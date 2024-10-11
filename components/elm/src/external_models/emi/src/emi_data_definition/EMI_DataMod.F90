@@ -1275,6 +1275,7 @@ contains
     use EMI_ColumnType_Constants
     use EMI_Filter_Constants
     use EMI_Landunit_Constants
+    use EMI_GridcellType_Constants
     use EMI_CNCarbonStateType_DataMod
     use EMI_CNCarbonStateType_Constants
     use EMI_DataDimensionMod, only : dimname_begg
@@ -1685,6 +1686,27 @@ contains
           ndim          = 1
           dim1_beg_name = dimname_begl
           dim1_end_name = dimname_endl
+          data_found    = .true.
+
+       case (L2E_GRIDCELL_GINDEX)
+          id_val        = L2E_GRIDCELL_GINDEX
+          name_val      = 'Gridcell global index'
+          long_name_val = 'Gridcell global index: ALM to External Model'
+          units_val     = '[-]'
+          is_int_type   = .true.
+          ndim          = 1
+          dim1_beg_name = dimname_begg
+          dim1_end_name = dimname_endg
+          data_found    = .true.
+       case (L2E_GRIDCELL_AREA)
+          id_val        = L2E_GRIDCELL_AREA
+          name_val      = 'Gridcell area'
+          long_name_val = 'Gridcell area: ALM to External Model'
+          units_val     = '[km2]'
+          is_real_type  = .true.
+          ndim          = 1
+          dim1_beg_name = dimname_begg
+          dim1_end_name = dimname_endg
           data_found    = .true.
        end select
     end if

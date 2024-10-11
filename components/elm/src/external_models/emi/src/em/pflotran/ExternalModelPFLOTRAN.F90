@@ -21,6 +21,7 @@ module ExternalModelPFLOTRANMod
   use EMI_EnergyFluxType_Constants
   use EMI_Filter_Constants
   use EMI_Landunit_Constants
+  use EMI_GridcellType_Constants
   use EMI_SoilHydrologyType_Constants
   use EMI_SoilStateType_Constants
   use EMI_TemperatureType_Constants
@@ -65,6 +66,9 @@ module ExternalModelPFLOTRANMod
      integer :: index_l2e_init_landunit_type
      integer :: index_l2e_init_landunit_lakepoint
      integer :: index_l2e_init_landunit_urbanpoint
+
+     integer :: index_l2e_init_gridcell_gindex
+     integer :: index_l2e_init_gridcell_area
 
      integer :: index_l2e_init_parameter_watsatc
      integer :: index_l2e_init_parameter_hksatc
@@ -200,6 +204,14 @@ contains
     id                                         = L2E_LANDUNIT_URBANPOINT
     call l2e_init_list%AddDataByID(id, number_em_stages, em_stages, index)
     this%index_l2e_init_landunit_urbanpoint    = index
+
+    id                                         = L2E_GRIDCELL_GINDEX
+    call l2e_init_list%AddDataByID(id, number_em_stages, em_stages, index)
+    this%index_l2e_init_gridcell_gindex        = index
+
+    id                                         = L2E_GRIDCELL_AREA
+    call l2e_init_list%AddDataByID(id, number_em_stages, em_stages, index)
+    this%index_l2e_init_gridcell_area          = index
 
     id                                         = L2E_PARAMETER_WATSATC
     call l2e_init_list%AddDataByID(id, number_em_stages, em_stages, index)
@@ -709,6 +721,7 @@ contains
     integer               :: nlevmapped
     integer               :: gcount
     integer               :: bounds_proc_begc, bounds_proc_endc
+    integer               :: bounds_proc_begg, bounds_proc_endg
 
     integer     , pointer :: col_active(:)
     integer     , pointer :: col_landunit(:)
@@ -716,6 +729,7 @@ contains
     integer     , pointer :: lun_type(:)
 
     real(r8)    , pointer :: l2e_h2osoi_ice(:,:)
+    real(r8)    , pointer :: l2e_gridcell_area(:)
 
     real(r8)    , pointer :: e2l_h2osoi_liq(:,:)
     real(r8)    , pointer :: e2l_h2osoi_ice(:,:)
@@ -734,6 +748,7 @@ contains
     PetscScalar , pointer :: hksat_elm_loc(:)
     PetscScalar , pointer :: bsw_elm_loc(:)
     PetscScalar , pointer :: sucsat_elm_loc(:)
+    PetscScalar , pointer :: gridcell_area(:)
     PetscErrorCode        :: ierr
 
     character(len= 128)   :: subname = 'extract_data_for_elm'
@@ -741,6 +756,8 @@ contains
 
     bounds_proc_begc = bounds_clump%begc
     bounds_proc_endc = bounds_clump%endc
+    bounds_proc_begg = bounds_clump%begg
+    bounds_proc_endg = bounds_clump%endg
     nlevmapped       = elm_pf_idata%nzelm_mapped
 
     call l2e_init_list%GetPointerToInt1D(this%index_l2e_init_col_active             , col_active   )
@@ -749,6 +766,7 @@ contains
     call l2e_init_list%GetPointerToReal2D(this%index_l2e_init_col_dz                , dz           )
     call l2e_init_list%GetPointerToInt1D(this%index_l2e_init_landunit_type          , lun_type     )
     call l2e_init_list%GetPointerToReal2D(this%index_l2e_init_h2osoi_ice            , l2e_h2osoi_ice       )
+    call l2e_init_list%GetPointerToReal1D(this%index_l2e_init_gridcell_area         , l2e_gridcell_area    )
 
     call e2l_init_list%GetPointerToReal1D(this%index_e2l_init_state_wtd             , e2l_zwt              )
     call e2l_init_list%GetPointerToReal1D(this%index_e2l_init_flux_mflx_snowlyr_col , e2l_mflx_snowlyr_col )
@@ -774,6 +792,7 @@ contains
     call VecGetArrayF90(elm_pf_idata%hksat_x2_elm , hksat_elm_loc  , ierr)
     call VecGetArrayF90(elm_pf_idata%bsw2_elm     , bsw_elm_loc    , ierr)
     call VecGetArrayF90(elm_pf_idata%sucsat2_elm  , sucsat_elm_loc , ierr)
+    call VecGetArrayF90(elm_pf_idata%area_proj_top_face_elms, gridcell_area  , ierr)
 
     do c = bounds_proc_begc, bounds_proc_endc
        if (col_active(c) == 1) then
@@ -782,7 +801,7 @@ contains
              g = col_gridcell(c)
              gcount = g - bounds_clump%begg
              do j = 1, nlevgrnd
-                pf_j = gcount*nlevmapped + j
+                pf_j = gcount*nlevmapped + j ! elm order, in 1d and mpi_j
 
                 if (j <= nlevmapped) then
                    e2l_h2osoi_liq(c,j) = sat_elm_loc(pf_j)*watsat_elm_loc(pf_j)*dz(c,j)*1.e3_r8
@@ -805,7 +824,7 @@ contains
                    ! e2l_bswc(c,j)       = e2l_bswc(c,nlevmapped)
                    ! e2l_sucsatc(c,j)    = e2l_sucsatc(c,nlevmapped)
                 end if
-
+                gridcell_area(pf_j) = l2e_gridcell_area(g)*1.e6_r8 ! km2 to m2
              enddo
           else
              write(iulog,*)'WARNING: Land Unit type other than soil type is present within the domain'
@@ -819,6 +838,7 @@ contains
     call VecRestoreArrayF90(elm_pf_idata%hksat_x2_elm , hksat_elm_loc  , ierr)
     call VecRestoreArrayF90(elm_pf_idata%bsw2_elm     , bsw_elm_loc    , ierr)
     call VecRestoreArrayF90(elm_pf_idata%sucsat2_elm  , sucsat_elm_loc , ierr)
+    call VecRestoreArrayF90(elm_pf_idata%area_proj_top_face_elms, gridcell_area  , ierr)
 
    end subroutine extract_data_for_elm
 
@@ -935,7 +955,7 @@ contains
     integer                              :: ier                                                              ! error status
 
     integer                              :: begc, endc
-    integer                              :: g_idx, c_idx
+    integer                              :: g_idx, c_idx, col_idx
 
     PetscInt                             :: soe_auxvar_id                                                    ! Index of system-of-equation's (SoE's) auxvar
     PetscErrorCode                       :: ierr                                                             ! PETSc return error code
@@ -1002,6 +1022,7 @@ contains
 
     PetscScalar, pointer :: qflx_elm_loc(:)
     PetscScalar, pointer :: area_elm_loc(:)
+    PetscScalar, pointer :: area2_elm_loc(:) ! area2_elm_loc is the top face area from PFLOTRAN
     PetscScalar, pointer :: thetares2_elm_loc(:)
     PetscScalar, pointer :: watsat_elm_loc(:)
     PetscScalar, pointer :: sat_elm_loc(:)
@@ -1010,6 +1031,15 @@ contains
     ! PetscScalar, pointer :: e2l_drain(:)
     ! PetscScalar, pointer :: e2l_qrgwl(:)
     ! PetscScalar, pointer :: e2l_rsub_sat(:)
+#ifdef PRINT_INTERNALFLOW
+    ! noticing that although its mflx_xxx here, the unit is still kg h2o/m2/s
+    PetscScalar, pointer :: mflx_et_elm_loc(:)
+    PetscScalar, pointer :: mflx_drain_elm_loc(:)
+    PetscScalar, pointer :: mflx_infl_elm_loc(:)
+    PetscScalar, pointer :: mflx_dew_elm_loc(:)
+    PetscScalar, pointer :: mflx_sub_snow_elm_loc(:)
+    PetscScalar, pointer :: mflx_snowlyr_elm_loc(:)
+#endif
 
     PetscViewer :: viewer
 
@@ -1131,7 +1161,21 @@ contains
     call pflotranModelGetUpdatedData( this%pflotran_m )
 
     call VecGetArrayF90(elm_pf_idata%mass_elms  , mass_elm_loc  , ierr); CHKERRQ(ierr)
-    call VecGetArrayF90(elm_pf_idata%area_top_face_elms, area_elm_loc, ierr); CHKERRQ(ierr)
+
+    !area_top_face_elms is from area_top_face_pfp in pflotran_model_mod::pflotranModelGetTopFaceArea
+    !area_proj_top_face_elms is the flattened area from grc_pp%area, which is read from ELM input domain dataset
+    !call VecGetArrayF90(elm_pf_idata%area_top_face_elms, area_elm_loc, ierr); CHKERRQ(ierr)! to use surface area from PFLOTRAN unstructured grid
+    call VecGetArrayF90(elm_pf_idata%area_proj_top_face_elms, area_elm_loc, ierr); CHKERRQ(ierr)
+    call VecGetArrayF90(elm_pf_idata%area_top_face_elms, area2_elm_loc, ierr); CHKERRQ(ierr)
+
+#ifdef PRINT_INTERNALFLOW
+    call VecGetArrayF90(elm_pf_idata%mflx_et_elms, mflx_et_elm_loc, ierr); CHKERRQ(ierr)
+    call VecGetArrayF90(elm_pf_idata%mflx_drain_elms, mflx_drain_elm_loc, ierr); CHKERRQ(ierr)
+    call VecGetArrayF90(elm_pf_idata%mflx_infl_elms, mflx_infl_elm_loc, ierr); CHKERRQ(ierr)
+    call VecGetArrayF90(elm_pf_idata%mflx_dew_elms, mflx_dew_elm_loc, ierr); CHKERRQ(ierr)
+    call VecGetArrayF90(elm_pf_idata%mflx_sub_snow_elms, mflx_sub_snow_elm_loc, ierr); CHKERRQ(ierr)
+    call VecGetArrayF90(elm_pf_idata%mflx_snowlyr_disp_elms, mflx_snowlyr_elm_loc, ierr); CHKERRQ(ierr)
+#endif
 
     do fc = 1, l2e_num_hydrologyc
        c = l2e_filter_hydrologyc(fc)
@@ -1192,10 +1236,12 @@ contains
          total_mass_flux_sub       + &
          total_mass_flux_lateral
     call VecRestoreArrayF90(elm_pf_idata%mass_elms  , mass_elm_loc  , ierr); CHKERRQ(ierr)
-    call VecRestoreArrayF90(elm_pf_idata%area_top_face_elms, area_elm_loc, ierr); CHKERRQ(ierr)
+    !call VecRestoreArrayF90(elm_pf_idata%area_top_face_elms, area_elm_loc, ierr); CHKERRQ(ierr)
+    call VecRestoreArrayF90(elm_pf_idata%area_proj_top_face_elms, area_elm_loc, ierr); CHKERRQ(ierr)
 
     call VecGetArrayF90(elm_pf_idata%qflx_elm, qflx_elm_loc, ierr); CHKERRQ(ierr)
-    call VecGetArrayF90(elm_pf_idata%area_top_face_elms, area_elm_loc, ierr); CHKERRQ(ierr)
+    !call VecGetArrayF90(elm_pf_idata%area_top_face_elms, area_elm_loc, ierr); CHKERRQ(ierr)
+    call VecGetArrayF90(elm_pf_idata%area_proj_top_face_elms, area_elm_loc, ierr); CHKERRQ(ierr)
     call VecGetArrayF90(elm_pf_idata%thetares2_elm, thetares2_elm_loc, ierr); CHKERRQ(ierr)
 
     frac_ice(:,:)       = 0.d0
@@ -1252,8 +1298,57 @@ contains
        end do
     end do
 
+#ifdef PRINT_INTERNALFLOW
+    do c = bounds_proc_begc, bounds_proc_endc
+       if (col_active(c) == 1) then
+          g = col_gridcell(c)
+          g_idx = (g - bounds_clump%begg)*nlevmapped + 1
+          c_idx = c - begc+1
+          mflx_infl_elm_loc(g_idx) = mflx_infl_col_1d(c_idx)
+          mflx_dew_elm_loc(g_idx) = mflx_dew_col_1d(c_idx)
+          mflx_sub_snow_elm_loc(g_idx) = mflx_sub_snow_col_1d(c_idx)
+          mflx_snowlyr_elm_loc(g_idx) = mflx_snowlyr_col_1d(c_idx)
+
+          do j = 1,nlevmapped
+             ! g = col_gridcell(c)
+             g_idx = (g - bounds_clump%begg)*nlevmapped + j
+             c_idx = (c - bounds_proc_begc)*nlevgrnd+j
+             mflx_et_elm_loc(g_idx) = mflx_et_col_1d(c_idx)
+             !mflx_drain_elm_loc(g_idx) = mflx_drain_col_1d(c_idx)
+          end do
+       end if
+    end do
+#endif
+
+#ifdef DEBUG_ELMPFEH
+   !write(*,*) '[ExternalModelPFLOTRAN::EM_PFLOTRAN_Solve_Soil_Hydro] l2e_h2osoi_liq(c,j) =', l2e_h2osoi_liq(1:l2e_num_hydrologyc,1:nlevgrnd) !begc=1 endc=32 in EMI_Init_EM
+   !write(*,*) '[ExternalModelPFLOTRAN::EM_PFLOTRAN_Solve_Soil_Hydro] l2e_h2osoi_ice(c,j) =', l2e_h2osoi_ice(1:l2e_num_hydrologyc,1:nlevgrnd)
+   !write(*,*) '[ExternalModelPFLOTRAN::EM_PFLOTRAN_Solve_Soil_Hydro] frac_ice(c,j) =', frac_ice(1:l2e_num_hydrologyc,1:nlevgrnd)
+   ! ! write(*,*) '[ExternalModelPFLOTRAN::EM_PFLOTRAN_Solve_Soil_Hydro] qflx_elm_loc(g_idx) =', qflx_elm_loc
+   ! ! write(*,*) '[ExternalModelPFLOTRAN::EM_PFLOTRAN_Solve_Soil_Hydro] |- area_elm_loc(g_idx) =', area_elm_loc
+   ! ! write(*,*) '[ExternalModelPFLOTRAN::EM_PFLOTRAN_Solve_Soil_Hydro] |- area2_elm_loc(g_idx) =', area2_elm_loc
+   ! write(*,*) '[ExternalModelPFLOTRAN::EM_PFLOTRAN_Solve_Soil_Hydro] |- size1 = ',(endc-begc+1),'mflx_infl_col_1d =', mflx_infl_col_1d
+   ! write(*,*) '[ExternalModelPFLOTRAN::EM_PFLOTRAN_Solve_Soil_Hydro] |- mflx_dew_col_1d =', mflx_dew_col_1d
+   ! write(*,*) '[ExternalModelPFLOTRAN::EM_PFLOTRAN_Solve_Soil_Hydro] |- mflx_snowlyr_col_1d =', mflx_snowlyr_col_1d
+   ! write(*,*) '[ExternalModelPFLOTRAN::EM_PFLOTRAN_Solve_Soil_Hydro] |- mflx_sub_snow_col_1d =', mflx_sub_snow_col_1d
+   ! write(*,*) '[ExternalModelPFLOTRAN::EM_PFLOTRAN_Solve_Soil_Hydro] |- size2 = ',(endc-begc+1)*nlevgrnd,'mflx_et_col_1d =', mflx_et_col_1d
+   ! write(*,*) '[ExternalModelPFLOTRAN::EM_PFLOTRAN_Solve_Soil_Hydro] |- mflx_infl_elm_loc =', mflx_infl_elm_loc
+   ! write(*,*) '[ExternalModelPFLOTRAN::EM_PFLOTRAN_Solve_Soil_Hydro] |- mflx_dew_elm_loc =', mflx_dew_elm_loc
+   ! write(*,*) '[ExternalModelPFLOTRAN::EM_PFLOTRAN_Solve_Soil_Hydro] |- mflx_sub_snow_elm_loc =', mflx_sub_snow_elm_loc
+   ! write(*,*) '[ExternalModelPFLOTRAN::EM_PFLOTRAN_Solve_Soil_Hydro] |- mflx_snowlyr_elm_loc =', mflx_snowlyr_elm_loc
+   ! write(*,*) '[ExternalModelPFLOTRAN::EM_PFLOTRAN_Solve_Soil_Hydro] |- mflx_et_elm_loc =', mflx_et_elm_loc
+   !stop
+#endif
     call VecRestoreArrayF90(elm_pf_idata%qflx_elm, qflx_elm_loc, ierr); CHKERRQ(ierr)
-    call VecRestoreArrayF90(elm_pf_idata%thetares2_elm, thetares2_elm_loc, ierr); CHKERRQ(ierr)
+    call VecRestoreArrayF90(elm_pf_idata%thetares2_elms, thetares2_elm_loc, ierr); CHKERRQ(ierr)
+#ifdef PRINT_INTERNALFLOW
+    call VecRestoreArrayF90(elm_pf_idata%mflx_et_elms, mflx_et_elm_loc, ierr); CHKERRQ(ierr)
+    call VecRestoreArrayF90(elm_pf_idata%mflx_drain_elms, mflx_drain_elm_loc, ierr); CHKERRQ(ierr)
+    call VecRestoreArrayF90(elm_pf_idata%mflx_infl_elms, mflx_infl_elm_loc, ierr); CHKERRQ(ierr)
+    call VecRestoreArrayF90(elm_pf_idata%mflx_dew_elms, mflx_dew_elm_loc, ierr); CHKERRQ(ierr)
+    call VecRestoreArrayF90(elm_pf_idata%mflx_sub_snow_elms, mflx_sub_snow_elm_loc, ierr); CHKERRQ(ierr)
+    call VecRestoreArrayF90(elm_pf_idata%mflx_snowlyr_disp_elms, mflx_snowlyr_elm_loc, ierr); CHKERRQ(ierr)
+#endif
 
     call pflotranModelUpdateFlowConds( this%pflotran_m )
     call pflotranModelStepperRunTillPauseTime( this%pflotran_m, (nstep+1.0d0)*dtime )
@@ -1302,7 +1397,12 @@ contains
 !       write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] |- total_mass_flux_col(c)*dt =', total_mass_flux_col(c)*dt
 ! #endif
     end do
-
+#ifdef DEBUG_ELMPFEH
+   !write(*,*) '[ExternalModelPFLOTRAN::EM_PFLOTRAN_Solve_Soil_Hydro] mass_elm_loc =', mass_elm_loc, 'area_elm_loc =', area_elm_loc
+   !write(*,*) '[ExternalModelPFLOTRAN::EM_PFLOTRAN_Solve_Soil_Hydro] e2l_h2osoi_liq(c,j) =', e2l_h2osoi_liq!(begc:endc,1:nlevgrnd) !begc=1 endc=32 in EMI_Init_EM
+   !write(*,*) '[ExternalModelPFLOTRAN::EM_PFLOTRAN_Solve_Soil_Hydro] e2l_h2osoi_ice(c,j) =', e2l_h2osoi_ice!(begc:endc,1:nlevgrnd)
+   !stop
+#endif
     ! Save soil liquid pressure from VSFM for all (active+nonactive) cells.
     ! soilp_col is used for restarting VSFM.
     do c = begc, endc
@@ -1319,6 +1419,7 @@ contains
 
 
     call VecRestoreArrayF90(elm_pf_idata%area_top_face_elms, area_elm_loc, ierr); CHKERRQ(ierr)
+    call VecRestoreArrayF90(elm_pf_idata%area_proj_top_face_elms, area_elm_loc, ierr); CHKERRQ(ierr)
     call VecRestoreArrayF90(elm_pf_idata%sat_elms   , sat_elm_loc   , ierr); CHKERRQ(ierr)
     call VecRestoreArrayF90(elm_pf_idata%mass_elms  , mass_elm_loc  , ierr); CHKERRQ(ierr)
     call VecRestoreArrayF90(elm_pf_idata%watsat_elm, watsat_elm_loc, ierr); CHKERRQ(ierr)
