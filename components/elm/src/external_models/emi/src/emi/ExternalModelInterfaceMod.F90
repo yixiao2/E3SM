@@ -35,6 +35,7 @@ module ExternalModelInterfaceMod
   use EMI_ColumnType_Exchange               , only : EMI_Pack_ColumnType_for_EM
   use EMI_Filter_Exchange                   , only : EMI_Pack_Filter_for_EM
   use EMI_Landunit_Exchange                 , only : EMI_Pack_Landunit_for_EM
+  use EMI_GridcellType_Exchange             , only : EMI_Pack_GridcellType_for_EM
   use EMI_CNCarbonStateType_ExchangeMod
   !
   implicit none
@@ -307,6 +308,7 @@ contains
     use decompMod             , only : get_clump_bounds
     use ColumnType            , only : col_pp
     use LandunitType          , only : lun_pp
+    use GridcellType          , only : grc_pp
     use landunit_varcon       , only : istsoil, istcrop,istice
     use column_varcon         , only : icol_road_perv
     !
@@ -322,8 +324,10 @@ contains
     integer                       :: ii, c, l
     integer                       :: num_filter_col
     integer                       :: num_filter_lun
+    integer                       :: num_filter_grc
     integer, pointer              :: filter_col(:)
     integer, pointer              :: filter_lun(:)
+    integer, pointer              :: filter_grc(:)
     integer                       :: num_e2l_filter_col
     integer, pointer              :: e2l_filter_col(:)
     integer, pointer              :: tmp_col(:)
@@ -430,9 +434,11 @@ contains
           ! GB_FIX_ME: Create a temporary filter
           num_filter_col = bounds_clump%endc - bounds_clump%begc + 1
           num_filter_lun = bounds_clump%endl - bounds_clump%begl + 1
+          num_filter_grc = bounds_clump%endg - bounds_clump%begg + 1
 
           allocate(filter_col(num_filter_col))
           allocate(filter_lun(num_filter_lun))
+          allocate(filter_grc(num_filter_grc))
 
           do ii = 1, num_filter_col
              filter_col(ii) = bounds_clump%begc + ii - 1
@@ -440,6 +446,10 @@ contains
 
           do ii = 1, num_filter_lun
              filter_lun(ii) = bounds_clump%begl + ii - 1
+          enddo
+
+          do ii = 1, num_filter_grc
+             filter_grc(ii) = bounds_clump%begg + ii - 1
           enddo
 
           ! Reset values in the data list
@@ -469,6 +479,8 @@ contains
                num_filter_col, filter_col)
           call EMI_Pack_Landunit_for_EM(l2e_init_list(clump_rank), em_stage, &
                num_filter_lun, filter_lun)
+          call EMI_Pack_GridcellType_for_EM(l2e_init_list(clump_rank), em_stage, &
+               num_filter_grc, filter_grc)
 
           ! Ensure all data needed by external model is packed
           call EMID_Verify_All_Data_Is_Set(l2e_init_list(clump_rank), em_stage)

@@ -21,6 +21,7 @@ module ExternalModelPFLOTRANMod
   use EMI_EnergyFluxType_Constants
   use EMI_Filter_Constants
   use EMI_Landunit_Constants
+  use EMI_GridcellType_Constants
   use EMI_SoilHydrologyType_Constants
   use EMI_SoilStateType_Constants
   use EMI_TemperatureType_Constants
@@ -65,6 +66,9 @@ module ExternalModelPFLOTRANMod
      integer :: index_l2e_init_landunit_type
      integer :: index_l2e_init_landunit_lakepoint
      integer :: index_l2e_init_landunit_urbanpoint
+
+     integer :: index_l2e_init_gridcell_gindex
+     integer :: index_l2e_init_gridcell_area
 
      integer :: index_l2e_init_parameter_watsatc
      integer :: index_l2e_init_parameter_hksatc
@@ -200,6 +204,14 @@ contains
     id                                         = L2E_LANDUNIT_URBANPOINT
     call l2e_init_list%AddDataByID(id, number_em_stages, em_stages, index)
     this%index_l2e_init_landunit_urbanpoint    = index
+
+    id                                         = L2E_GRIDCELL_GINDEX
+    call l2e_init_list%AddDataByID(id, number_em_stages, em_stages, index)
+    this%index_l2e_init_gridcell_gindex        = index
+
+    id                                         = L2E_GRIDCELL_AREA
+    call l2e_init_list%AddDataByID(id, number_em_stages, em_stages, index)
+    this%index_l2e_init_gridcell_area          = index
 
     id                                         = L2E_PARAMETER_WATSATC
     call l2e_init_list%AddDataByID(id, number_em_stages, em_stages, index)
@@ -721,6 +733,7 @@ contains
     integer               :: nlevmapped
     integer               :: gcount
     integer               :: bounds_proc_begc, bounds_proc_endc
+    integer               :: bounds_proc_begg, bounds_proc_endg
 
     integer     , pointer :: col_active(:)
     integer     , pointer :: col_landunit(:)
@@ -728,6 +741,7 @@ contains
     integer     , pointer :: lun_type(:)
 
     real(r8)    , pointer :: l2e_h2osoi_ice(:,:)
+    real(r8)    , pointer :: l2e_gridcell_area(:)
 
     real(r8)    , pointer :: e2l_h2osoi_liq(:,:)
     real(r8)    , pointer :: e2l_h2osoi_ice(:,:)
@@ -746,6 +760,7 @@ contains
     PetscScalar , pointer :: hksat_elm_loc(:)
     PetscScalar , pointer :: bsw_elm_loc(:)
     PetscScalar , pointer :: sucsat_elm_loc(:)
+    PetscScalar , pointer :: gridcell_area(:)
     PetscErrorCode        :: ierr
 
     character(len= 128)   :: subname = 'extract_data_for_elm'
@@ -753,6 +768,8 @@ contains
 
     bounds_proc_begc = bounds_clump%begc
     bounds_proc_endc = bounds_clump%endc
+    bounds_proc_begg = bounds_clump%begg
+    bounds_proc_endg = bounds_clump%endg
     nlevmapped       = elm_pf_idata%nzelm_mapped
 
     call l2e_init_list%GetPointerToInt1D(this%index_l2e_init_col_active             , col_active   )
@@ -761,6 +778,7 @@ contains
     call l2e_init_list%GetPointerToReal2D(this%index_l2e_init_col_dz                , dz           )
     call l2e_init_list%GetPointerToInt1D(this%index_l2e_init_landunit_type          , lun_type     )
     call l2e_init_list%GetPointerToReal2D(this%index_l2e_init_h2osoi_ice            , l2e_h2osoi_ice       )
+    call l2e_init_list%GetPointerToReal1D(this%index_l2e_init_gridcell_area         , l2e_gridcell_area    )
 
     call e2l_init_list%GetPointerToReal1D(this%index_e2l_init_state_wtd             , e2l_zwt              )
     call e2l_init_list%GetPointerToReal1D(this%index_e2l_init_flux_mflx_snowlyr_col , e2l_mflx_snowlyr_col )
@@ -786,6 +804,7 @@ contains
     call VecGetArrayF90(elm_pf_idata%hksat_x2_elm , hksat_elm_loc  , ierr)
     call VecGetArrayF90(elm_pf_idata%bsw2_elm     , bsw_elm_loc    , ierr)
     call VecGetArrayF90(elm_pf_idata%sucsat2_elm  , sucsat_elm_loc , ierr)
+    call VecGetArrayF90(elm_pf_idata%area_proj_top_face_elms, gridcell_area  , ierr)
 
     do c = bounds_proc_begc, bounds_proc_endc
        if (col_active(c) == 1) then
@@ -794,7 +813,7 @@ contains
              g = col_gridcell(c)
              gcount = g - bounds_clump%begg
              do j = 1, nlevgrnd
-                pf_j = gcount*nlevmapped + j
+                pf_j = gcount*nlevmapped + j ! elm order, in 1d and mpi_j
 
                 if (j <= nlevmapped) then
                    e2l_h2osoi_liq(c,j) = sat_elm_loc(pf_j)*watsat_elm_loc(pf_j)*dz(c,j)*1.e3_r8
@@ -817,12 +836,7 @@ contains
                    ! e2l_bswc(c,j)       = e2l_bswc(c,nlevmapped)
                    ! e2l_sucsatc(c,j)    = e2l_sucsatc(c,nlevmapped)
                 end if
-! #ifdef DEBUG_ELMPFEH
-!    write(*,*) '[YX DEBUG][ExternalModelPFLOTRAN::extract_data_for_elm] nlevmapped=',nlevmapped
-!    write(*,*) ' c=',c
-!    write(*,*) ' j=',j
-!    write(*,*) ' e2l_h2osoi_liq(c,j)=',e2l_h2osoi_liq(c,j)
-! #endif
+                gridcell_area(pf_j) = l2e_gridcell_area(g)*1.e6_r8 ! km2 to m2
              enddo
           else
              write(iulog,*)'WARNING: Land Unit type other than soil type is present within the domain'
@@ -836,6 +850,7 @@ contains
     call VecRestoreArrayF90(elm_pf_idata%hksat_x2_elm , hksat_elm_loc  , ierr)
     call VecRestoreArrayF90(elm_pf_idata%bsw2_elm     , bsw_elm_loc    , ierr)
     call VecRestoreArrayF90(elm_pf_idata%sucsat2_elm  , sucsat_elm_loc , ierr)
+    call VecRestoreArrayF90(elm_pf_idata%area_proj_top_face_elms, gridcell_area  , ierr)
 
    end subroutine extract_data_for_elm
 
