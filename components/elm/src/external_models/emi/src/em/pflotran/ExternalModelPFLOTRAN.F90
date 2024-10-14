@@ -1166,7 +1166,10 @@ contains
 #endif
 
     call VecGetArrayF90(elm_pf_idata%mass_elms  , mass_elm_loc  , ierr); CHKERRQ(ierr)
-    call VecGetArrayF90(elm_pf_idata%area_top_face_elms, area_elm_loc, ierr); CHKERRQ(ierr)
+    !area_top_face_elms is from area_top_face_pfp in pflotran_model_mod::pflotranModelGetTopFaceArea
+    !area_proj_top_face_elms is the flattened area from grc_pp%area, which is read from ELM input domain dataset
+    !call VecGetArrayF90(elm_pf_idata%area_top_face_elms, area_elm_loc, ierr); CHKERRQ(ierr)! to use surface area from PFLOTRAN unstructured grid
+    call VecGetArrayF90(elm_pf_idata%area_proj_top_face_elms, area_elm_loc, ierr); CHKERRQ(ierr)
 #ifdef DEBUG_ELMPFEH
     write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] check elm_pf_idata update-1'
    !  write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] mass_elm_loc = ', mass_elm_loc
@@ -1241,10 +1244,12 @@ contains
          total_mass_flux_sub       + &
          total_mass_flux_lateral
     call VecRestoreArrayF90(elm_pf_idata%mass_elms  , mass_elm_loc  , ierr); CHKERRQ(ierr)
-    call VecRestoreArrayF90(elm_pf_idata%area_top_face_elms, area_elm_loc, ierr); CHKERRQ(ierr)
+    !call VecRestoreArrayF90(elm_pf_idata%area_top_face_elms, area_elm_loc, ierr); CHKERRQ(ierr)
+    call VecRestoreArrayF90(elm_pf_idata%area_proj_top_face_elms, area_elm_loc, ierr); CHKERRQ(ierr)
 
     call VecGetArrayF90(elm_pf_idata%qflx_elm, qflx_elm_loc, ierr); CHKERRQ(ierr)
-    call VecGetArrayF90(elm_pf_idata%area_top_face_elms, area_elm_loc, ierr); CHKERRQ(ierr)
+    !call VecGetArrayF90(elm_pf_idata%area_top_face_elms, area_elm_loc, ierr); CHKERRQ(ierr)
+    call VecGetArrayF90(elm_pf_idata%area_proj_top_face_elms, area_elm_loc, ierr); CHKERRQ(ierr)
     call VecGetArrayF90(elm_pf_idata%thetares2_elm, thetares2_elm_loc, ierr); CHKERRQ(ierr)
 #ifdef DEBUG_ELMPFEH
     write(*,*) '[YX DEBUG][ExternalModelPFLOTRANMod::EM_PFLOTRAN_Solve_Soil_Hydro] check elm_pf_idata update0'
@@ -1428,7 +1433,8 @@ contains
     !stop
 #endif
 
-    call VecRestoreArrayF90(elm_pf_idata%area_top_face_elms, area_elm_loc, ierr); CHKERRQ(ierr)
+    !call VecRestoreArrayF90(elm_pf_idata%area_top_face_elms, area_elm_loc, ierr); CHKERRQ(ierr)
+    call VecRestoreArrayF90(elm_pf_idata%area_proj_top_face_elms, area_elm_loc, ierr); CHKERRQ(ierr)
     call VecRestoreArrayF90(elm_pf_idata%sat_elms   , sat_elm_loc   , ierr); CHKERRQ(ierr)
     call VecRestoreArrayF90(elm_pf_idata%mass_elms  , mass_elm_loc  , ierr); CHKERRQ(ierr)
     call VecRestoreArrayF90(elm_pf_idata%watsat_elm, watsat_elm_loc, ierr); CHKERRQ(ierr)
