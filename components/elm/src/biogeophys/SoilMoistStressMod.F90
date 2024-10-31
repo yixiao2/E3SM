@@ -320,6 +320,7 @@ contains
     use EnergyFluxType       , only : energyflux_type
     use VegetationType            , only : veg_pp
     use elm_varctl       , only : use_hydrstress
+    use elm_varctl       , only : use_pflotran_hmode_via_emi
     !
     ! !ARGUMENTS:
     implicit none
@@ -335,6 +336,7 @@ contains
     real(r8), parameter :: btran0 = 0.0_r8  ! initial value
     real(r8) :: smp_node, s_node  !temporary variables
     real(r8) :: smp_node_lf       !temporary variable
+    real(r8) :: h2osoi_liqvol_threshold
     integer :: p, f, j, c, l      !indices
     !------------------------------------------------------------------------------
 
@@ -347,6 +349,7 @@ contains
          t_soisno      => col_es%t_soisno     , & ! Input:  [real(r8) (:,:) ]  soil temperature (Kelvin)  (-nlevsno+1:nlevgrnd)
 
          watsat        => soilstate_vars%watsat_col         , & ! Input:  [real(r8) (:,:) ]  volumetric soil water at saturation (porosity)   (constant)
+         watmin        => soilstate_vars%watmin_col         , & ! Input:  [real(r8) (:,:) ]  minimum volumetric soil water (constant)
          sucsat        => soilstate_vars%sucsat_col         , & ! Input:  [real(r8) (:,:) ]  minimum soil suction (mm)                        (constant)
          bsw           => soilstate_vars%bsw_col            , & ! Input:  [real(r8) (:,:) ]  Clapp and Hornberger "b"                         (constant)
          eff_porosity  => soilstate_vars%eff_porosity_col   , & ! Input:  [real(r8) (:,:) ]  effective porosity = porosity - vol_ice
@@ -368,7 +371,12 @@ contains
 
             ! Root resistance factors
             ! rootr effectively defines the active root fraction in each layer
-            if (h2osoi_liqvol(c,j) .le. 0._r8 .or. t_soisno(c,j) .le. tfrz + tc_stress) then
+            if (use_pflotran_hmode_via_emi) then
+               h2osoi_liqvol_threshold = (watsat(c,j) - watmin(c,j)) * 0.05d0 + watmin(c,j)
+            else
+               h2osoi_liqvol_threshold = 0.0_r8
+            endif
+            if (h2osoi_liqvol(c,j) .le. h2osoi_liqvol_threshold .or. t_soisno(c,j) .le. tfrz + tc_stress) then
                     rootr(p,j) = 0._r8
             else
                s_node = max(h2osoi_liqvol(c,j)/eff_porosity(c,j),0.01_r8)
