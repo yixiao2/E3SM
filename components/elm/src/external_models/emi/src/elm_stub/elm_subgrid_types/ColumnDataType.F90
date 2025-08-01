@@ -125,6 +125,10 @@ module ColumnDataType
     real(r8), pointer :: vsfm_mass_col_1d   (:)   => null() ! liquid mass per unit area from VSFM [kg H2O/m^2]
     real(r8), pointer :: vsfm_smpl_col_1d   (:)   => null() ! 1D soil matrix potential liquid from VSFM [m]
     real(r8), pointer :: vsfm_soilp_col_1d  (:)   => null() ! 1D soil liquid pressure from VSFM [Pa]
+
+    real(r8), pointer :: dendricity (:) => null()      ! dendricity
+    real(r8), pointer :: sphericity (:) => null()      ! sphericity
+    real(r8), pointer :: dyn_snw_shape (:,:) => null() ! dynamic snow shape
    
   contains
     procedure, public :: Init    => col_ws_init
@@ -977,6 +981,9 @@ contains
     allocate(this%vsfm_mass_col_1d   (ncells))                        ; this%vsfm_mass_col_1d   (:)   = nan
     allocate(this%vsfm_smpl_col_1d   (ncells))                        ; this%vsfm_smpl_col_1d   (:)   = nan
     allocate(this%vsfm_soilp_col_1d  (ncells))                        ; this%vsfm_soilp_col_1d  (:)   = nan
+    allocate(this%dendricity         (begc:endc))                     ; this%dendricity         (:)   = nan
+    allocate(this%sphericity         (begc:endc))                     ; this%dendricity         (:)   = nan
+    allocate(this%dyn_snw_shape      (begc:endc, -nlevsno+1:0))       ; this%dendricity         (:,:) = nan
     
   end subroutine col_ws_init
 
