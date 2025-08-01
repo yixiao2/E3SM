@@ -1549,6 +1549,8 @@ contains
     use elm_varpar       , only : nlevsno
     use elm_varcon       , only : spval
     use shr_const_mod    , only : SHR_CONST_RHOICE, SHR_CONST_PI
+
+    use m_AttrVect           ,only: mct_aVect              => AttrVect
     !
     ! !ARGUMENTS:
     type(bounds_type)      , intent(in)    :: bounds
@@ -1556,6 +1558,8 @@ contains
     integer                , intent(in)    :: filter_snowc(:)   ! column filter for snow points
     integer                , intent(in)    :: num_nosnowc       ! number of column non-snow points in column filter
     integer                , intent(in)    :: filter_nosnowc(:) ! column filter for non-snow points
+    
+    type(mct_aVect)        , intent(inout) :: x2o, o2x            ! input/output attribute vectors
 
     !
     ! !LOCAL VARIABLES:
@@ -1609,6 +1613,10 @@ contains
          t_grnd             => col_es%t_grnd        , & ! Input:  [real(r8) (:)   ]  ground temperature (col) [K]
          snot_top           => col_es%snot_top      , & ! Output: [real(r8) (:)   ]  temperature in top snow layer (col) [K]
          dTdz_top           => col_es%dTdz_top        & ! Output: [real(r8) (:)   ]  temperature gradient in top layer (col) [K m-1]
+
+         dendricity         => col_es%dendricity     , & ! Output: [real(r8) (:)   ]  dendricity in top snow layer (col) [unitless]
+         sphericity        => col_es%sphericity      , & ! Output: [real(r8) (:)   ]  sphericity in top snow layer (col) [unitless]
+         dyn_snw_shape     => col_es%dyn_snw_shape   , & ! Output: [real(r8) (:,:) ]  dynamic snow shape (col,lyr) [unitless]
          )
 
 
@@ -1789,6 +1797,66 @@ contains
                snw_rds_top(c_idx) = snw_rds(c_idx,i)
                sno_liq_top(c_idx) = h2osoi_liq(c_idx,i) / (h2osoi_liq(c_idx,i)+h2osoi_ice(c_idx,i))
             endif
+
+            ! CONTRIBTUTION of Shape here
+            ! loop over N number of snow grids, for each grid, get the top and bottom layers, and loop over n number of layers in each snow layer.
+
+            ! OLD SNOW
+               ! Dry snow
+               if (dTdz < (5 + 273)) then
+                  d_dendricity_dry = dtime * -2*1E8_r8 * EXP(-6.0_r8*1E3/t_soisno)
+                  d_sphericity_dry = dtime * 1*1E9_r8 * EXP(-6.0_r8*1E3/t_soisno)
+               else
+                  d_dendricity_dry = dtime * -2*1E8_r8 * EXP(-6.0_r8*1E3/t_soisno)*(dTdz)^0.4
+                  d_sphericity_dry = dtime * -2*1E8_r8 * EXP(-6.0_r8*1E3/t_soisno)*(dTdz)^0.4
+               endif
+               
+               ! Wet snow
+               d_dendricity_wet = dtime * (-1)/16 * frc_liq**(3)
+               s_sphericity_wet = dtime * 1/16 * frc_liq**(3)
+
+               ! total change in dendricity and sphericity
+               d_dendricity = d_dendricity_dry + d_dendricity_wet
+               s_sphericity = d_sphericity_dry + d_sphericity_wet
+            
+            ! NEW SNOW
+               k10uu  = mct_aVect_indexRA(x2o,'So_duu10n')
+               u10 = SQRT(x2o%rAttr(k10uu,1))
+
+               dfall =min[max(1.29 - 0.17*u10,0.20),1]
+               sfall = min [max(0.08*u10 + 0.38, 0.5), 0.9]
+
+               dd = (frc_oldsnow+frc_refrz)*d_dendricity + frc_newsnow*dfall
+               ds = (frc_oldsnow+frc_refrz)*d_sphericity + frc_newsnow*sfall
+
+               dendricity(c_idx, i) = dendricity(c_idx, i) + dd
+               sphericity(c_idx, i) = sphericity(c_idx, i) + ds
+
+               if (dendricity(c_idx, i) < 0.0_r8) then
+                  dendricity(c_idx, i) = 0.0_r8
+               else if (dendricity(c_idx, i) > 1.0_r8) then
+                  dendricity(c_idx, i) = 1.0_r8
+               endif
+
+               if (sphericity(c_idx, i) < 0.0_r8) then
+                  sphericity(c_idx, i) = 0.0_r8
+               else if (sphericity(c_idx, i) > 1.0_r8) then
+                  sphericity(c_idx, i) = 1.0_r8
+               endif
+
+               ! Updating snow shape
+               if  (dendricity(c_idx, i) > 0.5_r8) then
+                  dyn_snw_shape(c_idx, i) = 4 ! Koch snowflake
+               else
+                  if (sphericity(c_idx, i) > 0.8_r8) then
+                     dyn_snw_shape(c_idx, i) = 1 ! sphere
+                  else if (sphericity(c_idx, i) < 0.2_r8) then
+                     dyn_snw_shape(c_idx, i) = 3 ! hexagonal plate
+                  else
+                     dyn_snw_shape(c_idx, i) = 2 ! spheroid
+                  endif
+               endif
+               ! END shape evolution
 
          enddo
       enddo
