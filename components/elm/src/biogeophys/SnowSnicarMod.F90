@@ -1590,6 +1590,14 @@ contains
     real(r8) :: rhos                        ! snow density [kg m-3]
     real(r8) :: h2osno_lyr                  ! liquid + solid H2O in snow layer [kg m-2]
     real(r8) :: cdz(-nlevsno+1:0)           ! column average layer thickness [m]
+    real(r8) :: d_dendricity_dry
+    real(r8) :: d_sphericity_dry
+    real(r8) :: d_dendricity_wet
+    real(r8) :: d_sphericity_wet
+    real(r8) :: d_dendricity
+    real(r8) :: d_sphericity
+    real(r8) :: dfall
+    real(r8) :: sfall
     !--------------------------------------------------------------------------!
 
     associate(                                                      &
@@ -1826,11 +1834,8 @@ contains
                dfall =min[max(1.29 - 0.17*u10,0.20),1]
                sfall = min [max(0.08*u10 + 0.38, 0.5), 0.9]
 
-               dd = (frc_oldsnow+frc_refrz)*d_dendricity + frc_newsnow*dfall
-               ds = (frc_oldsnow+frc_refrz)*d_sphericity + frc_newsnow*sfall
-
-               dendricity(c_idx, i) = dendricity(c_idx, i) + dd
-               sphericity(c_idx, i) = sphericity(c_idx, i) + ds
+               dendricity(c_idx, i) = (frc_oldsnow+frc_refrz)*d_dendricity + frc_newsnow*dfall
+               sphericity(c_idx, i) = (frc_oldsnow+frc_refrz)*d_sphericity + frc_newsnow*sfall
 
                if (dendricity(c_idx, i) < 0.0_r8) then
                   dendricity(c_idx, i) = 0.0_r8
@@ -2504,6 +2509,7 @@ contains
           snl         =>   col_pp%snl           , & ! Input:  [integer (:)]  negative number of snow layers (col) [nbr]
           h2osno      =>   col_ws%h2osno        , & ! Input:  [real(r8) (:)]  snow liquid water equivalent (col) [kg/m2]
           frac_sno    =>   col_ws%frac_sno_eff    & ! Input:  [real(r8) (:)]  fraction of ground covered by snow (0 to 1)
+          snw_dyn_shape =>   col_ws%snw_dyn_shape , & ! Input:  [integer (:)]  dynamic snow grain shape (col) [nbr]`
           )
 
        ! Define constants
@@ -2540,11 +2546,13 @@ contains
        elseif (trim(snow_shape) == 'spheroid') then
          snw_shp_lcl(:) = snow_shape_spheroid
        elseif (trim(snow_shape) == 'hexagonal_plate') then
-	 snw_shp_lcl(:) = snow_shape_hexagonal_plate
+	      snw_shp_lcl(:) = snow_shape_hexagonal_plate
        elseif (trim(snow_shape) == 'koch_snowflake') then
          snw_shp_lcl(:) = snow_shape_koch_snowflake
+       elseif (trim(snow_shape) == 'dynamic') then
+         snw_shp_lcl(:) = 1
        else
-	 write(iulog,*) "snow_shape = ", snow_shape
+	      write(iulog,*) "snow_shape = ", snow_shape
          call endrun( "snow_shape is unknown" )
        endif
 	  	    
@@ -2574,6 +2582,7 @@ contains
           c_idx = filter_nourbanc(fc)
           g_idx = col_pp%gridcell(c_idx)
 
+          snw_shp_lcl(:) = snw_dyn_shape(c_idx, :)
           ! Zero absorbed radiative fluxes:
           do i=-nlevsno+1,1,1
              flx_abs_lcl(:,:)   = 0._r8
