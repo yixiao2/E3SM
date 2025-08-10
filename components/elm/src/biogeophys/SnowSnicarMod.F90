@@ -32,6 +32,7 @@ module SnowSnicarMod
   public :: SnowAge_grain    ! Snow effective grain size evolution
   public :: SnowAge_init     ! Initial read in of snow-aging file
   public :: SnowOptics_init  ! Initial read in of snow-optics file
+  public :: SnowAge_grain_ll ! Same as SnowAge_grain but including snow shape evolution
   !
   ! !PUBLIC DATA MEMBERS:
   integer,  public, parameter :: sno_nbr_aer =   8        ! number of aerosol species in snowpack
