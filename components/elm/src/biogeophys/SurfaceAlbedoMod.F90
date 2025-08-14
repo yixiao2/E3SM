@@ -620,6 +620,7 @@ contains
                                 flg_slr, &
                                 h2osno_liq(bounds%begc:bounds%endc, :), &
                                 h2osno_ice(bounds%begc:bounds%endc, :), &
+                                snw_rds_in(bounds%begc:bounds%endc, :), &
                                 dendricity(bounds%begc:bounds%endc, :), &
                                 sphericity(bounds%begc:bounds%endc, :), &
                                 mss_cnc_aer_in_frc_pur(bounds%begc:bounds%endc, :, :), &

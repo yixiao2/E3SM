@@ -946,9 +946,6 @@ contains
     allocate(this%snw_rds            (begc:endc,-nlevsno+1:0))        ; this%snw_rds            (:,:) = nan
     allocate(this%dendricity         (begc:endc,-nlevsno+1:0))        ; this%dendricity         (:,:) = nan
     allocate(this%sphericity         (begc:endc,-nlevsno+1:0))        ; this%sphericity         (:,:) = nan
-    ! allocate(this%dyn_snw_shape      (begc:endc, -nlevsno+1:0))       ; this%dyn_snw_shape      (:,:) = 1 ! #TODO
-    allocate(this%sphericity         (begc:endc,-nlevsno+1:0))        ; this%sphericity         (:,:) = nan
-    allocate(this%dendricity         (begc:endc,-nlevsno+1:0))        ; this%dendricity         (:,:) = nan
     allocate(this%air_vol            (begc:endc, 1:nlevgrnd))         ; this%air_vol            (:,:) = nan
     allocate(this%qg_snow            (begc:endc))                     ; this%qg_snow            (:)   = nan   
     allocate(this%qg_soil            (begc:endc))                     ; this%qg_soil            (:)   = nan   

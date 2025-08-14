@@ -127,7 +127,6 @@ module ColumnDataType
     real(r8), pointer :: dendricity         (:,:) => null() ! snow grain dendricity [dimless]
     real(r8), pointer :: sphericity         (:,:) => null() ! snow grain sphericity [dimless]
     real(r8), pointer :: air_vol            (:,:) => null() ! air filled porosity (m3/m3)
-    ! integer(r8), pointer :: dyn_snw_shape   (:,:) => null() ! snow grain shape [1 = sphere, 2 = spheroid, 3 = hexagonal plate, 4 = Koch snowflake]
     ! Derived water, ice, and snow variables, column aggregate
     real(r8), pointer :: qg_snow            (:)   => null() ! specific humidity over snow (kg H2O/kg moist air)
     real(r8), pointer :: qg_soil            (:)   => null() ! specific humidity over soil (kg H2O/kg moist air)
@@ -1424,7 +1423,6 @@ contains
     allocate(this%soilp              (begc:endc,1:nlevgrnd))          ; this%soilp              (:,:) = 0._r8
     allocate(this%swe_old            (begc:endc,-nlevsno+1:0))        ; this%swe_old            (:,:) = spval
     allocate(this%snw_rds            (begc:endc,-nlevsno+1:0))        ; this%snw_rds            (:,:) = spval
-    ! allocate(this%dyn_snw_shape      (begc:endc, -nlevsno+1:0))       ; this%dyn_snw_shape      (:,:) = 1 ! sphere;  #TODO allocate to integer value?
     allocate(this%dendricity         (begc:endc,-nlevsno+1:0))        ; this%dendricity         (:,:) = spval
     allocate(this%sphericity         (begc:endc,-nlevsno+1:0))        ; this%sphericity         (:,:) = spval
     allocate(this%air_vol            (begc:endc, 1:nlevgrnd))         ; this%air_vol            (:,:) = spval
