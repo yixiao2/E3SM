@@ -64,6 +64,8 @@ contains
 
          h2osno_top    => col_ws%h2osno_top    , & ! Output: [real(r8) (:)   |  top-layer mass of snow  [kg]
          snw_rds       => col_ws%snw_rds       , & ! Output: [real(r8) (:,:) ]  effective snow grain radius (col,lyr) [microns, m^-6]
+         sphericity       => col_ws%sphericity       , & ! Output: [real(r8) (:,:) ] snow grain sphericity (col,lyr) [unitless]
+         dendricity       => col_ws%dendricity       , & ! Output: [real(r8) (:,:) ] snow grain dendricity (col,lyr) [unitless]
 
          mss_bcpho     => aerosol_vars%mss_bcpho_col        , & ! Output: [real(r8) (:,:) ]  mass of hydrophobic BC in snow (col,lyr) [kg]
          mss_bcphi     => aerosol_vars%mss_bcphi_col        , & ! Output: [real(r8) (:,:) ]  mass of hydrophillic BC in snow (col,lyr) [kg]
@@ -152,6 +154,8 @@ contains
             else
                !set variables of empty snow layers to zero
                snw_rds(c,j)       = 0._r8
+               sphericity(c,j)    = 0._r8
+               dendricity(c,j)    = 0._r8
 
                mss_bcpho(c,j)     = 0._r8
                mss_bcphi(c,j)     = 0._r8

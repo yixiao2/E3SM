@@ -124,7 +124,10 @@ module ColumnDataType
     real(r8), pointer :: soilp              (:,:) => null() ! soil pressure (1:nlevgrnd) (Pa)
     real(r8), pointer :: swe_old            (:,:) => null() ! initial snow water content (-nlevsno+1:0) (kg/m2)
     real(r8), pointer :: snw_rds            (:,:) => null() ! col snow grain radius (-nlevsno+1:0) (m^-6, or microns)
+    real(r8), pointer :: dendricity         (:,:) => null() ! snow grain dendricity [dimless]
+    real(r8), pointer :: sphericity         (:,:) => null() ! snow grain sphericity [dimless]
     real(r8), pointer :: air_vol            (:,:) => null() ! air filled porosity (m3/m3)
+    ! integer(r8), pointer :: dyn_snw_shape   (:,:) => null() ! snow grain shape [1 = sphere, 2 = spheroid, 3 = hexagonal plate, 4 = Koch snowflake]
     ! Derived water, ice, and snow variables, column aggregate
     real(r8), pointer :: qg_snow            (:)   => null() ! specific humidity over snow (kg H2O/kg moist air)
     real(r8), pointer :: qg_soil            (:)   => null() ! specific humidity over soil (kg H2O/kg moist air)
@@ -178,9 +181,7 @@ module ColumnDataType
     real(r8), pointer :: excess_ice     (:,:) => null() ! excess ground ice in column (1:nlevgrnd) (0 to 1)
     real(r8), pointer :: frac_melted    (:,:) => null() ! fraction of layer that has ever thawed (for tracking excess ice removal) (0 to 1)
 
-    !real(r8), pointer :: dendricity (:) => null()      ! dendricity
-    !real(r8), pointer :: sphericity (:) => null()      ! sphericity
-    real(r8), pointer :: dyn_snw_shape (:,:) => null() ! dynamic snow shape
+
 
   contains
     procedure, public :: Init    => col_ws_init
@@ -1423,6 +1424,9 @@ contains
     allocate(this%soilp              (begc:endc,1:nlevgrnd))          ; this%soilp              (:,:) = 0._r8
     allocate(this%swe_old            (begc:endc,-nlevsno+1:0))        ; this%swe_old            (:,:) = spval
     allocate(this%snw_rds            (begc:endc,-nlevsno+1:0))        ; this%snw_rds            (:,:) = spval
+    ! allocate(this%dyn_snw_shape      (begc:endc, -nlevsno+1:0))       ; this%dyn_snw_shape      (:,:) = 1 ! sphere;  #TODO allocate to integer value?
+    allocate(this%dendricity         (begc:endc,-nlevsno+1:0))        ; this%dendricity         (:,:) = spval
+    allocate(this%sphericity         (begc:endc,-nlevsno+1:0))        ; this%sphericity         (:,:) = spval
     allocate(this%air_vol            (begc:endc, 1:nlevgrnd))         ; this%air_vol            (:,:) = spval
     allocate(this%qg_snow            (begc:endc))                     ; this%qg_snow            (:)   = spval
     allocate(this%qg_soil            (begc:endc))                     ; this%qg_soil            (:)   = spval
@@ -1469,10 +1473,7 @@ contains
     allocate(this%frac_h2orof        (begc:endc))                     ; this%frac_h2orof        (:)   = spval
     allocate(this%frac_h2oocn        (begc:endc))                     ; this%frac_h2oocn        (:)   = nan
 
-    !allocate(this%dendricity         (begc:endc))                     ; this%dendricity         (:)   = nan
-    !allocate(this%sphericity         (begc:endc))                     ; this%dendricity         (:)   = nan
-    allocate(this%dyn_snw_shape      (begc:endc, -nlevsno+1:0))       ; this%dendricity         (:,:) = nan
-    
+
     if (use_polygonal_tundra) then
       ! polygonal tundra/ice wedge polygons:
       allocate(this%iwp_microrel       (begc:endc))                   ; this%iwp_microrel     (:) = spval
@@ -1563,6 +1564,18 @@ contains
     data2dptr => this%snw_rds(:,-nlevsno+1:0)
      call hist_addfld2d (fname='SNO_GS', units='Microns', type2d='levsno',  &
           avgflag='A', long_name='Mean snow grain size', &
+           ptr_col=data2dptr, no_snow_behavior=no_snow_normal, default='inactive')
+
+    this%dendricity(begc:endc,-nlevsno+1:0) = spval
+    data2dptr => this%dendricity(:,-nlevsno+1:0)
+     call hist_addfld2d (fname='SNO_DEN', units='1', type2d='levsno',  &
+          avgflag='A', long_name='Mean snow grain dendricity', &
+           ptr_col=data2dptr, no_snow_behavior=no_snow_normal, default='inactive')
+
+    this%sphericity(begc:endc,-nlevsno+1:0) = spval
+    data2dptr => this%sphericity(:,-nlevsno+1:0)
+     call hist_addfld2d (fname='SNO_SPH', units='1', type2d='levsno',  &
+          avgflag='A', long_name='Mean snow grain sphericity', &
            ptr_col=data2dptr, no_snow_behavior=no_snow_normal, default='inactive')
 
     this%snw_rds_top(begc:endc) = spval
@@ -1720,15 +1733,21 @@ contains
        end if
 
        if (col_pp%snl(c) < 0) then
+          this%sphericity(c,col_pp%snl(c)+1:0)       = 1._r8
+          this%dendricity(c,col_pp%snl(c)+1:0)       = 0._r8
           this%snw_rds(c,col_pp%snl(c)+1:0)          = snw_rds_min
           this%snw_rds(c,-nlevsno+1:col_pp%snl(c))   = 0._r8
-          this%snw_rds_top(c)                 = snw_rds_min
+          this%snw_rds_top(c)                        = snw_rds_min
        elseif (this%h2osno(c) > 0._r8) then
+          this%sphericity(c,0)                = 1._r8
+          this%dendricity(c,0)                = 0._r8
           this%snw_rds(c,0)                   = snw_rds_min
           this%snw_rds(c,-nlevsno+1:-1)       = 0._r8
           this%snw_rds_top(c)                 = spval
           this%sno_liq_top(c)                 = spval
        else
+          this%sphericity(c,:)                = 1._r8
+          this%dendricity(c,:)                = 0._r8
           this%snw_rds(c,:)                   = 0._r8
           this%snw_rds_top(c)                 = spval
           this%sno_liq_top(c)                 = spval
@@ -1995,6 +2014,22 @@ contains
           endif
        enddo
     endif
+
+    call restartvar(ncid=ncid, flag=flag, varname='SNO_DEN', xtype=ncd_double,  &
+         dim1name='column', dim2name='levsno', switchdim=.true., lowerb2=-nlevsno+1, upperb2=0, &
+         long_name='snow layer grain dendricity', units='1', &
+         interpinic_flag='interp', readvar=readvar, data=this%dendricity)
+    if (flag == 'read' .and. .not. readvar) then
+             this%dendricity(:) = 0.0_r8
+    end if
+
+    call restartvar(ncid=ncid, flag=flag, varname='SNO_SPH', xtype=ncd_double,  &
+         dim1name='column', dim2name='levsno', switchdim=.true., lowerb2=-nlevsno+1, upperb2=0, &
+         long_name='snow layer grain sphericity', units='1', &
+         interpinic_flag='interp', readvar=readvar, data=this%sphericity)
+    if (flag == 'read' .and. .not. readvar) then
+             this%sphericity(:) = 1.0_r8
+    end if
 
     call restartvar(ncid=ncid, flag=flag, varname='INT_SNOW', xtype=ncd_double,  &
          dim1name='column', &

@@ -616,6 +616,8 @@ contains
           h2osoi_ice   => col_ws%h2osoi_ice   , & ! Input:  [real(r8) (:,:) ] ice lens (kg/m2)                       
           h2osoi_liq   => col_ws%h2osoi_liq   , & ! Input:  [real(r8) (:,:) ] liquid water (kg/m2)                   
           snw_rds      => col_ws%snw_rds      , & ! Output: [real(r8) (:,:) ] effective snow grain radius (col,lyr) [microns, m^-6]
+          dendricity   => col_ws%dendricity   , & ! Output: [real(r8) (:,:) ] snow grain dendricity (col,lyr) [unitless]
+          sphericity   => col_ws%sphericity   , & ! Output: [real(r8) (:,:) ] snow grain sphericity (col,lyr) [unitless]
           dz           => col_pp%dz                             & ! Output: [real(r8) (: ,:) ] layer depth (m)                        
           )
 
@@ -832,6 +834,8 @@ contains
           h2osoi_ice       => col_ws%h2osoi_ice      , & ! Output: [real(r8) (:,:) ] ice lens (kg/m2)
           h2osoi_liq       => col_ws%h2osoi_liq      , & ! Output: [real(r8) (:,:) ] liquid water (kg/m2)
           snw_rds          => col_ws%snw_rds         , & ! Output: [real(r8) (:,:) ] effective snow grain radius (col,lyr) [microns, m^-6]
+          dendricity       => col_ws%dendricity      , & ! Output: [real(r8) (:,:) ] snow grain dendricity (col,lyr) [unitless]
+          sphericity       => col_ws%sphericity      , & ! Output: [real(r8) (:,:) ] snow grain sphericity (col,lyr) [unitless]
           mflx_snowlyr_col => col_wf%mflx_snowlyr     , & ! Output: [real(r8) (:)   ]  mass flux to top soil layer due to disappearance of snow (kg H2O /s)
 
           qflx_sl_top_soil => col_wf%qflx_sl_top_soil , & ! Output: [real(r8) (:)   ] liquid water + ice from layer above soil to top soil layer or sent to qflx_qrgwl (mm H2O/s)
@@ -954,6 +958,8 @@ contains
                       mss_dst3(c,i)    = mss_dst3(c,i-1)
                       mss_dst4(c,i)    = mss_dst4(c,i-1)
                       snw_rds(c,i)     = snw_rds(c,i-1)
+                      dendricity(c,i)     = dendricity(c,i-1)
+                      sphericity(c,i)     = sphericity(c,i-1)
                       dz(c,i)         = dz(c,i-1)
                    end do
                 end if
@@ -1088,6 +1094,18 @@ contains
                         snw_rds(c,l)*(h2osoi_liq(c,l)+h2osoi_ice(c,l))) / &
                         (h2osoi_liq(c,j)+h2osoi_ice(c,j)+h2osoi_liq(c,l)+h2osoi_ice(c,l))
 
+                   dendricity(c,j) = (dendricity(c,j)*(h2osoi_liq(c,j)+h2osoi_ice(c,j)) + &
+                        dendricity(c,l)*(h2osoi_liq(c,l)+h2osoi_ice(c,l))) / &
+                        (h2osoi_liq(c,j)+h2osoi_ice(c,j)+h2osoi_liq(c,l)+h2osoi_ice(c,l))
+
+                   sphericity(c,j) = (sphericity(c,j)*(h2osoi_liq(c,j)+h2osoi_ice(c,j)) + &
+                        sphericity(c,l)*(h2osoi_liq(c,l)+h2osoi_ice(c,l))) / &
+                        (h2osoi_liq(c,j)+h2osoi_ice(c,j)+h2osoi_liq(c,l)+h2osoi_ice(c,l))
+
+
+
+
+
                    call Combo (dz(c,j), h2osoi_liq(c,j), h2osoi_ice(c,j), &
                         t_soisno(c,j), dz(c,l), h2osoi_liq(c,l), h2osoi_ice(c,l), t_soisno(c,l) )
 
@@ -1108,6 +1126,8 @@ contains
                          mss_dst3(c,k)  = mss_dst3(c,k-1)
                          mss_dst4(c,k)  = mss_dst4(c,k-1)
                          snw_rds(c,k)   = snw_rds(c,k-1)
+                         dendricity(c,k)   = dendricity(c,k-1)
+                         sphericity(c,k)   = sphericity(c,k-1)
 
                          dz(c,k) = dz(c,k-1)
                       end do
@@ -1193,6 +1213,8 @@ contains
      real(r8) :: mdst4(bounds%begc:bounds%endc,nlevsno)   ! mass of dust 4 in each snow layer
      real(r8) :: zmdst4                                   ! temporary
      real(r8) :: rds(bounds%begc:bounds%endc,nlevsno)
+     real(r8) :: dendr(bounds%begc:bounds%endc,nlevsno)
+     real(r8) :: spher(bounds%begc:bounds%endc,nlevsno)
      ! Variables for consistency check
      real(r8) :: dztot(bounds%begc:bounds%endc)
      real(r8) :: snwicetot(bounds%begc:bounds%endc)
@@ -1207,6 +1229,8 @@ contains
           h2osoi_liq => col_ws%h2osoi_liq   , & ! Output: [real(r8) (:,:) ] liquid water (kg/m2)
           frac_sno   => col_ws%frac_sno_eff , & ! Output: [real(r8) (:)   ] fraction of ground covered by snow (0 to 1)
           snw_rds    => col_ws%snw_rds      , & ! Output: [real(r8) (:,:) ] effective snow grain radius (col,lyr) [microns, m^-6]
+          dendricity => col_ws%dendricity   , & ! Output: [real(r8) (:,:) ] snow grain dendricity (col,lyr) [unitless]
+          sphericity => col_ws%sphericity   , & ! Output: [real(r8) (:,:) ] snow grain sphericity (col,lyr) [unitless]
 
           mss_bcphi  => aerosol_vars%mss_bcphi_col       , & ! Output: [real(r8) (:,:) ] hydrophilic BC mass in snow (col,lyr) [kg]
           mss_bcpho  => aerosol_vars%mss_bcpho_col       , & ! Output: [real(r8) (:,:) ] hydrophobic BC mass in snow (col,lyr) [kg]
@@ -1269,6 +1293,8 @@ contains
                 mdst3(c,j)   = mss_dst3(c,j+snl(c))
                 mdst4(c,j)   = mss_dst4(c,j+snl(c))
                 rds(c,j)     = snw_rds(c,j+snl(c))
+                dendr(c,j)   = dendricity(c,j+snl(c))
+                spher(c,j)   = sphericity(c,j+snl(c))
              end if
           end do
        end do
@@ -1312,6 +1338,8 @@ contains
                  mdst4(c,1) = mdst4(c,1)/2._r8
                  mdst4(c,2) = mdst4(c,1)
                  rds(c,2) = rds(c,1)
+                 dendr(c,2) = dendr(c,1)
+                 spher(c,2) = spher(c,1)
 
               end if
            end if
@@ -1376,14 +1404,28 @@ contains
 #ifdef MODAL_AER
               !mgf++ bugfix
               rds(c,2) = (rds(c,2)*(swliq(c,2)+swice(c,2)) + rds(c,1)*(zwliq+zwice))/(swliq(c,2)+swice(c,2)+zwliq+zwice)
+              dendr(c,2) = (dendr(c,2)*(swliq(c,2)+swice(c,2)) + dendr(c,1)*(zwliq+zwice))/(swliq(c,2)+swice(c,2)+zwliq+zwice)
+              spher(c,2) = (spher(c,2)*(swliq(c,2)+swice(c,2)) + spher(c,1)*(zwliq+zwice))/(swliq(c,2)+swice(c,2)+zwliq+zwice)
                 if ((rds(c,2) < 30.) .or. (rds(c,2) > 1500.)) then
                    write (iulog,*) "2. SNICAR ERROR: snow grain radius of",rds(c,2),rds(c,1)
+                   write (iulog,*) "swliq, swice, zwliq, zwice", swliq(c,2), swice(c,2),zwliq, zwice
+                   write (iulog,*) "layers ", msno
+                endif
+                if ((dendr(c,2) < 0.) .or. (dendr(c,2) > 1.)) then
+                   write (iulog,*) "2. SNICAR ERROR: snow grain dendricity of",dendr(c,2),dendr(c,1)
+                   write (iulog,*) "swliq, swice, zwliq, zwice", swliq(c,2), swice(c,2),zwliq, zwice
+                   write (iulog,*) "layers ", msno
+                endif
+                if ((spher(c,2) < 0.) .or. (spher(c,2) > 1.)) then
+                   write (iulog,*) "2. SNICAR ERROR: snow grain sphericity of",spher(c,2),spher(c,1)
                    write (iulog,*) "swliq, swice, zwliq, zwice", swliq(c,2), swice(c,2),zwliq, zwice
                    write (iulog,*) "layers ", msno
                 endif
               !mgf--
 #else
               rds(c,2) = rds(c,1) ! (combo)
+              spher(c,2) = spher(c,1) ! (combo)
+              dendr(c,2) = dendr(c,1) ! (combo)
 #endif
 
                  call Combo (dzsno(c,2), swliq(c,2), swice(c,2), tsno(c,2), drr, &
@@ -1428,6 +1470,8 @@ contains
                     mdst4(c,2) = mdst4(c,2)/2._r8
                     mdst4(c,3) = mdst4(c,2)
                     rds(c,3) = rds(c,2)
+                    spher(c,3) = spher(c,2)
+                    dendr(c,3) = dendr(c,2)
 
                  end if
               end if
@@ -1492,6 +1536,8 @@ contains
 #ifdef MODAL_AER
               !mgf++ bugfix
               rds(c,3) = (rds(c,3)*(swliq(c,3)+swice(c,3)) + rds(c,2)*(zwliq+zwice))/(swliq(c,3)+swice(c,3)+zwliq+zwice)
+              spher(c,3) = (spher(c,3)*(swliq(c,3)+swice(c,3)) + spher(c,2)*(zwliq+zwice))/(swliq(c,3)+swice(c,3)+zwliq+zwice)
+              dendr(c,3) = (dendr(c,3)*(swliq(c,3)+swice(c,3)) + dendr(c,2)*(zwliq+zwice))/(swliq(c,3)+swice(c,3)+zwliq+zwice)
                 if ((rds(c,3) < 30.) .or. (rds(c,3) > 1500.)) then
 #ifndef _OPENACC
                    write (iulog,*) "3. SNICAR ERROR: snow grain radius of",rds(c,3),rds(c,2)
@@ -1499,9 +1545,25 @@ contains
                    write (iulog,*) "layers ", msno
 #endif
                 endif
+                if ((dendr(c,3) < 0.) .or. (dendr(c,3) > 1.)) then
+#ifndef _OPENACC
+                   write (iulog,*) "3. SNICAR ERROR: snow grain dendricity of",dendr(c,3),dendr(c,2)
+                   write (iulog,*) "swliq, swice, zwliq, zwice", swliq(c,3), swice(c,3),zwliq, zwice
+                   write (iulog,*) "layers ", msno
+#endif
+                endif
+                if ((spher(c,3) < 0.) .or. (spher(c,3) > 1.)) then
+#ifndef _OPENACC
+                   write (iulog,*) "3. SNICAR ERROR: snow grain sphericity of",spher(c,3),spher(c,2)
+                   write (iulog,*) "swliq, swice, zwliq, zwice", swliq(c,3), swice(c,3),zwliq, zwice
+                   write (iulog,*) "layers ", msno
+#endif
+                endif
               !mgf--
 #else
               rds(c,3) = rds(c,2) ! (combo)
+              spher(c,3) = spher(c,2) ! (combo)
+              dendr(c,3) = dendr(c,2) ! (combo)
 #endif
 
                  call Combo (dzsno(c,3), swliq(c,3), swice(c,3), tsno(c,3), drr, &
@@ -1546,6 +1608,8 @@ contains
                     mdst4(c,3) = mdst4(c,3)/2._r8
                     mdst4(c,4) = mdst4(c,3)
                     rds(c,4) = rds(c,3)
+                    dendr(c,4) = dendr(c,3)
+                    spher(c,4) = spher(c,3)
 
                  end if
               end if
@@ -1610,14 +1674,28 @@ contains
 #ifdef MODAL_AER
               !mgf++ bugfix
               rds(c,4) = (rds(c,4)*(swliq(c,4)+swice(c,4)) + rds(c,3)*(zwliq+zwice))/(swliq(c,4)+swice(c,4)+zwliq+zwice)
+              dendr(c,4) = (dendr(c,4)*(swliq(c,4)+swice(c,4)) + dendr(c,3)*(zwliq+zwice))/(swliq(c,4)+swice(c,4)+zwliq+zwice)
+              spher(c,4) = (spher(c,4)*(swliq(c,4)+swice(c,4)) + spher(c,3)*(zwliq+zwice))/(swliq(c,4)+swice(c,4)+zwliq+zwice)
                 if ((rds(c,4) < 30.) .or. (rds(c,4) > 1500.)) then
                    write (iulog,*) "4. SNICAR ERROR: snow grain radius of",rds(c,4),rds(c,3)
+                   write (iulog,*) "swliq, swice, zwliq, zwice", swliq(c,4), swice(c,4),zwliq, zwice
+                   write (iulog,*) "layers ", msno
+                endif
+                if ((dendr(c,4) < 0.) .or. (dendr(c,4) > 1.)) then
+                   write (iulog,*) "4. SNICAR ERROR: snow grain dendricity of",dendr(c,4),dendr(c,3)
+                   write (iulog,*) "swliq, swice, zwliq, zwice", swliq(c,4), swice(c,4),zwliq, zwice
+                   write (iulog,*) "layers ", msno
+                endif
+                if ((spher(c,4) < 0.) .or. (spher(c,4) > 1.)) then
+                   write (iulog,*) "4. SNICAR ERROR: snow grain sphericity of",spher(c,4),spher(c,3)
                    write (iulog,*) "swliq, swice, zwliq, zwice", swliq(c,4), swice(c,4),zwliq, zwice
                    write (iulog,*) "layers ", msno
                 endif
               !mgf--
 #else
               rds(c,4) = rds(c,3) ! (combo)
+              spher(c,4) = spher(c,3) ! (combo)
+              dendr(c,4) = dendr(c,3) ! (combo)
 #endif
 
                  call Combo (dzsno(c,4), swliq(c,4), swice(c,4), tsno(c,4), drr, &
@@ -1662,6 +1740,8 @@ contains
                     mdst4(c,4) = mdst4(c,4)/2._r8
                     mdst4(c,5) = mdst4(c,4)
                     rds(c,5) = rds(c,4)
+                    dendr(c,5) = dendr(c,4)
+                    spher(c,5) = spher(c,4)
 
                  end if
               end if
@@ -1726,14 +1806,28 @@ contains
 #ifdef MODAL_AER
               !mgf++ bugfix
               rds(c,5) = (rds(c,5)*(swliq(c,5)+swice(c,5)) + rds(c,4)*(zwliq+zwice))/(swliq(c,5)+swice(c,5)+zwliq+zwice)
+              spher(c,5) = (spher(c,5)*(swliq(c,5)+swice(c,5)) + spher(c,4)*(zwliq+zwice))/(swliq(c,5)+swice(c,5)+zwliq+zwice)
+              dendr(c,5) = (dendr(c,5)*(swliq(c,5)+swice(c,5)) + dendr(c,4)*(zwliq+zwice))/(swliq(c,5)+swice(c,5)+zwliq+zwice)
                 if ((rds(c,5) < 30.) .or. (rds(c,5) > 1500.)) then
                    write (iulog,*) "5. SNICAR ERROR: snow grain radius of",rds(c,5),rds(c,4)
+                   write (iulog,*) "swliq, swice, zwliq, zwice", swliq(c,5), swice(c,5),zwliq, zwice
+                   write (iulog,*) "layers ", msno
+                endif
+                if ((dendr(c,5) < 0.) .or. (dendr(c,5) > 1.)) then
+                   write (iulog,*) "5. SNICAR ERROR: snow grain dendricity of",dendr(c,5),dendr(c,4)
+                   write (iulog,*) "swliq, swice, zwliq, zwice", swliq(c,5), swice(c,5),zwliq, zwice
+                   write (iulog,*) "layers ", msno
+                endif
+                if ((spher(c,5) < 0.) .or. (spher(c,5) > 1.)) then
+                   write (iulog,*) "5. SNICAR ERROR: snow grain sphericity of",spher(c,5),spher(c,4)
                    write (iulog,*) "swliq, swice, zwliq, zwice", swliq(c,5), swice(c,5),zwliq, zwice
                    write (iulog,*) "layers ", msno
                 endif
               !mgf--
 #else
               rds(c,5) = rds(c,4) ! (combo)
+              dendr(c,5) = dendr(c,4) ! (combo)
+              spher(c,5) = spher(c,4) ! (combo)
 #endif
 
                  call Combo (dzsno(c,5), swliq(c,5), swice(c,5), tsno(c,5), drr, &
@@ -1766,6 +1860,8 @@ contains
                 mss_dst3(c,j)    = mdst3(c,j-snl(c))
                 mss_dst4(c,j)    = mdst4(c,j-snl(c))
                 snw_rds(c,j)     = rds(c,j-snl(c))
+                sphericity(c,j)     = spher(c,j-snl(c))
+                dendricity(c,j)     = dendr(c,j-snl(c))
 
              end if
           end do
@@ -1858,6 +1954,8 @@ contains
      real(r8) :: mdst4(bounds%begc:bounds%endc,nlevsno)   ! mass of dust 4 in each snow layer
      real(r8) :: zmdst4                                   ! temporary
      real(r8) :: rds(bounds%begc:bounds%endc,nlevsno)
+     real(r8) :: dendr(bounds%begc:bounds%endc,nlevsno)
+     real(r8) :: spher(bounds%begc:bounds%endc,nlevsno)
      ! Variables for consistency check
      real(r8) :: dztot(bounds%begc:bounds%endc)
      real(r8) :: snwicetot(bounds%begc:bounds%endc)
@@ -1872,6 +1970,8 @@ contains
           h2osoi_liq => col_ws%h2osoi_liq   , & ! Output: [real(r8) (:,:) ] liquid water (kg/m2)                   
           frac_sno   => col_ws%frac_sno_eff , & ! Output: [real(r8) (:)   ] fraction of ground covered by snow (0 to 1)
           snw_rds    => col_ws%snw_rds      , & ! Output: [real(r8) (:,:) ] effective snow grain radius (col,lyr) [microns, m^-6]
+          sphericity    => col_ws%sphericity      , & ! Output: [real(r8) (:,:) ] snow grain sphericity (col,lyr) [unitless]
+          dendricity    => col_ws%dendricity      , & ! Output: [real(r8) (:,:) ] snow grain dendricity (col,lyr) [unitless]
 
           mss_bcphi  => aerosol_vars%mss_bcphi_col       , & ! Output: [real(r8) (:,:) ] hydrophilic BC mass in snow (col,lyr) [kg]
           mss_bcpho  => aerosol_vars%mss_bcpho_col       , & ! Output: [real(r8) (:,:) ] hydrophobic BC mass in snow (col,lyr) [kg]
@@ -1934,6 +2034,8 @@ contains
                 mdst3(c,j)   = mss_dst3(c,j+snl(c))
                 mdst4(c,j)   = mss_dst4(c,j+snl(c))
                 rds(c,j)     = snw_rds(c,j+snl(c))
+                dendr(c,j)     = dendricity(c,j+snl(c))
+                spher(c,j)     = sphericity(c,j+snl(c))
              end if
           end do
        end do
@@ -2002,6 +2104,8 @@ contains
                     mdst4(c,k+1)   = mdst4(c,k)
 
                     rds(c,k+1)     = rds(c,k)
+                    dendr(c,k+1)     = dendr(c,k)
+                    spher(c,k+1)     = spher(c,k)
                  end if
               end if
 
@@ -2060,6 +2164,14 @@ contains
                     rds(c,k+1) = MassWeightedSnowRadius( rds(c,k), rds(c,k+1), &
                          (swliq(c,k+1)+swice(c,k+1)), (zwliq+zwice) )
 
+                    ! Mass-weighted combination of dendricity
+                    dendr(c,k+1) = MassWeightedSnowRadius( dendr(c,k), dendr(c,k+1), &
+                         (swliq(c,k+1)+swice(c,k+1)), (zwliq+zwice) )
+
+                    ! Mass-weighted combination of sphericity
+                    spher(c,k+1) = MassWeightedSnowRadius( spher(c,k), spher(c,k+1), &
+                         (swliq(c,k+1)+swice(c,k+1)), (zwliq+zwice) )
+
                     call Combo (dzsno(c,k+1), swliq(c,k+1), swice(c,k+1), tsno(c,k+1), drr, &
                          zwliq, zwice, tsno(c,k))
                  end if
@@ -2092,6 +2204,8 @@ contains
                 mss_dst3(c,j)    = mdst3(c,j-snl(c))
                 mss_dst4(c,j)    = mdst4(c,j-snl(c))
                 snw_rds(c,j)     = rds(c,j-snl(c))
+                sphericity(c,j)  = spher(c,j-snl(c))
+                dendricity(c,j)  = dendr(c,j-snl(c))
              end if
           end do
        end do
@@ -2565,6 +2679,30 @@ contains
         mass_weighted_snowradius = snw_rds_min
      end if
    end function MassWeightedSnowRadius
+
+
+   function MassWeightedSnowDendrSpher( d1, d2, swtot, zwtot ) result(mass_weighted_value)
+     ! (from CLMv5)
+     ! !DESCRIPTION:
+     ! Calculate the mass weighted snow grain sphericity or dendricity when two layers are combined
+     !
+     implicit none
+     ! !ARGUMENTS:
+     real(r8), intent(IN) :: d1         ! Layer 1 snow grain dendricity or sphericity
+     real(r8), intent(IN) :: d2         ! Layer 2 snow grain dendricity or sphericit
+     real(r8), intent(IN) :: swtot        ! snow water total layer 2
+     real(r8), intent(IN) :: zwtot        ! snow water total layer 1
+     real(r8) :: mass_weighted_value ! resulting bounded mass weighted snow property
+
+     mass_weighted_value = (d2*swtot + d1*zwtot)/(swtot+zwtot)
+
+     if (      mass_weighted_value > 1.0 ) then
+        mass_weighted_value = 1.0
+     else if ( mass_weighted_value < 0.0 ) then
+        mass_weighted_value = 0.0
+     end if
+   end function MassWeightedSnowDendrSpher
+
    !-----------------------------------------------------------------------
    
    subroutine BuildSnowFilter(bounds, num_nolakec, filter_nolakec, &

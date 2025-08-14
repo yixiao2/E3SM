@@ -152,6 +152,8 @@ contains
          h2osoi_liq_depth_intg=>  col_ws%h2osoi_liq_depth_intg, & ! Output: [real(r8) (:)   ]  grid-level depth integrated liquid soil water
          h2osoi_ice_depth_intg=>  col_ws%h2osoi_ice_depth_intg, & ! Output: [real(r8) (:)   ]  grid-level depth integrated ice soil water
          snw_rds              =>  col_ws%snw_rds           , & ! Output: [real(r8) (:,:) ]  effective snow grain radius (col,lyr) [microns, m^-6]
+         dendricity           =>  col_ws%dendricity        , & ! Output: [real(r8) (:,:) ]  snow grain dendricity (col,lyr) [unitless]
+         sphericity           =>  col_ws%sphericity        , & ! Output: [real(r8) (:,:) ]  snow grain sphericity (col,lyr) [unitless]
          snw_rds_top          =>  col_ws%snw_rds_top       , & ! Output: [real(r8) (:)   ]  effective snow grain size, top layer [microns]
          h2osno_top           =>  col_ws%h2osno_top        , & ! Output: [real(r8) (:)   ]  mass of snow in top layer [kg]
          sno_liq_top          =>  col_ws%sno_liq_top       , & ! Output: [real(r8) (:)   ]  liquid water fraction in top snow layer [frc]
@@ -343,6 +345,8 @@ contains
              aerosol_vars%mss_dst_top_col(c)  = 0._r8
              ! call waterstate_vars%Reset(column=c)
              col_ws%snw_rds(c,0) = snw_rds_min
+             col_ws%dendricity(c,0) = 1.0 !#TODO perhaps set to dfall value?
+             col_ws%sphericity(c,0) = 0.0 !#TODO perhaps set to sfall value?
 
          end if
 
@@ -760,6 +764,8 @@ contains
 
          h2osno_top(c)      = 0._r8
          snw_rds(c,:)       = 0._r8
+         dendricity(c,:)    = 0._r8
+         sphericity(c,:)    = 0._r8
          ! top-layer diagnostics (spval is not averaged when computing history fields)
          snot_top(c)        = spval
          dTdz_top(c)        = spval

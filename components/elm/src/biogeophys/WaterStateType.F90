@@ -69,6 +69,8 @@ module WaterstateType
                                                         ! term is set to non-zero. (kg/m2 H2O)
 
      real(r8), pointer :: snw_rds_col            (:,:) ! col snow grain radius (col,lyr)    [m^-6, microns]
+     real(r8), pointer :: dendricity_col         (:,:) ! col snow grain dendricity (col,lyr)   [unitless] 
+     real(r8), pointer :: sphericity_col         (:,:) ! col snow grain sphericity (col,lyr)   [unitless] 
      real(r8), pointer :: snw_rds_top_col        (:)   ! col snow grain radius (top layer)  [m^-6, microns]
      real(r8), pointer :: h2osno_top_col         (:)   ! col top-layer mass of snow  [kg]
      real(r8), pointer :: sno_liq_top_col        (:)   ! col snow liquid water fraction (mass), top layer  [fraction]
@@ -241,6 +243,8 @@ contains
     allocate(this%total_plant_stored_h2o_col(begc:endc))                  ; this%total_plant_stored_h2o_col(:) = nan
 
     allocate(this%snw_rds_col            (begc:endc,-nlevsno+1:0))        ; this%snw_rds_col            (:,:) = nan
+    allocate(this%dendricity_col         (begc:endc,-nlevsno+1:0))        ; this%dendricity_col         (:,:) = nan
+    allocate(this%sphericity_col         (begc:endc,-nlevsno+1:0))        ; this%sphericity_col         (:,:) = nan
     allocate(this%snw_rds_top_col        (begc:endc))                     ; this%snw_rds_top_col        (:)   = nan
     allocate(this%h2osno_top_col         (begc:endc))                     ; this%h2osno_top_col         (:)   = nan
     allocate(this%sno_liq_top_col        (begc:endc))                     ; this%sno_liq_top_col        (:)   = nan
@@ -469,15 +473,21 @@ contains
 
       do c = bounds%begc,bounds%endc
          if (snl(c) < 0) then
+            this%sphericity_col(c,snl(c)+1:0)        = 1.0_r8
+            this%dendricity_col(c,snl(c)+1:0)        = 0.0_r8
             this%snw_rds_col(c,snl(c)+1:0)        = snw_rds_min
             this%snw_rds_col(c,-nlevsno+1:snl(c)) = 0._r8
             this%snw_rds_top_col(c)               = snw_rds_min
          elseif (this%h2osno_col(c) > 0._r8) then
+            this%sphericity_col(c,0)                 = 1.0_r8
+            this%dendricity_col(c,0)                 = 0.0_r8
             this%snw_rds_col(c,0)                 = snw_rds_min
             this%snw_rds_col(c,-nlevsno+1:-1)     = 0._r8
             this%snw_rds_top_col(c)               = spval
             this%sno_liq_top_col(c)               = spval
          else
+            this%sphericity_col(c,:)                 = 1._r8
+            this%dendricity_col(c,:)                 = 0._r8
             this%snw_rds_col(c,:)                 = 0._r8
             this%snw_rds_top_col(c)               = spval
             this%sno_liq_top_col(c)               = spval
@@ -541,6 +551,8 @@ contains
     !-----------------------------------------------------------------------
 
     this%snw_rds_col(column,0)  = snw_rds_min
+    this%dendricity_col(column,0)  = 0.0_r8
+    this%sphericity_col(column,0)  = 1.0_r8
 
   end subroutine Reset
 

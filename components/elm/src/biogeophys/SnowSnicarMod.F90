@@ -33,6 +33,7 @@ module SnowSnicarMod
   public :: SnowAge_init     ! Initial read in of snow-aging file
   public :: SnowOptics_init  ! Initial read in of snow-optics file
   public :: SnowAge_grain_ll ! Same as SnowAge_grain but including snow shape evolution
+  public :: my_dyn_snow_shape ! compute snow shape based on dendricity and sphericity
   !
   ! !PUBLIC DATA MEMBERS:
   integer,  public, parameter :: sno_nbr_aer =   8        ! number of aerosol species in snowpack
@@ -1591,14 +1592,14 @@ contains
     real(r8) :: rhos                        ! snow density [kg m-3]
     real(r8) :: h2osno_lyr                  ! liquid + solid H2O in snow layer [kg m-2]
     real(r8) :: cdz(-nlevsno+1:0)           ! column average layer thickness [m]
-    real(r8) :: d_dendricity_dry
-    real(r8) :: d_sphericity_dry
-    real(r8) :: d_dendricity_wet
-    real(r8) :: d_sphericity_wet
-    real(r8) :: d_dendricity
-    real(r8) :: d_sphericity
-    real(r8) :: dfall
-    real(r8) :: sfall
+    real(r8) :: d_dendricity_dry ! change in snow grqin dendricity due to dry snow metamorphism [unitless]
+    real(r8) :: d_sphericity_dry ! change in snow grqin sphericity due to dry snow metamorphism [unitless]
+    real(r8) :: d_dendricity_wet ! change in snow grqin dendricity due to wet snow metamorphism [unitless]
+    real(r8) :: d_sphericity_wet ! change in snow grqin sphericity due to wet snow metamorphism [unitless]
+    real(r8) :: d_dendricity ! change in snow grqin dendricity due to dry+wet snow metamorphism [unitless]
+    real(r8) :: d_sphericity ! change in snow grqin sphericity due to dry+wet snow metamorphism [unitless]
+    real(r8) :: dfall ! snow grain dendricity for freshly fallen snow [unitless]
+    real(r8) :: sfall ! snow grain sphericity for freshly fallen snow [unitless]
     !--------------------------------------------------------------------------!
 
     associate(                                                      &
@@ -1621,11 +1622,12 @@ contains
          t_soisno           => col_es%t_soisno      , & ! Input:  [real(r8) (:,:) ]  soil and snow temperature (col,lyr) [K]
          t_grnd             => col_es%t_grnd        , & ! Input:  [real(r8) (:)   ]  ground temperature (col) [K]
          snot_top           => col_es%snot_top      , & ! Output: [real(r8) (:)   ]  temperature in top snow layer (col) [K]
-         dTdz_top           => col_es%dTdz_top        & ! Output: [real(r8) (:)   ]  temperature gradient in top layer (col) [K m-1]
+         dTdz_top           => col_es%dTdz_top      , & ! Output: [real(r8) (:)   ]  temperature gradient in top layer (col) [K m-1]
 
-         dendricity         => col_es%dendricity     , & ! Output: [real(r8) (:)   ]  dendricity in top snow layer (col) [unitless]
-         sphericity        => col_es%sphericity      , & ! Output: [real(r8) (:)   ]  sphericity in top snow layer (col) [unitless]
-         dyn_snw_shape     => col_es%dyn_snw_shape   , & ! Output: [real(r8) (:,:) ]  dynamic snow shape (col,lyr) [unitless]
+
+         dendricity         => col_es%dendricity     , & ! Output: [real(r8) (:,:)   ]  dendricity (col, lyr) [unitless]
+         sphericity        => col_es%sphericity        & ! Output: [real(r8) (:,:)   ]  sphericity (col, lyr) [unitless]
+         ! dyn_snw_shape     => col_es%dyn_snw_shape     & ! Output: [real(r8) (:,:) ]  dynamic snow shape (col,lyr) [unitless]
          )
 
 
@@ -1812,17 +1814,17 @@ contains
 
             ! OLD SNOW
                ! Dry snow
-               if (dTdz < (5 + 273)) then
-                  d_dendricity_dry = dtime * -2*1E8_r8 * EXP(-6.0_r8*1E3/t_soisno)
-                  d_sphericity_dry = dtime * 1*1E9_r8 * EXP(-6.0_r8*1E3/t_soisno)
+               if (dTdz < (5.0_r8)) then ! EZDEV: fixed value and use float
+                  d_dendricity_dry = dtime * -2*1E8_r8 * EXP(-6.0_r8*1E3_r8/t_soisno)
+                  d_sphericity_dry = dtime * 1*1E9_r8 * EXP(-6.0_r8*1E3_r8/t_soisno)
                else
-                  d_dendricity_dry = dtime * -2*1E8_r8 * EXP(-6.0_r8*1E3/t_soisno)*(dTdz)^0.4
-                  d_sphericity_dry = dtime * -2*1E8_r8 * EXP(-6.0_r8*1E3/t_soisno)*(dTdz)^0.4
+                  d_dendricity_dry = dtime * -2*1E8_r8 * EXP(-6.0_r8*1E3_r8/t_soisno)*(dTdz)^0.4_r8
+                  d_sphericity_dry = dtime * -2*1E8_r8 * EXP(-6.0_r8*1E3_r8/t_soisno)*(dTdz)^0.4_r8
                endif
                
                ! Wet snow
-               d_dendricity_wet = dtime * (-1)/16 * frc_liq**(3)
-               s_sphericity_wet = dtime * 1/16 * frc_liq**(3)
+               d_dendricity_wet = dtime * (-1.0_r8)/16.0_r8 * frc_liq**(3.0_r8)
+               s_sphericity_wet = dtime * 1.0_r8/16.0_r8 * frc_liq**(3.0_r8)
 
                ! total change in dendricity and sphericity
                d_dendricity = d_dendricity_dry + d_dendricity_wet
@@ -1832,11 +1834,11 @@ contains
                k10uu  = mct_aVect_indexRA(x2o,'So_duu10n')
                u10 = SQRT(x2o%rAttr(k10uu,1))
 
-               dfall =min[max(1.29 - 0.17*u10,0.20),1]
-               sfall = min [max(0.08*u10 + 0.38, 0.5), 0.9]
+               dfall =min(max(1.29_r8 - 0.17_r8*u10,0.20_r8),1.0_r8)
+               sfall = min(max(0.08_r8*u10 + 0.38_r8, 0.5_r8), 0.9_r8)
 
-               dendricity(c_idx, i) = (frc_oldsnow+frc_refrz)*d_dendricity + frc_newsnow*dfall
-               sphericity(c_idx, i) = (frc_oldsnow+frc_refrz)*d_sphericity + frc_newsnow*sfall
+               dendricity(c_idx, i) = (frc_oldsnow + frc_refrz) * ( dendricity(c_idx, i) + d_dendricity) + frc_newsnow * dfall
+               sphericity(c_idx, i) = (frc_oldsnow + frc_refrz) * ( sphericity(c_idx, i) + d_sphericity) + frc_newsnow * sfall
 
                if (dendricity(c_idx, i) < 0.0_r8) then
                   dendricity(c_idx, i) = 0.0_r8
@@ -1850,18 +1852,18 @@ contains
                   sphericity(c_idx, i) = 1.0_r8
                endif
 
-               ! Updating snow shape
-               if  (dendricity(c_idx, i) > 0.5_r8) then
-                  dyn_snw_shape(c_idx, i) = 4 ! Koch snowflake
-               else
-                  if (sphericity(c_idx, i) > 0.8_r8) then
-                     dyn_snw_shape(c_idx, i) = 1 ! sphere
-                  else if (sphericity(c_idx, i) < 0.2_r8) then
-                     dyn_snw_shape(c_idx, i) = 3 ! hexagonal plate
-                  else
-                     dyn_snw_shape(c_idx, i) = 2 ! spheroid
-                  endif
-               endif
+               ! ! Updating snow shape
+               ! if  (dendricity(c_idx, i) > 0.5_r8) then
+               !    dyn_snw_shape(c_idx, i) = 4 ! Koch snowflake
+               ! else
+               !    if (sphericity(c_idx, i) > 0.8_r8) then
+               !       dyn_snw_shape(c_idx, i) = 1 ! sphere
+               !    else if (sphericity(c_idx, i) < 0.2_r8) then
+               !       dyn_snw_shape(c_idx, i) = 3 ! hexagonal plate
+               !    else
+               !       dyn_snw_shape(c_idx, i) = 2 ! spheroid
+               !    endif
+               ! endif
                ! END shape evolution
 
          enddo
@@ -1873,12 +1875,31 @@ contains
          c_idx = filter_nosnowc(fc)
          if (h2osno(c_idx) > 0._r8) then
             snw_rds(c_idx,0) = snw_rds_min
+            dendricity(c_idx,0) = 0._r8
+            sphericity(c_idx,0) = 1._r8
          endif
       enddo
 
     end associate
 
   end subroutine SnowAge_grain_ll
+
+  integer function my_dyn_snow_shape(sphericity, dendricity)
+   real, intent(in)     :: dendricity
+   real, intent(in)     :: sphericity
+   ! #TODO: add thresholds to the namelist
+   if  (dendricity > 0.5_r8) then
+      my_dyn_snw_shape = 4 ! Koch snowflake
+   else
+      if (sphericity > 0.8_r8) then
+         my_dyn_snw_shape = 1 ! sphere
+      else if (sphericity < 0.2_r8) then
+         my_dyn_snw_shape = 3 ! hexagonal plate
+      else
+         my_dyn_snw_shape = 2 ! spheroid
+      endif
+   endif
+  end function  my_dyn_snow_shape
 
   !-----------------------------------------------------------------------
      subroutine SnowOptics_init( )
@@ -2156,7 +2177,7 @@ contains
 
    !-----------------------------------------------------------------------
    subroutine SNICAR_AD_RT (flg_snw_ice, bounds, num_nourbanc, filter_nourbanc,  &
-                         coszen, flg_slr_in, h2osno_liq, h2osno_ice, snw_rds,   &
+                         coszen, flg_slr_in, h2osno_liq, h2osno_ice, snw_rds, dendricity, sphericity,   &
                          mss_cnc_aer_in, albsfc, albout, flx_abs)
      !
      ! !DESCRIPTION:
@@ -2186,7 +2207,7 @@ contains
      use elm_varpar       , only : nlevsno, numrad
      use elm_time_manager , only : get_nstep
      use shr_const_mod    , only : SHR_CONST_PI
-     use elm_varctl       , only : snow_shape, snicar_atm_type, use_dust_snow_internal_mixing, use_finetop_rad
+     use elm_varctl       , only : use_dynamic_snow_shape, snow_shape, snicar_atm_type, use_dust_snow_internal_mixing, use_finetop_rad
      !
      ! !ARGUMENTS:
      integer           , intent(in)  :: flg_snw_ice                                        ! flag: =1 when called from CLM, =2 when called from CSIM
@@ -2198,6 +2219,8 @@ contains
      real(r8)          , intent(in)  :: h2osno_liq     ( bounds%begc: , -nlevsno+1: )      ! liquid water content (col,lyr) [kg/m2]
      real(r8)          , intent(in)  :: h2osno_ice     ( bounds%begc: , -nlevsno+1: )      ! ice content (col,lyr) [kg/m2]
      integer           , intent(in)  :: snw_rds        ( bounds%begc: , -nlevsno+1: )      ! snow effective radius (col,lyr) [microns, m^-6]
+     real(r8)          , intent(in)  :: dendricity     ( bounds%begc: , -nlevsno+1: )      ! snow grain dendricity (col,lyr) [unitless]
+     real(r8)          , intent(in)  :: sphericity     ( bounds%begc: , -nlevsno+1: )      ! snow grain sphericity (col,lyr) [unitless]
      real(r8)          , intent(in)  :: mss_cnc_aer_in ( bounds%begc: , -nlevsno+1: , 1: ) ! mass concentration of all aerosol species (col,lyr,aer) [kg/kg]
      real(r8)          , intent(in)  :: albsfc         ( bounds%begc: , 1: )               ! albedo of surface underlying snow (col,bnd) [frc]
      real(r8)          , intent(out) :: albout         ( bounds%begc: , 1: )               ! snow albedo, averaged into 2 bands (=0 if no sun or no snow) (col,bnd) [frc]
@@ -2510,7 +2533,6 @@ contains
           snl         =>   col_pp%snl           , & ! Input:  [integer (:)]  negative number of snow layers (col) [nbr]
           h2osno      =>   col_ws%h2osno        , & ! Input:  [real(r8) (:)]  snow liquid water equivalent (col) [kg/m2]
           frac_sno    =>   col_ws%frac_sno_eff    & ! Input:  [real(r8) (:)]  fraction of ground covered by snow (0 to 1)
-          snw_dyn_shape =>   col_ws%snw_dyn_shape , & ! Input:  [integer (:)]  dynamic snow grain shape (col) [nbr]`
           )
 
        ! Define constants
@@ -2542,19 +2564,22 @@ contains
        atm_type_index = atm_type_default
        
        ! Define snow grain shape
-       if (trim(snow_shape) == 'sphere') then
-         snw_shp_lcl(:) = snow_shape_sphere
-       elseif (trim(snow_shape) == 'spheroid') then
-         snw_shp_lcl(:) = snow_shape_spheroid
-       elseif (trim(snow_shape) == 'hexagonal_plate') then
-	      snw_shp_lcl(:) = snow_shape_hexagonal_plate
-       elseif (trim(snow_shape) == 'koch_snowflake') then
-         snw_shp_lcl(:) = snow_shape_koch_snowflake
-       elseif (trim(snow_shape) == 'dynamic') then
-         snw_shp_lcl(:) = 1
-       else
-	      write(iulog,*) "snow_shape = ", snow_shape
-         call endrun( "snow_shape is unknown" )
+       ! fixed values (used only if dynamic snow shape is off)
+       if (.not. use_dynamic_snow_shape) then
+         if (trim(snow_shape) == 'sphere') then
+           snw_shp_lcl(:) = snow_shape_sphere
+         elseif (trim(snow_shape) == 'spheroid') then
+           snw_shp_lcl(:) = snow_shape_spheroid
+         elseif (trim(snow_shape) == 'hexagonal_plate') then
+	        snw_shp_lcl(:) = snow_shape_hexagonal_plate
+         elseif (trim(snow_shape) == 'koch_snowflake') then
+           snw_shp_lcl(:) = snow_shape_koch_snowflake
+         elseif (trim(snow_shape) == 'dynamic') then
+           snw_shp_lcl(:) = 1
+         else
+	        write(iulog,*) "snow_shape = ", snow_shape
+           call endrun( "snow_shape is unknown" )
+         endif
        endif
 	  	    
        ! Define atmospheric type
@@ -2582,8 +2607,12 @@ contains
        do fc = 1,num_nourbanc
           c_idx = filter_nourbanc(fc)
           g_idx = col_pp%gridcell(c_idx)
+          if (use_dynamic_snow_shape) then
+            do i=-nlevsno+1,1,1
+               snw_shp_lcl(i) = my_dyn_snow_shape( sphericity(c_idx,i), dendricity(c_idx,i)) ! overwrie snow shape for current grid cell
+            enddo
+          end
 
-          snw_shp_lcl(:) = snw_dyn_shape(c_idx, :)
           ! Zero absorbed radiative fluxes:
           do i=-nlevsno+1,1,1
              flx_abs_lcl(:,:)   = 0._r8

@@ -185,6 +185,8 @@ contains
           h2osoi_liq    =>    col_ws%h2osoi_liq      , & ! Input:  [real(r8)  (:,:) ]  liquid water content (col,lyr) [kg/m2]
           h2osoi_ice    =>    col_ws%h2osoi_ice      , & ! Input:  [real(r8)  (:,:) ]  ice lens content (col,lyr) [kg/m2]
           snw_rds       =>    col_ws%snw_rds         , & ! Input:  [real(r8)  (:,:) ]  snow grain radius (col,lyr) [microns]
+          dendricity    =>    col_ws%dendricity      , & ! Input:  [real(r8)  (:,:) ]  snow grain dendricity (col,lyr) [unitless]
+          sphericity    =>    col_ws%sphericity      , & ! Input:  [real(r8)  (:,:) ]  snow grain sphericity (col,lyr) [unitless]
 
           mss_cnc_bcphi =>    aerosol_vars%mss_cnc_bcphi_col      , & ! Input:  [real(r8)  (:,:) ]  mass concentration of hydrophilic BC (col,lyr) [kg/kg]
           mss_cnc_bcpho =>    aerosol_vars%mss_cnc_bcpho_col      , & ! Input:  [real(r8)  (:,:) ]  mass concentration of hydrophobic BC (col,lyr) [kg/kg]
@@ -405,6 +407,8 @@ contains
                                 h2osno_liq(bounds%begc:bounds%endc, :), &
                                 h2osno_ice(bounds%begc:bounds%endc, :), &
                                 snw_rds_in(bounds%begc:bounds%endc, :), &
+                                dendricity(bounds%begc:bounds%endc, :), &
+                                sphericity(bounds%begc:bounds%endc, :), &
                                 mss_cnc_aer_in_frc_bc(bounds%begc:bounds%endc, :, :), &
                                 albsfc(bounds%begc:bounds%endc, :), &
                                 albsnd_bc(bounds%begc:bounds%endc, :), &
@@ -431,6 +435,8 @@ contains
                                 h2osno_liq(bounds%begc:bounds%endc, :), &
                                 h2osno_ice(bounds%begc:bounds%endc, :), &
                                 snw_rds_in(bounds%begc:bounds%endc, :), &
+                                dendricity(bounds%begc:bounds%endc, :), &
+                                sphericity(bounds%begc:bounds%endc, :), &
                                 mss_cnc_aer_in_frc_bc(bounds%begc:bounds%endc, :, :), &
                                 albsfc(bounds%begc:bounds%endc, :), &
                                 albsni_bc(bounds%begc:bounds%endc, :), &
@@ -467,6 +473,8 @@ contains
                                 h2osno_liq(bounds%begc:bounds%endc, :), &
                                 h2osno_ice(bounds%begc:bounds%endc, :), &
                                 snw_rds_in(bounds%begc:bounds%endc, :), &
+                                dendricity(bounds%begc:bounds%endc, :), &
+                                sphericity(bounds%begc:bounds%endc, :), &
                                 mss_cnc_aer_in_frc_oc(bounds%begc:bounds%endc, :, :), &
                                 albsfc(bounds%begc:bounds%endc, :), &
                                 albsnd_oc(bounds%begc:bounds%endc, :), &
@@ -492,6 +500,8 @@ contains
                                 h2osno_liq(bounds%begc:bounds%endc, :), &
                                 h2osno_ice(bounds%begc:bounds%endc, :), &
                                 snw_rds_in(bounds%begc:bounds%endc, :), &
+                                dendricity(bounds%begc:bounds%endc, :), &
+                                sphericity(bounds%begc:bounds%endc, :), &
                                 mss_cnc_aer_in_frc_oc(bounds%begc:bounds%endc, :, :), &
                                 albsfc(bounds%begc:bounds%endc, :), &
                                 albsni_oc(bounds%begc:bounds%endc, :), &
@@ -528,6 +538,8 @@ contains
                                 h2osno_liq(bounds%begc:bounds%endc, :), &
                                 h2osno_ice(bounds%begc:bounds%endc, :), &
                                 snw_rds_in(bounds%begc:bounds%endc, :), &
+                                dendricity(bounds%begc:bounds%endc, :), &
+                                sphericity(bounds%begc:bounds%endc, :), &
                                 mss_cnc_aer_in_frc_dst(bounds%begc:bounds%endc, :, :), &
                                 albsfc(bounds%begc:bounds%endc, :), &
                                 albsnd_dst(bounds%begc:bounds%endc, :), &
@@ -553,6 +565,8 @@ contains
                                 h2osno_liq(bounds%begc:bounds%endc, :), &
                                 h2osno_ice(bounds%begc:bounds%endc, :), &
                                 snw_rds_in(bounds%begc:bounds%endc, :), &
+                                dendricity(bounds%begc:bounds%endc, :), &
+                                sphericity(bounds%begc:bounds%endc, :), &
                                 mss_cnc_aer_in_frc_dst(bounds%begc:bounds%endc, :, :), &
                                 albsfc(bounds%begc:bounds%endc, :), &
                                 albsni_dst(bounds%begc:bounds%endc, :), &
@@ -580,6 +594,8 @@ contains
                                 h2osno_liq(bounds%begc:bounds%endc, :), &
                                 h2osno_ice(bounds%begc:bounds%endc, :), &
                                 snw_rds_in(bounds%begc:bounds%endc, :), &
+                                dendricity(bounds%begc:bounds%endc, :), &
+                                sphericity(bounds%begc:bounds%endc, :), &
                                 mss_cnc_aer_in_frc_pur(bounds%begc:bounds%endc, :, :), &
                                 albsfc(bounds%begc:bounds%endc, :), &
                                 albsnd_pur(bounds%begc:bounds%endc, :), &
@@ -604,7 +620,8 @@ contains
                                 flg_slr, &
                                 h2osno_liq(bounds%begc:bounds%endc, :), &
                                 h2osno_ice(bounds%begc:bounds%endc, :), &
-                                snw_rds_in(bounds%begc:bounds%endc, :), &
+                                dendricity(bounds%begc:bounds%endc, :), &
+                                sphericity(bounds%begc:bounds%endc, :), &
                                 mss_cnc_aer_in_frc_pur(bounds%begc:bounds%endc, :, :), &
                                 albsfc(bounds%begc:bounds%endc, :), &
                                 albsni_pur(bounds%begc:bounds%endc, :), &
@@ -633,6 +650,8 @@ contains
                              h2osno_liq(bounds%begc:bounds%endc, :), &
                              h2osno_ice(bounds%begc:bounds%endc, :), &
                              snw_rds_in(bounds%begc:bounds%endc, :), &
+                             dendricity(bounds%begc:bounds%endc, :), &
+                             sphericity(bounds%begc:bounds%endc, :), &
                              mss_cnc_aer_in_fdb(bounds%begc:bounds%endc, :, :), &
                              albsfc(bounds%begc:bounds%endc, :), &
                              albsnd(bounds%begc:bounds%endc, :), &
@@ -658,6 +677,8 @@ contains
                              h2osno_liq(bounds%begc:bounds%endc, :), &
                              h2osno_ice(bounds%begc:bounds%endc, :), &
                              snw_rds_in(bounds%begc:bounds%endc, :), &
+                             dendricity(bounds%begc:bounds%endc, :), &
+                             sphericity(bounds%begc:bounds%endc, :), &
                              mss_cnc_aer_in_fdb(bounds%begc:bounds%endc, :, :), &
                              albsfc(bounds%begc:bounds%endc, :), &
                              albsni(bounds%begc:bounds%endc, :), &

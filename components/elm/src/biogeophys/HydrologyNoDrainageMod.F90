@@ -145,6 +145,8 @@ contains
          frac_h2osfc        => col_ws%frac_h2osfc        , & ! Input:  [real(r8) (:)   ]  fraction of ground covered by surface water (0 to 1)
          begwb              => col_ws%begwb              , & ! Input:  [real(r8) (:)   ]  water mass begining of the time step
          snw_rds            => col_ws%snw_rds            , & ! Output: [real(r8) (:,:) ]  effective snow grain radius (col,lyr) [microns, m^-6]
+         dendricity         => col_ws%dendricity         , & ! Output: [real(r8) (:,:) ] snow grain dendricity (col,lyr) [unitless]
+         sphericity         => col_ws%sphericity         , & ! Output: [real(r8) (:,:) ] snow grain sphericity (col,lyr) [unitless]
          snw_rds_top        => col_ws%snw_rds_top        , & ! Output: [real(r8) (:)   ]  effective snow grain size, top layer(col) [microns]
          sno_liq_top        => col_ws%sno_liq_top        , & ! Output: [real(r8) (:)   ]  liquid water fraction in top snow layer (col) [frc]
          snowice            => col_ws%snowice            , & ! Output: [real(r8) (:)   ]  average snow ice lens
@@ -552,6 +554,8 @@ contains
 
          h2osno_top(c)      = 0._r8
          snw_rds(c,:)       = 0._r8
+         dendricity(c,:)    = 0._r8
+         sphericity(c,:)    = 0._r8
          ! top-layer diagnostics (spval is not averaged when computing history fields)
          snot_top(c)        = spval
          dTdz_top(c)        = spval

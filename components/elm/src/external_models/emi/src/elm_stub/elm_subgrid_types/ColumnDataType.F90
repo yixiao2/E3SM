@@ -84,6 +84,9 @@ module ColumnDataType
     real(r8), pointer :: soilp              (:,:) => null() ! soil pressure (1:nlevgrnd) (Pa)
     real(r8), pointer :: swe_old            (:,:) => null() ! initial snow water content (-nlevsno+1:0) (kg/m2)
     real(r8), pointer :: snw_rds            (:,:) => null() ! col snow grain radius (-nlevsno+1:0) (m^-6, or microns)
+    real(r8), pointer :: dendricity         (:,:) => null() ! snow grain dendricity [dimless]
+    real(r8), pointer :: sphericity         (:,:) => null() ! snow grain sphericity [dimless]
+    ! integer(r8), pointer :: dyn_snw_shape   (:,:) => null() ! snow grain shape [1,2,3, or 4]
     real(r8), pointer :: air_vol            (:,:) => null() ! air filled porosity (m3/m3)    
     ! Derived water, ice, and snow variables, column aggregate
     real(r8), pointer :: qg_snow            (:)   => null() ! specific humidity over snow (kg H2O/kg moist air)
@@ -126,9 +129,7 @@ module ColumnDataType
     real(r8), pointer :: vsfm_smpl_col_1d   (:)   => null() ! 1D soil matrix potential liquid from VSFM [m]
     real(r8), pointer :: vsfm_soilp_col_1d  (:)   => null() ! 1D soil liquid pressure from VSFM [Pa]
 
-    !real(r8), pointer :: dendricity (:) => null()      ! dendricity
-    !real(r8), pointer :: sphericity (:) => null()      ! sphericity
-    real(r8), pointer :: dyn_snw_shape (:,:) => null() ! dynamic snow shape
+
    
   contains
     procedure, public :: Init    => col_ws_init
@@ -943,6 +944,11 @@ contains
     allocate(this%soilp              (begc:endc,1:nlevgrnd))          ; this%soilp              (:,:) = 0._r8
     allocate(this%swe_old            (begc:endc,-nlevsno+1:0))        ; this%swe_old            (:,:) = nan   
     allocate(this%snw_rds            (begc:endc,-nlevsno+1:0))        ; this%snw_rds            (:,:) = nan
+    allocate(this%dendricity         (begc:endc,-nlevsno+1:0))        ; this%dendricity         (:,:) = nan
+    allocate(this%sphericity         (begc:endc,-nlevsno+1:0))        ; this%sphericity         (:,:) = nan
+    ! allocate(this%dyn_snw_shape      (begc:endc, -nlevsno+1:0))       ; this%dyn_snw_shape      (:,:) = 1 ! #TODO
+    allocate(this%sphericity         (begc:endc,-nlevsno+1:0))        ; this%sphericity         (:,:) = nan
+    allocate(this%dendricity         (begc:endc,-nlevsno+1:0))        ; this%dendricity         (:,:) = nan
     allocate(this%air_vol            (begc:endc, 1:nlevgrnd))         ; this%air_vol            (:,:) = nan
     allocate(this%qg_snow            (begc:endc))                     ; this%qg_snow            (:)   = nan   
     allocate(this%qg_soil            (begc:endc))                     ; this%qg_soil            (:)   = nan   
@@ -981,10 +987,7 @@ contains
     allocate(this%vsfm_mass_col_1d   (ncells))                        ; this%vsfm_mass_col_1d   (:)   = nan
     allocate(this%vsfm_smpl_col_1d   (ncells))                        ; this%vsfm_smpl_col_1d   (:)   = nan
     allocate(this%vsfm_soilp_col_1d  (ncells))                        ; this%vsfm_soilp_col_1d  (:)   = nan
-    !allocate(this%dendricity         (begc:endc))                     ; this%dendricity         (:)   = nan
-    !allocate(this%sphericity         (begc:endc))                     ; this%dendricity         (:)   = nan
-    allocate(this%dyn_snw_shape      (begc:endc, -nlevsno+1:0))       ; this%dendricity         (:,:) = nan
-    
+
   end subroutine col_ws_init
 
   !------------------------------------------------------------------------

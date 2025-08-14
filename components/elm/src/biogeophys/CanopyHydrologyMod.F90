@@ -679,6 +679,8 @@ contains
                 call aerosol_vars%Reset(column=c)
                 ! call waterstate_vars%Reset(column=c)
                 col_ws%snw_rds(c,0) = snw_rds_min
+                col_ws%dendricity(c,0) = 1.0 !#TODO perhaps set to dfall value?
+                col_ws%sphericity(c,0) = 0.0 !#TODO perhaps set to sfall value?
              end if
           else
              if (snl(c) == 0 .and. frac_sno(c)*snow_depth(c) >= 0.01_r8) then
@@ -696,6 +698,8 @@ contains
                 call aerosol_vars%Reset(column=c)
                 ! call waterstate_vars%Reset(column=c)
                 col_ws%snw_rds(c,0) = snw_rds_min
+                col_ws%dendricity(c,0) = 1.0 !#TODO perhaps set to dfall value?
+                col_ws%sphericity(c,0) = 0.0 !#TODO perhaps set to sfall value?
              end if             
           end if
 
