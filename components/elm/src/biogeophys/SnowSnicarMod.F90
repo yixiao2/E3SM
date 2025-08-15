@@ -1626,7 +1626,7 @@ contains
 
 
          dendricity         => col_es%dendricity     , & ! Output: [real(r8) (:,:)   ]  dendricity (col, lyr) [unitless]
-         sphericity        => col_es%sphericity        & ! Output: [real(r8) (:,:)   ]  sphericity (col, lyr) [unitless]
+         sphericity         => col_es%sphericity        & ! Output: [real(r8) (:,:)   ]  sphericity (col, lyr) [unitless]
          ! dyn_snw_shape     => col_es%dyn_snw_shape     & ! Output: [real(r8) (:,:) ]  dynamic snow shape (col,lyr) [unitless]
          )
 
