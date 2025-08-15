@@ -21,7 +21,7 @@ module SnowSnicarMod
   use LandunitType    , only : lun_pp
   use ColumnType      , only : col_pp
   use ColumnDataType  , only : col_es, col_ws, col_wf
-  use TopounitDataType  , only : top_as ! Atmospheric state variables
+  use TopounitDataType, only : topounit_atmospheric_state
   !
   use timeinfoMod
 
@@ -1568,7 +1568,7 @@ contains
     integer :: snl_btm                      ! bottom snow layer index [idx]
     integer :: i                            ! layer index [idx]
     integer :: c_idx                        ! column index [idx]
-    integer :: t_idx                        ! forcing topo index [idx]
+    integer :: t                            ! forcing topo index [idx]
     integer :: fc                           ! snow column filter index [idx]
     integer :: T_idx                        ! snow aging lookup table temperature index [idx]
     integer :: Tgrd_idx                     ! snow aging lookup table temperature gradient index [idx]
@@ -1636,7 +1636,7 @@ contains
       ! loop over columns that have at least one snow layer
       do fc = 1, num_snowc
          c_idx = filter_snowc(fc)
-         t_idx = col_pp%topounit(c_idx)
+         t = col_pp%topounit(c_idx)
 
          snl_btm = 0
          snl_top = snl(c_idx) + 1
@@ -1836,8 +1836,8 @@ contains
             
             ! NEW SNOW
 
-               dfall =min( max( 1.29_r8 - 0.17_r8 * forc_wind(t_idx), 0.20_r8), 1.0_r8 )
-               sfall = min( max( 0.08_r8 * forc_wind(t_idx) + 0.38_r8, 0.5_r8), 0.9_r8 )
+               dfall =min( max( 1.29_r8 - 0.17_r8 * forc_wind(t), 0.20_r8), 1.0_r8 )
+               sfall = min( max( 0.08_r8 * forc_wind(t) + 0.38_r8, 0.5_r8), 0.9_r8 )
 
                dendricity(c_idx, i) = (frc_oldsnow + frc_refrz) * ( dendricity(c_idx, i) + d_dendricity) + frc_newsnow * dfall
                sphericity(c_idx, i) = (frc_oldsnow + frc_refrz) * ( sphericity(c_idx, i) + d_sphericity) + frc_newsnow * sfall
