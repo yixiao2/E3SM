@@ -21,6 +21,7 @@ module SnowSnicarMod
   use LandunitType    , only : lun_pp
   use ColumnType      , only : col_pp
   use ColumnDataType  , only : col_es, col_ws, col_wf
+  use TopounitDataType  , only : top_as ! Atmospheric state variables
   !
   use timeinfoMod
 
@@ -1552,7 +1553,6 @@ contains
     use elm_varcon       , only : spval
     use shr_const_mod    , only : SHR_CONST_RHOICE, SHR_CONST_PI
 
-    use m_AttrVect           ,only: mct_aVect              => AttrVect
     !
     ! !ARGUMENTS:
     type(bounds_type)      , intent(in)    :: bounds
@@ -1560,15 +1560,15 @@ contains
     integer                , intent(in)    :: filter_snowc(:)   ! column filter for snow points
     integer                , intent(in)    :: num_nosnowc       ! number of column non-snow points in column filter
     integer                , intent(in)    :: filter_nosnowc(:) ! column filter for non-snow points
+    type(topounit_atmospheric_state), intent(in) :: top_as_inst
     
-    type(mct_aVect)        , intent(inout) :: x2o, o2x            ! input/output attribute vectors
-
     !
     ! !LOCAL VARIABLES:
     integer :: snl_top                      ! top snow layer index [idx]
     integer :: snl_btm                      ! bottom snow layer index [idx]
     integer :: i                            ! layer index [idx]
     integer :: c_idx                        ! column index [idx]
+    integer :: t_idx                        ! forcing topo index [idx]
     integer :: fc                           ! snow column filter index [idx]
     integer :: T_idx                        ! snow aging lookup table temperature index [idx]
     integer :: Tgrd_idx                     ! snow aging lookup table temperature gradient index [idx]
@@ -1616,6 +1616,8 @@ contains
          h2osoi_liq         => col_ws%h2osoi_liq     , & ! Input:  [real(r8) (:,:) ]  liquid water content (col,lyr) [kg m-2]
          h2osoi_ice         => col_ws%h2osoi_ice     , & ! Input:  [real(r8) (:,:) ]  ice content (col,lyr) [kg m-2]
          snw_rds            => col_ws%snw_rds        , & ! Output: [real(r8) (:,:) ]  effective grain radius (col,lyr) [microns, m-6]
+         dendricity         => col_ws%dendricity     , & ! Output: [real(r8) (:,:)   ]  dendricity (col, lyr) [unitless]
+         sphericity         => col_ws%sphericity     ,  & ! Output: [real(r8) (:,:)   ]  sphericity (col, lyr) [unitless]
          snw_rds_top        => col_ws%snw_rds_top    , & ! Output: [real(r8) (:)   ]  effective grain radius, top layer (col) [microns, m-6]
          sno_liq_top        => col_ws%sno_liq_top    , & ! Output: [real(r8) (:)   ]  liquid water fraction (mass) in top snow layer (col) [frc]
 
@@ -1624,10 +1626,7 @@ contains
          snot_top           => col_es%snot_top      , & ! Output: [real(r8) (:)   ]  temperature in top snow layer (col) [K]
          dTdz_top           => col_es%dTdz_top      , & ! Output: [real(r8) (:)   ]  temperature gradient in top layer (col) [K m-1]
 
-
-         dendricity         => col_es%dendricity     , & ! Output: [real(r8) (:,:)   ]  dendricity (col, lyr) [unitless]
-         sphericity         => col_es%sphericity        & ! Output: [real(r8) (:,:)   ]  sphericity (col, lyr) [unitless]
-         ! dyn_snw_shape     => col_es%dyn_snw_shape     & ! Output: [real(r8) (:,:) ]  dynamic snow shape (col,lyr) [unitless]
+         forc_wind    => top_as_inst%windbot          & ! Input:  [real(r8) (:) ]  atmospheric wind speed (m/s)
          )
 
 
@@ -1637,6 +1636,7 @@ contains
       ! loop over columns that have at least one snow layer
       do fc = 1, num_snowc
          c_idx = filter_snowc(fc)
+         t_idx = col_pp%topounit(c_idx)
 
          snl_btm = 0
          snl_top = snl(c_idx) + 1
@@ -1814,28 +1814,30 @@ contains
 
             ! OLD SNOW
                ! Dry snow
-               if (dTdz < (5.0_r8)) then ! EZDEV: fixed value and use float
-                  d_dendricity_dry = dtime * -2*1E8_r8 * EXP(-6.0_r8*1E3_r8/t_soisno)
-                  d_sphericity_dry = dtime * 1*1E9_r8 * EXP(-6.0_r8*1E3_r8/t_soisno)
+               ! here temporal increment must be in days - See Vionnet 2012 paper  
+               if (dTdz(c_idx,i) < (5.0_r8)) then 
+
+                  d_dendricity_dry = dtime / 86400._r8 * (-2*1E8_r8) * EXP(-6.0_r8 * 1E3_r8 / t_soisno(c_idx,i))
+                  d_sphericity_dry = dtime / 86400._r8 * ( 1*1E9_r8) * EXP(-6.0_r8 * 1E3_r8 / t_soisno(c_idx,i))
                else
-                  d_dendricity_dry = dtime * -2*1E8_r8 * EXP(-6.0_r8*1E3_r8/t_soisno)*(dTdz)^0.4_r8
-                  d_sphericity_dry = dtime * -2*1E8_r8 * EXP(-6.0_r8*1E3_r8/t_soisno)*(dTdz)^0.4_r8
+                  d_dendricity_dry = dtime / 86400._r8  * (-2*1E8_r8) * EXP(-6.0_r8 * 1E3_r8 / t_soisno(c_idx,i)) * (dTdz(c_idx,i)) ** 0.4_r8
+                  d_sphericity_dry = dtime / 86400._r8  * (-2*1E8_r8) * EXP(-6.0_r8 * 1E3_r8 / t_soisno(c_idx,i)) * (dTdz(c_idx,i)) ** 0.4_r8
                endif
                
                ! Wet snow
-               d_dendricity_wet = dtime * (-1.0_r8)/16.0_r8 * frc_liq**(3.0_r8)
-               s_sphericity_wet = dtime * 1.0_r8/16.0_r8 * frc_liq**(3.0_r8)
+               ! frc_liq here in percent - See Vionnet 2012 paper
+               ! here temporal increment must be in days - See Vionnet 2012 paper 
+               d_dendricity_wet = dtime / 86400._r8  * (-1.0_r8) / 16.0_r8 * (100.0 * frc_liq) ** (3.0_r8)
+               d_sphericity_wet = dtime / 86400._r8  * ( 1.0_r8) / 16.0_r8 * (100.0 * frc_liq) ** (3.0_r8)
 
                ! total change in dendricity and sphericity
                d_dendricity = d_dendricity_dry + d_dendricity_wet
-               s_sphericity = d_sphericity_dry + d_sphericity_wet
+               d_sphericity = d_sphericity_dry + d_sphericity_wet
             
             ! NEW SNOW
-               k10uu  = mct_aVect_indexRA(x2o,'So_duu10n')
-               u10 = SQRT(x2o%rAttr(k10uu,1))
 
-               dfall =min(max(1.29_r8 - 0.17_r8*u10,0.20_r8),1.0_r8)
-               sfall = min(max(0.08_r8*u10 + 0.38_r8, 0.5_r8), 0.9_r8)
+               dfall =min( max( 1.29_r8 - 0.17_r8 * forc_wind(t_idx), 0.20_r8), 1.0_r8 )
+               sfall = min( max( 0.08_r8 * forc_wind(t_idx) + 0.38_r8, 0.5_r8), 0.9_r8 )
 
                dendricity(c_idx, i) = (frc_oldsnow + frc_refrz) * ( dendricity(c_idx, i) + d_dendricity) + frc_newsnow * dfall
                sphericity(c_idx, i) = (frc_oldsnow + frc_refrz) * ( sphericity(c_idx, i) + d_sphericity) + frc_newsnow * sfall
@@ -1885,18 +1887,18 @@ contains
   end subroutine SnowAge_grain_ll
 
   integer function my_dyn_snow_shape(sphericity, dendricity)
-   real, intent(in)     :: dendricity
-   real, intent(in)     :: sphericity
+   real(r8), intent(in)     :: dendricity
+   real(r8), intent(in)     :: sphericity
    ! #TODO: add thresholds to the namelist
    if  (dendricity > 0.5_r8) then
-      my_dyn_snw_shape = 4 ! Koch snowflake
+      my_dyn_snow_shape = 4 ! Koch snowflake
    else
       if (sphericity > 0.8_r8) then
-         my_dyn_snw_shape = 1 ! sphere
+         my_dyn_snow_shape = 1 ! sphere
       else if (sphericity < 0.2_r8) then
-         my_dyn_snw_shape = 3 ! hexagonal plate
+         my_dyn_snow_shape = 3 ! hexagonal plate
       else
-         my_dyn_snw_shape = 2 ! spheroid
+         my_dyn_snow_shape = 2 ! spheroid
       endif
    endif
   end function  my_dyn_snow_shape
@@ -2611,7 +2613,7 @@ contains
             do i=-nlevsno+1,1,1
                snw_shp_lcl(i) = my_dyn_snow_shape( sphericity(c_idx,i), dendricity(c_idx,i)) ! overwrie snow shape for current grid cell
             enddo
-          end
+          endif
 
           ! Zero absorbed radiative fluxes:
           do i=-nlevsno+1,1,1

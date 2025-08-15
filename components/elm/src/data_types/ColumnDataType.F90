@@ -2018,7 +2018,23 @@ contains
          long_name='snow layer grain dendricity', units='1', &
          interpinic_flag='interp', readvar=readvar, data=this%dendricity)
     if (flag == 'read' .and. .not. readvar) then
-             this%dendricity(:) = 0.0_r8
+       ! initial run, not restart [or restart without dendricity]: initialize snow dendricity
+       if (masterproc) then
+          write(iulog,*) "SNICAR: This is an initial run (not a restart), as there is no snow dendricity " // &
+               "Or the restart file does not include a snow dendricity value. Initialize snow " // &
+               "dendricity to 0"
+       endif
+       do c= bounds%begc, bounds%endc
+          if (col_pp%snl(c) < 0) then
+             this%dendricity(c,col_pp%snl(c)+1:0) = 0._r8
+             this%dendricity(c,-nlevsno+1:col_pp%snl(c)) = 0._r8
+          elseif (this%h2osno(c) > 0._r8) then
+             this%dendricity(c,0) = 0._r8
+             this%dendricity(c,-nlevsno+1:-1) = 0._r8
+          else
+             this%dendricity(c,:) = 0._r8
+          endif
+       enddo
     end if
 
     call restartvar(ncid=ncid, flag=flag, varname='SNO_SPH', xtype=ncd_double,  &
@@ -2026,7 +2042,23 @@ contains
          long_name='snow layer grain sphericity', units='1', &
          interpinic_flag='interp', readvar=readvar, data=this%sphericity)
     if (flag == 'read' .and. .not. readvar) then
-             this%sphericity(:) = 1.0_r8
+       ! initial run, not restart [or restart without sphericity]: initialize snow sphericity
+       if (masterproc) then
+          write(iulog,*) "SNICAR: This is an initial run (not a restart), as there is no snow sphericity " // &
+               "Or the restart file does not include a snow sphericity value. Initialize snow " // &
+               "sphericity to 1"
+       endif
+       do c= bounds%begc, bounds%endc
+          if (col_pp%snl(c) < 0) then
+             this%sphericity(c,col_pp%snl(c)+1:0) = 1._r8
+             this%sphericity(c,-nlevsno+1:col_pp%snl(c)) = 1._r8
+          elseif (this%h2osno(c) > 0._r8) then
+             this%sphericity(c,0) = 1._r8
+             this%sphericity(c,-nlevsno+1:-1) = 1._r8
+          else
+             this%sphericity(c,:) = 1._r8
+          endif
+       enddo
     end if
 
     call restartvar(ncid=ncid, flag=flag, varname='INT_SNOW', xtype=ncd_double,  &

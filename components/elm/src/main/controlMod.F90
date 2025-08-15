@@ -1022,7 +1022,7 @@ contains
 
     !SNICAR-AD
     call mpi_bcast (snow_shape, len(snow_shape), MPI_CHARACTER, 0, mpicom, ier)
-    call mpi_bcast (use_dynamic_snow_shape, len(use_dynamic_snow_shape), MPI_LOGICAL, 0, mpicom, ier)
+    call mpi_bcast (use_dynamic_snow_shape, 1, MPI_LOGICAL, 0, mpicom, ier)
     call mpi_bcast (snicar_atm_type, len(snicar_atm_type), MPI_CHARACTER, 0, mpicom, ier)
     call mpi_bcast (use_dust_snow_internal_mixing, 1, MPI_LOGICAL, 0, mpicom, ier)
     call mpi_bcast (mpi_sync_nstep_freq, 1, MPI_INTEGER, 0, mpicom, ier)
