@@ -22,6 +22,7 @@ module SnowSnicarMod
   use ColumnType      , only : col_pp
   use ColumnDataType  , only : col_es, col_ws, col_wf
   use TopounitDataType, only : topounit_atmospheric_state
+  ! use TopounitDataType       , only : top_as, top_af ! atmospheric state and flux variables
   !
   use timeinfoMod
 
@@ -1512,7 +1513,7 @@ contains
 
   !-----------------------------------------------------------------------
   subroutine SnowAge_grain_ll(bounds, &
-       num_snowc, filter_snowc, num_nosnowc, filter_nosnowc)
+       num_snowc, filter_snowc, num_nosnowc, filter_nosnowc, top_as_inst)
     !
     ! !DESCRIPTION:
     ! Updates the snow effective grain size (radius).
