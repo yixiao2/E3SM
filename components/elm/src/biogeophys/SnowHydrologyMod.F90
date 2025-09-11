@@ -1411,12 +1411,12 @@ contains
                    write (iulog,*) "swliq, swice, zwliq, zwice", swliq(c,2), swice(c,2),zwliq, zwice
                    write (iulog,*) "layers ", msno
                 endif
-                if ((dendr(c,2) < 0.) .or. (dendr(c,2) > 1.)) then
+                if ((dendr(c,2) < -1E-6) .or. (dendr(c,2) > 1.+1E-6)) then
                    write (iulog,*) "2. SNICAR ERROR: snow grain dendricity of",dendr(c,2),dendr(c,1)
                    write (iulog,*) "swliq, swice, zwliq, zwice", swliq(c,2), swice(c,2),zwliq, zwice
                    write (iulog,*) "layers ", msno
                 endif
-                if ((spher(c,2) < 0.) .or. (spher(c,2) > 1.)) then
+                if ((spher(c,2) < -1E-6) .or. (spher(c,2) > 1.+1E-6)) then
                    write (iulog,*) "2. SNICAR ERROR: snow grain sphericity of",spher(c,2),spher(c,1)
                    write (iulog,*) "swliq, swice, zwliq, zwice", swliq(c,2), swice(c,2),zwliq, zwice
                    write (iulog,*) "layers ", msno
@@ -1545,14 +1545,14 @@ contains
                    write (iulog,*) "layers ", msno
 #endif
                 endif
-                if ((dendr(c,3) < 0.) .or. (dendr(c,3) > 1.)) then
+                if ((dendr(c,3) < -1E-6) .or. (dendr(c,3) > 1.+1E-6)) then
 #ifndef _OPENACC
                    write (iulog,*) "3. SNICAR ERROR: snow grain dendricity of",dendr(c,3),dendr(c,2)
                    write (iulog,*) "swliq, swice, zwliq, zwice", swliq(c,3), swice(c,3),zwliq, zwice
                    write (iulog,*) "layers ", msno
 #endif
                 endif
-                if ((spher(c,3) < 0.) .or. (spher(c,3) > 1.)) then
+                if ((spher(c,3) < -1E-6) .or. (spher(c,3) > 1.+1E-6)) then
 #ifndef _OPENACC
                    write (iulog,*) "3. SNICAR ERROR: snow grain sphericity of",spher(c,3),spher(c,2)
                    write (iulog,*) "swliq, swice, zwliq, zwice", swliq(c,3), swice(c,3),zwliq, zwice
@@ -1681,12 +1681,12 @@ contains
                    write (iulog,*) "swliq, swice, zwliq, zwice", swliq(c,4), swice(c,4),zwliq, zwice
                    write (iulog,*) "layers ", msno
                 endif
-                if ((dendr(c,4) < 0.) .or. (dendr(c,4) > 1.)) then
+                if ((dendr(c,4) < -1E-6) .or. (dendr(c,4) > 1.+1E-6)) then
                    write (iulog,*) "4. SNICAR ERROR: snow grain dendricity of",dendr(c,4),dendr(c,3)
                    write (iulog,*) "swliq, swice, zwliq, zwice", swliq(c,4), swice(c,4),zwliq, zwice
                    write (iulog,*) "layers ", msno
                 endif
-                if ((spher(c,4) < 0.) .or. (spher(c,4) > 1.)) then
+                if ((spher(c,4) < -1E-6) .or. (spher(c,4) > 1.+1E-6)) then
                    write (iulog,*) "4. SNICAR ERROR: snow grain sphericity of",spher(c,4),spher(c,3)
                    write (iulog,*) "swliq, swice, zwliq, zwice", swliq(c,4), swice(c,4),zwliq, zwice
                    write (iulog,*) "layers ", msno
@@ -1813,12 +1813,12 @@ contains
                    write (iulog,*) "swliq, swice, zwliq, zwice", swliq(c,5), swice(c,5),zwliq, zwice
                    write (iulog,*) "layers ", msno
                 endif
-                if ((dendr(c,5) < 0.) .or. (dendr(c,5) > 1.)) then
+                if ((dendr(c,5) < -1E-6) .or. (dendr(c,5) > 1.+1E-6)) then
                    write (iulog,*) "5. SNICAR ERROR: snow grain dendricity of",dendr(c,5),dendr(c,4)
                    write (iulog,*) "swliq, swice, zwliq, zwice", swliq(c,5), swice(c,5),zwliq, zwice
                    write (iulog,*) "layers ", msno
                 endif
-                if ((spher(c,5) < 0.) .or. (spher(c,5) > 1.)) then
+                if ((spher(c,5) < -1E-6) .or. (spher(c,5) > 1.+1E-6)) then
                    write (iulog,*) "5. SNICAR ERROR: snow grain sphericity of",spher(c,5),spher(c,4)
                    write (iulog,*) "swliq, swice, zwliq, zwice", swliq(c,5), swice(c,5),zwliq, zwice
                    write (iulog,*) "layers ", msno
