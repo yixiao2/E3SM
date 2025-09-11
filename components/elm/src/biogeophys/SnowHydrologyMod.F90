@@ -2575,6 +2575,8 @@ contains
      character(len=*), parameter :: subname = 'WindDriftCompaction'
      !-----------------------------------------------------------------------
 
+     ! EZDEV: add actual sphericity, dendricity and grain size here
+
      if (mobile) then
         Frho = 1.25_r8 - 0.0042_r8*(max(rho_min, bi)-rho_min)
         ! assuming dendricity = 0, sphericity = 1, grain size = 0.35 mm Non-dendritic snow
