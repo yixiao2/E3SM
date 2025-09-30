@@ -1601,6 +1601,12 @@ contains
     real(r8) :: d_sphericity ! change in snow grqin sphericity due to dry+wet snow metamorphism [unitless]
     real(r8) :: dfall ! snow grain dendricity for freshly fallen snow [unitless]
     real(r8) :: sfall ! snow grain sphericity for freshly fallen snow [unitless]
+    real(r8) :: zi ! cumulative pseudo-depth of current layer i, by summing up from the top layer to the current ith layer. [m]
+    real(r8) :: SI ! driftability index of current layer i, function of dendricity and sphericity [unitless]
+    real(r8) :: zpseudo ! pseudo-depth of current layer i
+    real(r8) :: gamma_drift ! coeff. in the empirical formula from Vionnet et al. (2012) for calculating driftability index [unitless]
+    real(r8) :: tau_drift ! coeff. in the empirical formula from Vionnet et al. (2012) for calculating driftability index [unitless]
+    real(r8) :: alpha ! coeff. in Carmagnola 2014 to evolve grain size
     !--------------------------------------------------------------------------!
 
     associate(                                                      &
@@ -1638,7 +1644,7 @@ contains
       do fc = 1, num_snowc
          c_idx = filter_snowc(fc)
          t = col_pp%topounit(c_idx)
-
+         zi = 0.0_r8 ! reset zi for each column because I want zi to be local var and cumulative from top layer to current layer i
          snl_btm = 0
          snl_top = snl(c_idx) + 1
 
@@ -1843,6 +1849,28 @@ contains
                dendricity(c_idx, i) = (frc_oldsnow + frc_refrz) * ( dendricity(c_idx, i) + d_dendricity) + frc_newsnow * dfall
                sphericity(c_idx, i) = (frc_oldsnow + frc_refrz) * ( sphericity(c_idx, i) + d_sphericity) + frc_newsnow * sfall
 
+               if (use_wind_drift) then
+                  call driftability(rhos, cdz(i), forc_wind(t), dendricity(c_idx, i), sphericity(c_idx, i), snw_rds(c_idx,i), SI, zpseudo)
+                  ! print *, ' in snow age grain ll driftability ', c_idx, i, rhos, cdz(i), forc_wind(t), dendricity(c_idx, i), sphericity(c_idx, i), snw_rds(c_idx,i), SI, zpseudo
+                  zi = zi + zpseudo
+
+                  gamma_drift = max(0.0_r8, SI * exp(-zi / 0.1_r8))
+                  tau_drift = 48._r8 * 3600._r8 / gamma_drift
+                  alpha = 1.0E-4_r8 ! from Carmagnola 2014 for eolving grain size
+
+                  if (dendricity(c_idx, i) > 0.0_r8) then
+                     sphericity(c_idx, i) = sphericity(c_idx, i) + (1.0_r8 - sphericity(c_idx, i)) / tau_drift ! from Vionnet 2012 Table3
+                     dendricity(c_idx, i) = dendricity(c_idx, i) + dendricity(c_idx, i) / (2.0_r8 * tau_drift) ! from Vionnet 2012 Table3
+                     !snw_rds(c, j) = snw_rds(c, j) + 5.0_r8*1E-4.0_r8 / (2.0_r8 * tau_drift)
+                     snw_rds(c_idx, i) = snw_rds(c_idx, i) + 0.5_r8 * alpha * (dendricity(c_idx, i) / (2.0_r8 * tau_drift) * (sphericity(c_idx, i) - 3.0_r8) + &
+                        (1 - sphericity(c_idx, i)) / tau_drift * (dendricity(c_idx, i) - 1.0_r8)) ! from Carmagnola 2014 for eolving grain size
+                  else
+                     sphericity(c_idx, i) = sphericity(c_idx, i) + (1.0_r8 - sphericity(c_idx, i)) / tau_drift ! from Vionnet 2012 Table3
+                     !snw_rds(c_idx, i) = snw_rds(c_idx, i) + 5.0_r8*1E-4.0_r8 / (2.0_r8 * tau_drift)
+                     snw_rds(c_idx, i) = snw_rds(c_idx, i) - alpha * sphericity(c_idx, i) * (1.0_r8 - sphericity(c_idx, i)) / tau_drift ! from Carmagnola 2014 for eolving grain size
+                  end if
+               end if
+
                if (dendricity(c_idx, i) < 0.0_r8) then
                   dendricity(c_idx, i) = 0.0_r8
                else if (dendricity(c_idx, i) > 1.0_r8) then
@@ -1903,6 +1931,44 @@ contains
       endif
    endif
   end function  my_dyn_snow_shape
+
+  subroutine driftability(bi, dz, forc_wind, dendricity, sphericity, snw_rds, SI, zpseudo)
+    real(r8), intent(in) :: bi            ! bulk density [kg/m3]
+    real(r8), intent(in) :: dz            ! snow layer thickness [m]
+    real(r8), intent(in) :: forc_wind      ! 10-m wind speed [m/s]
+    real(r8), intent(in) :: dendricity     ! dendricity  [0-1]
+    real(r8), intent(in) :: sphericity     ! sphericity  [0-1]
+    real(r8), intent(in) :: snw_rds      ! snow grain radius [microns, m-6]
+
+    real(r8), intent(out) :: SI
+    real(r8), intent(out) :: zpseudo
+
+    real(r8) :: MO, Frho
+
+    ! local variables
+    real(r8), parameter :: rho_min = 50._r8      ! wind drift  / minimum density [kg/m3]
+    real(r8), parameter :: rho_max = 350._r8     ! wind drift  / maximum density [kg/m3]
+
+    Frho = 1.25_r8 - 0.0042_r8*(max(rho_min, bi)-rho_min)
+
+    if (dendricity > 0.0_r8) then
+        MO = 0.34_r8*(0.75_r8*dendricity - 0.5_r8*sphericity + 0.5) + 0.66_r8 * Frho
+    else
+        ! MO = 0.34_r8 * (-0.583_r8*drift_gs - 0.833_r8*drift_sph + 0.833_r8) + 0.66_r8*Frho
+        MO = 0.34_r8 * (-0.583_r8*snw_rds - 0.833_r8*sphericity + 0.833_r8) + 0.66_r8*Frho
+    end if
+
+    SI = -2.868_r8 * exp(-0.085_r8*forc_wind) + 1._r8 + MO
+
+    if (SI > 0.0_r8) then
+        SI = min(SI, 3.25_r8)
+        zpseudo =  0.5_r8 * dz * (3.25_r8 - SI)
+    else
+        SI = 0.0_r8
+        zpseudo = 0.0_r8
+    end if
+end subroutine driftability
+
 
   !-----------------------------------------------------------------------
      subroutine SnowOptics_init( )
