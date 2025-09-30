@@ -2256,6 +2256,12 @@ Toggle to turn on the use of dyanmic snow grain shape.
 If true, the fixed 'snow_shape' prescribed in this namelist will not be used.
 </entry>
 
+<entry id="use_wind_drift" type="logical" category="elm_physics"
+       group="elm_inparm" valid_values="" value=".false.">
+Toggle to turn on the use of dynamic wind drift.
+If true, the winddrift effect on dendricity, sphericity, and grain size will be considered.
+</entry>
+
 <entry id="snicar_atm_type" type="char*256" category="elm_physics"
        group="elm_inparm" valid_values="default,mid-latitude_winter,mid-latitude_summer,sub-Arctic_winter,sub-Arctic_summer,summit_Greenland,high_mountain">
 Atmospheric types: 'default' represents the default mid-latitude winter type
