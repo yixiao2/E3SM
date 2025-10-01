@@ -1835,21 +1835,22 @@ contains
                   gamma_drift = max(0.0_r8, SI * exp(-zi / 0.1_r8))
                   tau_drift = 48._r8 * 3600._r8 / gamma_drift
                   
+                  swind = (1.0_r8 - sphericity(c_idx, i)) / tau_drift * dtime / 1440._r8 ! from Vionnet 2012 Table3
+
                   if (dendricity(c_idx, i) > epsilon) then
                      ! dendritic case
                      dwind = dendricity(c_idx, i) / (2.0_r8 * tau_drift) * dtime / 1440._r8 ! from Vionnet 2012 Table3
-                     swind = (1.0_r8 - sphericity(c_idx, i)) / tau_drift * dtime / 1440._r8 ! from Vionnet 2012 Table3
                      
+                     ! Update dendricity, sphericity based on Vionnet 2012 and snow radius based on Carmagnola 2014
                      dendricity(c_idx, i) = dendricity(c_idx, i) + dwind 
                      sphericity(c_idx, i) = sphericity(c_idx, i) + swind
-                     !snw_rds(c, j) = snw_rds(c, j) + 5.0_r8*1E-4.0_r8 / (2.0_r8 * tau_drift)
                      snw_rds(c_idx, i) = snw_rds(c_idx, i) + dtime / 1440._r8 * 0.5_r8 * alpha * (dendricity(c_idx, i) / (2.0_r8 * tau_drift) * (sphericity(c_idx, i) - 3.0_r8) + &
                         (1.0_r8 - sphericity(c_idx, i)) / tau_drift * (dendricity(c_idx, i) - 1.0_r8)) ! from Carmagnola 2014 for evoling grain size
                   else
                      ! non-dendritic case
-                     swind = (1.0_r8 - sphericity(c_idx, i)) / tau_drift * dtime / 1440._r8 ! from Vionnet 2012 Table3
+                     ! only sphericity and snow radius change since it is non-dendritic
+                     ! dwind = 0.0_r8
                      sphericity(c_idx, i) = sphericity(c_idx, i) + swind
-                     !snw_rds(c_idx, i) = snw_rds(c_idx, i) + 5.0_r8*1E-4.0_r8 / (2.0_r8 * tau_drift)
                      snw_rds(c_idx, i) = snw_rds(c_idx, i) - dtime / 1440._r8 * alpha * sphericity(c_idx, i) * (1.0_r8 - sphericity(c_idx, i)) / tau_drift ! from Carmagnola 2014 for evoling grain size
                   end if
                end if
