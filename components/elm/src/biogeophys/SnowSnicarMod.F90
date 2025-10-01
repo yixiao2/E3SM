@@ -1601,13 +1601,15 @@ contains
     real(r8) :: d_sphericity ! change in snow grqin sphericity due to dry+wet snow metamorphism [unitless]
     real(r8) :: dfall ! snow grain dendricity for freshly fallen snow [unitless]
     real(r8) :: sfall ! snow grain sphericity for freshly fallen snow [unitless]
+    real(r8) :: dwind ! change in dendricity due to wind packing [unitless]
+    real(r8) :: swind ! change in sphericity due to wind packing [
     real(r8) :: zi ! cumulative pseudo-depth of current layer i, by summing up from the top layer to the current ith layer. [m]
     real(r8) :: SI ! driftability index of current layer i, function of dendricity and sphericity [unitless]
     real(r8) :: zpseudo ! pseudo-depth of current layer i
     real(r8) :: gamma_drift ! coeff. in the empirical formula from Vionnet et al. (2012) for calculating driftability index [unitless]
     real(r8) :: tau_drift ! coeff. in the empirical formula from Vionnet et al. (2012) for calculating driftability index [unitless]
-    real(r8) :: alpha ! coeff. in Carmagnola 2014 to evolve grain size
-    real(r8) :: epsilon ! coeff. to be considered dendricity case, which is > epsilon
+    real(r8), parameter :: alpha = 1.0E-4_r8 ! coeff. in Carmagnola 2014 to evolve grain size
+    real(r8), parameter :: epsilon  = 1.0E-3_r8 ! coeff. to be considered dendricity case, which is > epsilon
     !--------------------------------------------------------------------------!
 
     associate(                                                      &
@@ -1640,8 +1642,6 @@ contains
 
       ! set timestep and step interval
       dtime = dtime_mod
-      alpha = 1.0E-4_r8 ! from Carmagnola 2014 for evolving grain size
-      epsilon = 1.0E-3_r8 ! to be considered dendricity case, which is > epsilon
       ! loop over columns that have at least one snow layer
       do fc = 1, num_snowc
          c_idx = filter_snowc(fc)
@@ -1796,28 +1796,6 @@ contains
                frc_oldsnow = 1._r8 - frc_refrz - frc_newsnow
             endif
 
-            ! mass-weighted mean of fresh snow, old snow, and re-frozen snow effective radius
-            snw_rds(c_idx,i) = (snw_rds(c_idx,i)+dr)*frc_oldsnow + snw_rds_min*frc_newsnow + snw_rds_refrz*frc_refrz
-            !
-            !**********  5. CHECK BOUNDARIES   ***********
-            !
-            ! boundary check
-            if (snw_rds(c_idx,i) < snw_rds_min) then
-               snw_rds(c_idx,i) = snw_rds_min
-            endif
-
-            if (snw_rds(c_idx,i) > snw_rds_max) then
-               snw_rds(c_idx,i) = snw_rds_max
-            end if
-
-            ! set top layer variables for history files
-            if (i == snl_top) then
-               snot_top(c_idx)    = t_soisno(c_idx,i)
-               dTdz_top(c_idx)    = dTdz(c_idx,i)
-               snw_rds_top(c_idx) = snw_rds(c_idx,i)
-               sno_liq_top(c_idx) = h2osoi_liq(c_idx,i) / (h2osoi_liq(c_idx,i)+h2osoi_ice(c_idx,i))
-            endif
-
             ! CONTRIBTUTION of Shape here
             ! loop over N number of snow grids, for each grid, get the top and bottom layers, and loop over n number of layers in each snow layer.
 
@@ -1848,9 +1826,7 @@ contains
                dfall =min( max( 1.29_r8 - 0.17_r8 * forc_wind(t), 0.20_r8), 1.0_r8 )
                sfall = min( max( 0.08_r8 * forc_wind(t) + 0.38_r8, 0.5_r8), 0.9_r8 )
 
-               dendricity(c_idx, i) = (frc_oldsnow + frc_refrz) * ( dendricity(c_idx, i) + d_dendricity) + frc_newsnow * dfall
-               sphericity(c_idx, i) = (frc_oldsnow + frc_refrz) * ( sphericity(c_idx, i) + d_sphericity) + frc_newsnow * sfall
-
+            ! WIND DRIFTING
                if (use_wind_drift) then
                   call driftability(rhos, cdz(i), forc_wind(t), dendricity(c_idx, i), sphericity(c_idx, i), snw_rds(c_idx,i), SI, zpseudo)
                   ! print *, ' in snow age grain ll driftability ', c_idx, i, rhos, cdz(i), forc_wind(t), dendricity(c_idx, i), sphericity(c_idx, i), snw_rds(c_idx,i), SI, zpseudo
@@ -1860,18 +1836,30 @@ contains
                   tau_drift = 48._r8 * 3600._r8 / gamma_drift
                   
                   if (dendricity(c_idx, i) > epsilon) then
-                     sphericity(c_idx, i) = sphericity(c_idx, i) + (1.0_r8 - sphericity(c_idx, i)) / tau_drift * dtime / 1440._r8 ! from Vionnet 2012 Table3
-                     dendricity(c_idx, i) = dendricity(c_idx, i) + dendricity(c_idx, i) / (2.0_r8 * tau_drift) * dtime / 1440._r8 !from Vionnet 2012 Table3
+                     ! dendritic case
+                     dwind = dendricity(c_idx, i) / (2.0_r8 * tau_drift) * dtime / 1440._r8 ! from Vionnet 2012 Table3
+                     swind = (1.0_r8 - sphericity(c_idx, i)) / tau_drift * dtime / 1440._r8 ! from Vionnet 2012 Table3
+                     
+                     dendricity(c_idx, i) = dendricity(c_idx, i) + dwind 
+                     sphericity(c_idx, i) = sphericity(c_idx, i) + swind
                      !snw_rds(c, j) = snw_rds(c, j) + 5.0_r8*1E-4.0_r8 / (2.0_r8 * tau_drift)
                      snw_rds(c_idx, i) = snw_rds(c_idx, i) + dtime / 1440._r8 * 0.5_r8 * alpha * (dendricity(c_idx, i) / (2.0_r8 * tau_drift) * (sphericity(c_idx, i) - 3.0_r8) + &
-                        (1 - sphericity(c_idx, i)) / tau_drift * (dendricity(c_idx, i) - 1.0_r8)) ! from Carmagnola 2014 for evoling grain size
+                        (1.0_r8 - sphericity(c_idx, i)) / tau_drift * (dendricity(c_idx, i) - 1.0_r8)) ! from Carmagnola 2014 for evoling grain size
                   else
-                     sphericity(c_idx, i) = sphericity(c_idx, i) + (1.0_r8 - sphericity(c_idx, i)) / tau_drift * dtime / 1440._r8 ! from Vionnet 2012 Table3
+                     ! non-dendritic case
+                     swind = (1.0_r8 - sphericity(c_idx, i)) / tau_drift * dtime / 1440._r8 ! from Vionnet 2012 Table3
+                     sphericity(c_idx, i) = sphericity(c_idx, i) + swind
                      !snw_rds(c_idx, i) = snw_rds(c_idx, i) + 5.0_r8*1E-4.0_r8 / (2.0_r8 * tau_drift)
                      snw_rds(c_idx, i) = snw_rds(c_idx, i) - dtime / 1440._r8 * alpha * sphericity(c_idx, i) * (1.0_r8 - sphericity(c_idx, i)) / tau_drift ! from Carmagnola 2014 for evoling grain size
                   end if
                end if
 
+            ! UPDATING DENDRICITY AND SPHERICITY
+               ! mass-weighted mean of fresh snow, old snow, and re-frozen snow dend
+               dendricity(c_idx, i) = (frc_oldsnow + frc_refrz) * ( dendricity(c_idx, i) + d_dendricity) + frc_newsnow * dfall
+               sphericity(c_idx, i) = (frc_oldsnow + frc_refrz) * ( sphericity(c_idx, i) + d_sphericity) + frc_newsnow * sfall
+
+               ! boundary check
                if (dendricity(c_idx, i) < 0.0_r8) then
                   dendricity(c_idx, i) = 0.0_r8
                else if (dendricity(c_idx, i) > 1.0_r8) then
@@ -1884,19 +1872,29 @@ contains
                   sphericity(c_idx, i) = 1.0_r8
                endif
 
-               ! ! Updating snow shape
-               ! if  (dendricity(c_idx, i) > 0.5_r8) then
-               !    dyn_snw_shape(c_idx, i) = 4 ! Koch snowflake
-               ! else
-               !    if (sphericity(c_idx, i) > 0.8_r8) then
-               !       dyn_snw_shape(c_idx, i) = 1 ! sphere
-               !    else if (sphericity(c_idx, i) < 0.2_r8) then
-               !       dyn_snw_shape(c_idx, i) = 3 ! hexagonal plate
-               !    else
-               !       dyn_snw_shape(c_idx, i) = 2 ! spheroid
-               !    endif
-               ! endif
-               ! END shape evolution
+
+            ! mass-weighted mean of fresh snow, old snow, and re-frozen snow effective radius
+            snw_rds(c_idx,i) = (snw_rds(c_idx,i)+dr)*frc_oldsnow + snw_rds_min*frc_newsnow + snw_rds_refrz*frc_refrz
+            !
+            !**********  5. CHECK BOUNDARIES   ***********
+            !
+            ! boundary check
+            if (snw_rds(c_idx,i) < snw_rds_min) then
+               snw_rds(c_idx,i) = snw_rds_min
+            endif
+
+            if (snw_rds(c_idx,i) > snw_rds_max) then
+               snw_rds(c_idx,i) = snw_rds_max
+            end if
+
+            ! set top layer variables for history files
+            if (i == snl_top) then
+               snot_top(c_idx)    = t_soisno(c_idx,i)
+               dTdz_top(c_idx)    = dTdz(c_idx,i)
+               snw_rds_top(c_idx) = snw_rds(c_idx,i)
+               sno_liq_top(c_idx) = h2osoi_liq(c_idx,i) / (h2osoi_liq(c_idx,i)+h2osoi_ice(c_idx,i))
+            endif
+
 
          enddo
       enddo
