@@ -1553,7 +1553,7 @@ contains
     use elm_varpar       , only : nlevsno
     use elm_varcon       , only : spval
     use shr_const_mod    , only : SHR_CONST_RHOICE, SHR_CONST_PI
-
+    use elm_varctl       , only : use_wind_drift
     !
     ! !ARGUMENTS:
     type(bounds_type)      , intent(in)    :: bounds
