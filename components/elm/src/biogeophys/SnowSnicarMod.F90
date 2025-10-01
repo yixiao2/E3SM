@@ -1860,15 +1860,15 @@ contains
                   tau_drift = 48._r8 * 3600._r8 / gamma_drift
                   
                   if (dendricity(c_idx, i) > epsilon) then
-                     sphericity(c_idx, i) = sphericity(c_idx, i) + (1.0_r8 - sphericity(c_idx, i)) / tau_drift * dtime! from Vionnet 2012 Table3
-                     dendricity(c_idx, i) = dendricity(c_idx, i) + dendricity(c_idx, i) / (2.0_r8 * tau_drift) * dtime! from Vionnet 2012 Table3
+                     sphericity(c_idx, i) = sphericity(c_idx, i) + (1.0_r8 - sphericity(c_idx, i)) / tau_drift * dtime / 1440._r8 ! from Vionnet 2012 Table3
+                     dendricity(c_idx, i) = dendricity(c_idx, i) + dendricity(c_idx, i) / (2.0_r8 * tau_drift) * dtime / 1440._r8 !from Vionnet 2012 Table3
                      !snw_rds(c, j) = snw_rds(c, j) + 5.0_r8*1E-4.0_r8 / (2.0_r8 * tau_drift)
-                     snw_rds(c_idx, i) = snw_rds(c_idx, i) + dtime * 0.5_r8 * alpha * (dendricity(c_idx, i) / (2.0_r8 * tau_drift) * (sphericity(c_idx, i) - 3.0_r8) + &
+                     snw_rds(c_idx, i) = snw_rds(c_idx, i) + dtime / 1440._r8 * 0.5_r8 * alpha * (dendricity(c_idx, i) / (2.0_r8 * tau_drift) * (sphericity(c_idx, i) - 3.0_r8) + &
                         (1 - sphericity(c_idx, i)) / tau_drift * (dendricity(c_idx, i) - 1.0_r8)) ! from Carmagnola 2014 for evoling grain size
                   else
-                     sphericity(c_idx, i) = sphericity(c_idx, i) + (1.0_r8 - sphericity(c_idx, i)) / tau_drift * dtime! from Vionnet 2012 Table3
+                     sphericity(c_idx, i) = sphericity(c_idx, i) + (1.0_r8 - sphericity(c_idx, i)) / tau_drift * dtime / 1440._r8 ! from Vionnet 2012 Table3
                      !snw_rds(c_idx, i) = snw_rds(c_idx, i) + 5.0_r8*1E-4.0_r8 / (2.0_r8 * tau_drift)
-                     snw_rds(c_idx, i) = snw_rds(c_idx, i) - dtime * alpha * sphericity(c_idx, i) * (1.0_r8 - sphericity(c_idx, i)) / tau_drift ! from Carmagnola 2014 for evoling grain size
+                     snw_rds(c_idx, i) = snw_rds(c_idx, i) - dtime / 1440._r8 * alpha * sphericity(c_idx, i) * (1.0_r8 - sphericity(c_idx, i)) / tau_drift ! from Carmagnola 2014 for evoling grain size
                   end if
                end if
 
