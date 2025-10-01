@@ -1607,6 +1607,7 @@ contains
     real(r8) :: gamma_drift ! coeff. in the empirical formula from Vionnet et al. (2012) for calculating driftability index [unitless]
     real(r8) :: tau_drift ! coeff. in the empirical formula from Vionnet et al. (2012) for calculating driftability index [unitless]
     real(r8) :: alpha ! coeff. in Carmagnola 2014 to evolve grain size
+    real(r8) :: epsilon ! coeff. to be considered dendricity case, which is > epsilon
     !--------------------------------------------------------------------------!
 
     associate(                                                      &
@@ -1639,7 +1640,8 @@ contains
 
       ! set timestep and step interval
       dtime = dtime_mod
-
+      alpha = 1.0E-4_r8 ! from Carmagnola 2014 for evolving grain size
+      epsilon = 1.0E-3_r8 ! to be considered dendricity case, which is > epsilon
       ! loop over columns that have at least one snow layer
       do fc = 1, num_snowc
          c_idx = filter_snowc(fc)
@@ -1856,18 +1858,17 @@ contains
 
                   gamma_drift = max(0.0_r8, SI * exp(-zi / 0.1_r8))
                   tau_drift = 48._r8 * 3600._r8 / gamma_drift
-                  alpha = 1.0E-4_r8 ! from Carmagnola 2014 for eolving grain size
-
-                  if (dendricity(c_idx, i) > 0.0_r8) then
-                     sphericity(c_idx, i) = sphericity(c_idx, i) + (1.0_r8 - sphericity(c_idx, i)) / tau_drift ! from Vionnet 2012 Table3
-                     dendricity(c_idx, i) = dendricity(c_idx, i) + dendricity(c_idx, i) / (2.0_r8 * tau_drift) ! from Vionnet 2012 Table3
+                  
+                  if (dendricity(c_idx, i) > epsilon) then
+                     sphericity(c_idx, i) = sphericity(c_idx, i) + (1.0_r8 - sphericity(c_idx, i)) / tau_drift * dtime! from Vionnet 2012 Table3
+                     dendricity(c_idx, i) = dendricity(c_idx, i) + dendricity(c_idx, i) / (2.0_r8 * tau_drift) * dtime! from Vionnet 2012 Table3
                      !snw_rds(c, j) = snw_rds(c, j) + 5.0_r8*1E-4.0_r8 / (2.0_r8 * tau_drift)
-                     snw_rds(c_idx, i) = snw_rds(c_idx, i) + 0.5_r8 * alpha * (dendricity(c_idx, i) / (2.0_r8 * tau_drift) * (sphericity(c_idx, i) - 3.0_r8) + &
+                     snw_rds(c_idx, i) = snw_rds(c_idx, i) + dtime * 0.5_r8 * alpha * (dendricity(c_idx, i) / (2.0_r8 * tau_drift) * (sphericity(c_idx, i) - 3.0_r8) + &
                         (1 - sphericity(c_idx, i)) / tau_drift * (dendricity(c_idx, i) - 1.0_r8)) ! from Carmagnola 2014 for evoling grain size
                   else
-                     sphericity(c_idx, i) = sphericity(c_idx, i) + (1.0_r8 - sphericity(c_idx, i)) / tau_drift ! from Vionnet 2012 Table3
+                     sphericity(c_idx, i) = sphericity(c_idx, i) + (1.0_r8 - sphericity(c_idx, i)) / tau_drift * dtime! from Vionnet 2012 Table3
                      !snw_rds(c_idx, i) = snw_rds(c_idx, i) + 5.0_r8*1E-4.0_r8 / (2.0_r8 * tau_drift)
-                     snw_rds(c_idx, i) = snw_rds(c_idx, i) - alpha * sphericity(c_idx, i) * (1.0_r8 - sphericity(c_idx, i)) / tau_drift ! from Carmagnola 2014 for evoling grain size
+                     snw_rds(c_idx, i) = snw_rds(c_idx, i) - dtime * alpha * sphericity(c_idx, i) * (1.0_r8 - sphericity(c_idx, i)) / tau_drift ! from Carmagnola 2014 for evoling grain size
                   end if
                end if
 
@@ -1952,7 +1953,7 @@ contains
     Frho = 1.25_r8 - 0.0042_r8*(max(rho_min, bi)-rho_min)
 
     if (dendricity > 0.0_r8) then
-        MO = 0.34_r8*(0.75_r8*dendricity - 0.5_r8*sphericity + 0.5) + 0.66_r8 * Frho
+        MO = 0.34_r8*(0.75_r8*dendricity - 0.5_r8*sphericity + 0.5_r8) + 0.66_r8 * Frho
     else
         ! MO = 0.34_r8 * (-0.583_r8*drift_gs - 0.833_r8*drift_sph + 0.833_r8) + 0.66_r8*Frho
         MO = 0.34_r8 * (-0.583_r8*snw_rds - 0.833_r8*sphericity + 0.833_r8) + 0.66_r8*Frho
