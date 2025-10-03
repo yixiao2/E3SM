@@ -1602,14 +1602,15 @@ contains
     real(r8) :: dfall ! snow grain dendricity for freshly fallen snow [unitless]
     real(r8) :: sfall ! snow grain sphericity for freshly fallen snow [unitless]
     real(r8) :: dwind ! change in dendricity due to wind packing [unitless]
-    real(r8) :: swind ! change in sphericity due to wind packing [
+    real(r8) :: swind ! change in sphericity due to wind packing [unitless]
+    real(r8) :: drds_wind ! change in grain size due to wind packing [microns]
     real(r8) :: zi ! cumulative pseudo-depth of current layer i, by summing up from the top layer to the current ith layer. [m]
     real(r8) :: SI ! driftability index of current layer i, function of dendricity and sphericity [unitless]
     real(r8) :: zpseudo ! pseudo-depth of current layer i
     real(r8) :: gamma_drift ! coeff. in the empirical formula from Vionnet et al. (2012) for calculating driftability index [unitless]
     real(r8) :: tau_drift ! coeff. in the empirical formula from Vionnet et al. (2012) for calculating driftability index [unitless]
     real(r8), parameter :: alpha = 1.0E-4_r8 ! coeff. in Carmagnola 2014 to evolve grain size
-    real(r8), parameter :: epsilon  = 1.0E-3_r8 ! coeff. to be considered dendricity case, which is > epsilon
+    real(r8), parameter :: epsilon = 1.0E-3_r8 ! coeff. to be considered dendricity case, which is > epsilon
     !--------------------------------------------------------------------------!
 
     associate(                                                      &
@@ -1833,32 +1834,33 @@ contains
                   zi = zi + zpseudo
 
                   gamma_drift = max(0.0_r8, SI * exp(-zi / 0.1_r8))
-                  tau_drift = 48._r8 * 3600._r8 / gamma_drift
+                  tau_drift = 48._r8 / gamma_drift
                   
-                  swind = (1.0_r8 - sphericity(c_idx, i)) / tau_drift * dtime / 1440._r8 ! from Vionnet 2012 Table3
+                  ! change in sphericity due to wind
+                  swind = (1.0_r8 - sphericity(c_idx, i)) / tau_drift * dtime / 3600._r8 ! from Vionnet 2012 Table3
 
                   if (dendricity(c_idx, i) > epsilon) then
                      ! dendritic case
-                     dwind = dendricity(c_idx, i) / (2.0_r8 * tau_drift) * dtime / 1440._r8 ! from Vionnet 2012 Table3
-                     
-                     ! Update dendricity, sphericity based on Vionnet 2012 and snow radius based on Carmagnola 2014
-                     dendricity(c_idx, i) = dendricity(c_idx, i) + dwind 
-                     sphericity(c_idx, i) = sphericity(c_idx, i) + swind
-                     snw_rds(c_idx, i) = snw_rds(c_idx, i) + dtime / 1440._r8 * 0.5_r8 * alpha * (dendricity(c_idx, i) / (2.0_r8 * tau_drift) * (sphericity(c_idx, i) - 3.0_r8) + &
-                        (1.0_r8 - sphericity(c_idx, i)) / tau_drift * (dendricity(c_idx, i) - 1.0_r8)) ! from Carmagnola 2014 for evoling grain size
+                     dwind = dendricity(c_idx, i) / (2.0_r8 * tau_drift) * dtime / 3600._r8 ! from Vionnet 2012 Table3
+                     drds_wind =  dtime / 3600._r8 * 0.5_r8 * alpha * (dendricity(c_idx, i) / (2.0_r8 * tau_drift) * (sphericity(c_idx, i) - 3.0_r8) + &
+                        (1.0_r8 - sphericity(c_idx, i)) / tau_drift * (dendricity(c_idx, i) - 1.0_r8)) ! from Carmagnola 2014 for evoling grain size Eq. 5a
                   else
                      ! non-dendritic case
                      ! only sphericity and snow radius change since it is non-dendritic
                      ! dwind = 0.0_r8
-                     sphericity(c_idx, i) = sphericity(c_idx, i) + swind
-                     snw_rds(c_idx, i) = snw_rds(c_idx, i) - dtime / 1440._r8 * alpha * sphericity(c_idx, i) * (1.0_r8 - sphericity(c_idx, i)) / tau_drift ! from Carmagnola 2014 for evoling grain size
+                     drds_wind =  - dtime / 3600._r8 * alpha * sphericity(c_idx, i) * (1.0_r8 - sphericity(c_idx, i)) / tau_drift ! from Carmagnola 2014 for evoling grain size Eq. 5b
                   end if
+               else
+                  ! if not using wind drift, set dwind and swind to zero
+                  dwind = 0.0_r8
+                  swind = 0.0_r8
+                  drds_wind = 0.0_r8
                end if
 
             ! UPDATING DENDRICITY AND SPHERICITY
                ! mass-weighted mean of fresh snow, old snow, and re-frozen snow dend
-               dendricity(c_idx, i) = (frc_oldsnow + frc_refrz) * ( dendricity(c_idx, i) + d_dendricity) + frc_newsnow * dfall
-               sphericity(c_idx, i) = (frc_oldsnow + frc_refrz) * ( sphericity(c_idx, i) + d_sphericity) + frc_newsnow * sfall
+               dendricity(c_idx, i) = (frc_oldsnow + frc_refrz) * ( dendricity(c_idx, i) + d_dendricity + dwind) + frc_newsnow * dfall
+               sphericity(c_idx, i) = (frc_oldsnow + frc_refrz) * ( sphericity(c_idx, i) + d_sphericity + swind) + frc_newsnow * sfall
 
                ! boundary check
                if (dendricity(c_idx, i) < 0.0_r8) then
@@ -1875,7 +1877,7 @@ contains
 
 
             ! mass-weighted mean of fresh snow, old snow, and re-frozen snow effective radius
-            snw_rds(c_idx,i) = (snw_rds(c_idx,i)+dr)*frc_oldsnow + snw_rds_min*frc_newsnow + snw_rds_refrz*frc_refrz
+            snw_rds(c_idx,i) = (snw_rds(c_idx,i) + dr + drds_wind)*frc_oldsnow + snw_rds_min*frc_newsnow + snw_rds_refrz*frc_refrz
             !
             !**********  5. CHECK BOUNDARIES   ***********
             !
