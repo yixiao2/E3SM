@@ -1842,13 +1842,13 @@ contains
                   if (dendricity(c_idx, i) > epsilon) then
                      ! dendritic case
                      dwind = dendricity(c_idx, i) / (2.0_r8 * tau_drift) * dtime / 3600._r8 ! from Vionnet 2012 Table3
-                     drds_wind =  dtime / 3600._r8 * 0.5_r8 * alpha * (dendricity(c_idx, i) / (2.0_r8 * tau_drift) * (sphericity(c_idx, i) - 3.0_r8) + &
+                     drds_wind =  1E6_r8 * dtime / 3600._r8 * 0.5_r8 * alpha * (dendricity(c_idx, i) / (2.0_r8 * tau_drift) * (sphericity(c_idx, i) - 3.0_r8) + &
                         (1.0_r8 - sphericity(c_idx, i)) / tau_drift * (dendricity(c_idx, i) - 1.0_r8)) ! from Carmagnola 2014 for evoling grain size Eq. 5a
                   else
                      ! non-dendritic case
                      ! only sphericity and snow radius change since it is non-dendritic
                      ! dwind = 0.0_r8
-                     drds_wind =  - dtime / 3600._r8 * alpha * sphericity(c_idx, i) * (1.0_r8 - sphericity(c_idx, i)) / tau_drift ! from Carmagnola 2014 for evoling grain size Eq. 5b
+                     drds_wind =  - 1E6_r8 * dtime / 3600._r8 * alpha * sphericity(c_idx, i) * (1.0_r8 - sphericity(c_idx, i)) / tau_drift ! from Carmagnola 2014 for evoling grain size Eq. 5b
                   end if
                else
                   ! if not using wind drift, set dwind and swind to zero
@@ -2313,6 +2313,7 @@ end subroutine driftability
      real(r8):: albsfc_lcl(1:numrad_snw)           ! albedo of underlying surface [frc]
      real(r8):: ss_alb_snw_lcl(-nlevsno+1:0)       ! single-scatter albedo of ice grains (lyr) [frc]
      real(r8):: asm_prm_snw_lcl(-nlevsno+1:0)      ! asymmetry parameter of ice grains (lyr) [frc]
+     real(r8):: asm_prm_snw_lcl_sphere(-nlevsno+1:0)      ! asymmetry parameter of ice grains for sphere shape (lyr) [frc]
      real(r8):: ext_cff_mss_snw_lcl(-nlevsno+1:0)  ! mass extinction coefficient of ice grains (lyr) [m2/kg]
      real(r8):: ss_alb_aer_lcl(sno_nbr_aer)        ! single-scatter albedo of aerosol species (aer_nbr) [frc]
      real(r8):: asm_prm_aer_lcl(sno_nbr_aer)       ! asymmetry parameter of aerosol species (aer_nbr) [frc]
@@ -2405,11 +2406,25 @@ end subroutine driftability
          AR_tmp             , & ! aspect ratio for spheroid
          g_ice_Cg_tmp(7)    , & ! temporary for calculation of asymetry factor
          gg_ice_F07_tmp(7)  , & ! temporary for calculation of asymetry factor
+
+         
+         g_ice_Cg_spheroid(7)    , & ! temporary for calculation of asymetry factor
+         gg_ice_F07_spheroid(7)  , & ! temporary for calculation of asymetry factor
+         g_ice_Cg_hexagonal(7)    , & ! temporary for calculation of asymetry factor
+         gg_ice_F07_hexagonal(7)  , & ! temporary for calculation of asymetry factor
+         g_ice_Cg_koch(7)    , & ! temporary for calculation of asymetry factor
+         gg_ice_F07_koch(7)  , & ! temporary for calculation of asymetry factor
+
+         f1k              , & ! contribution of sphere
+         f2k              , & ! contribution of spheroid
+         f3k              , & ! contribution of hexagonal plate
+         f4k              , & ! contribution of koch snowflake
+
          g_ice_F07          , & ! temporary for calculation of asymetry factor
          g_ice              , & ! asymmetry factor
          gg_F07_intp        , & ! temporary for calculation of asymetry factor (interpolated)
          g_Cg_intp          , & ! temporary for calculation of asymetry factor  (interpolated)
-	 R_1_omega_tmp      , & ! temporary for dust-snow mixing calculation 
+	      R_1_omega_tmp      , & ! temporary for dust-snow mixing calculation 
          C_dust_total           ! dust concentration
 	
      integer :: atm_type_index  ! index for atmospheric type
@@ -2603,7 +2618,9 @@ end subroutine driftability
      associate(&
           snl         =>   col_pp%snl           , & ! Input:  [integer (:)]  negative number of snow layers (col) [nbr]
           h2osno      =>   col_ws%h2osno        , & ! Input:  [real(r8) (:)]  snow liquid water equivalent (col) [kg/m2]
-          frac_sno    =>   col_ws%frac_sno_eff    & ! Input:  [real(r8) (:)]  fraction of ground covered by snow (0 to 1)
+          frac_sno    =>   col_ws%frac_sno_eff  , & ! Input:  [real(r8) (:)]  fraction of ground covered by snow (0 to 1)
+          dendricity  =>   col_ws%dendricity    , & ! Input:  [real(r8) (:,:)] snow grain dendricity (col,lyr) [unitless]
+          sphericity  =>   col_ws%sphericity    , & ! Input:  [real(r8) (:,:)] snow grain sphericity (col,lyr)
           )
 
        ! Define constants
@@ -2993,9 +3010,83 @@ end subroutine driftability
 
                      if(asm_prm_snw_lcl(i) > 0.99_r8) then 
                        asm_prm_snw_lcl(i) = 0.99_r8
-                     endif                        
+                     endif
+                     
+                  ! FRACTIONAL SHAPE HERE
+                    if (use_fractional_shape) then
+                     f4k = exp(-15.0_r8 * (dendricity(c_idx,i) - 1.0_r8)**2.0_r8) ! Koch snowflake contribution
+                     f3k = (1.0_r8 - f4k) * exp(-10.0_r8 * sphericity(c_idx,i)**2.0_r8) ! Hex plate contribution
+                     f1k = (1.0_r8 - f4k) * exp(-10.0_r8 * (sphericity(c_idx,i) - 1)**2.0_r8) ! sphere
+                     f2k = 1 - f1k - f3k - f4k ! Spheroid
 
-                  enddo
+                     if (flg_slr_in == 1) then
+                      do i=snl_top,snl_btm,1
+                         asm_prm_snw_lcl_sphere(i)     = asm_prm_snw_drc(rds_idx,bnd_idx)
+                      enddo
+                   elseif (flg_slr_in == 2) then
+                      do i=snl_top,snl_btm,1
+                         asm_prm_snw_lcl_sphere(i)     = asm_prm_snw_dfs(rds_idx,bnd_idx)
+                      enddo
+                   endif
+
+                     diam_ice = 2._r8*snw_rds_lcl(i)
+
+                     ! Spheroid
+                        fs_sphd = merge(0.929_r8, snw_fs_lcl(i), snw_fs_lcl(i) == 0._r8)
+                        fs_hex = 0.788_r8 
+                        AR_tmp = merge(0.5_r8, snw_ar_lcl(i), snw_ar_lcl(i) == 0._r8)
+                        g_ice_Cg_spheroid = g_b0 * ((fs_sphd/fs_hex)**g_b1) * (diam_ice**g_b2)
+                        gg_ice_F07_spheroid = g_F07_c0 + g_F07_c1 * AR_tmp + g_F07_c2 * (AR_tmp**2)		
+
+                     ! Hexagonal plate
+                        fs_hex0 = merge(0.788_r8, snw_fs_lcl(i), snw_fs_lcl(i) == 0._r8)
+                        fs_hex = 0.788_r8
+                        AR_tmp = merge(2.5_r8, snw_ar_lcl(i), snw_ar_lcl(i) == 0._r8)
+                        g_ice_Cg_hexagonal = g_b0 * ((fs_hex0/fs_hex)**g_b1) * (diam_ice**g_b2)
+                        gg_ice_F07_hexagonal = g_F07_p0 + g_F07_p1 * log(AR_tmp) + g_F07_p2 * ((log(AR_tmp))**2)
+
+                     ! Koch snowflake
+                     diam_ice = 2._r8 * snw_rds_lcl(i) /0.544_r8
+
+                        fs_koch = merge(0.712_r8, snw_fs_lcl(i), snw_fs_lcl(i) == 0._r8)
+                        fs_hex = 0.788_r8
+                        AR_tmp = merge(2.5_r8, snw_ar_lcl(i), snw_ar_lcl(i) == 0._r8)
+                        g_ice_Cg_koch = g_b0 * ((fs_koch/fs_hex)**g_b1) * (diam_ice**g_b2)
+                        gg_ice_F07_koch = g_F07_p0 + g_F07_p1 * log(AR_tmp) + g_F07_p2 * ((log(AR_tmp))**2)
+                     
+                     ! Weighted average of asymmetry factors for all shapes based on f1k, f2k, f3k, f4k
+                     g_ice_Cg_tmp = g_ice_Cg_spheroid * f2k + g_ice_Cg_hexagonal * f3k + g_ice_Cg_koch * f4k
+                     gg_ice_F07_tmp = gg_ice_F07_spheroid * f2k + gg_ice_F07_hexagonal * f3k + gg_ice_F07_koch * f4k
+
+                     ! Linear interpolation for calculating the asymetry factor at band_idx.
+                     if(snw_shp_lcl(i) > 1) then
+                       if(bnd_idx == 1) then
+                         g_Cg_intp = (g_ice_Cg_tmp(2)-g_ice_Cg_tmp(1))/(1.055_r8-0.475_r8)*(0.5_r8-0.475_r8)+g_ice_Cg_tmp(1)
+                         gg_F07_intp = (gg_ice_F07_tmp(2)-gg_ice_F07_tmp(1))/(1.055_r8-0.475_r8)*(0.5_r8-0.475_r8)+gg_ice_F07_tmp(1)
+                       elseif(bnd_idx == 2) then 
+                         g_Cg_intp = (g_ice_Cg_tmp(2)-g_ice_Cg_tmp(1))/(1.055_r8-0.475_r8)*(0.85_r8-0.475_r8)+g_ice_Cg_tmp(1)
+                         gg_F07_intp = (gg_ice_F07_tmp(2)-gg_ice_F07_tmp(1))/(1.055_r8-0.475_r8)*(0.85_r8-0.475_r8)+gg_ice_F07_tmp(1)
+                       elseif(bnd_idx == 3) then 
+                         g_Cg_intp = (g_ice_Cg_tmp(3)-g_ice_Cg_tmp(2))/(1.655_r8-1.055_r8)*(1.1_r8-1.055_r8)+g_ice_Cg_tmp(2)
+                         gg_F07_intp = (gg_ice_F07_tmp(3)-gg_ice_F07_tmp(2))/(1.655_r8-1.055_r8)*(1.1_r8-1.055_r8)+gg_ice_F07_tmp(2)
+                       elseif(bnd_idx == 4) then 
+                         g_Cg_intp = (g_ice_Cg_tmp(3)-g_ice_Cg_tmp(2))/(1.655_r8-1.055_r8)*(1.35_r8-1.055_r8)+g_ice_Cg_tmp(2)
+                         gg_F07_intp = (gg_ice_F07_tmp(3)-gg_ice_F07_tmp(2))/(1.655_r8-1.055_r8)*(1.35_r8-1.055_r8)+gg_ice_F07_tmp(2)
+                       elseif(bnd_idx == 5) then
+                         g_Cg_intp = (g_ice_Cg_tmp(6)-g_ice_Cg_tmp(5))/(3.75_r8-3.0_r8)*(3.25_r8-3.0_r8)+g_ice_Cg_tmp(5)
+                         gg_F07_intp = (gg_ice_F07_tmp(6)-gg_ice_F07_tmp(5))/(3.75_r8-3.0_r8)*(3.25_r8-3.0_r8)+gg_ice_F07_tmp(5)
+                       endif
+                       g_ice_F07 = gg_F07_intp + (1._r8 - gg_F07_intp) / ss_alb_snw_lcl(i) / 2._r8
+                       g_ice = g_ice_F07 * g_Cg_intp
+                     endif
+
+                     asm_prm_snw_lcl(i) = g_ice + f1k * asm_prm_snw_lcl_sphere(i)
+
+                     if(asm_prm_snw_lcl(i) > 0.99_r8) then 
+                       asm_prm_snw_lcl(i) = 0.99_r8
+                     endif    
+                    endif ! endif of  use_fractional_shape   
+                  enddo ! end do i=snl_top,snl_btm,1
                   !!!-end
 
 
