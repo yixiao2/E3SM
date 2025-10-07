@@ -2621,7 +2621,7 @@ end subroutine driftability
           h2osno      =>   col_ws%h2osno        , & ! Input:  [real(r8) (:)]  snow liquid water equivalent (col) [kg/m2]
           frac_sno    =>   col_ws%frac_sno_eff  , & ! Input:  [real(r8) (:)]  fraction of ground covered by snow (0 to 1)
           dendricity  =>   col_ws%dendricity    , & ! Input:  [real(r8) (:,:)] snow grain dendricity (col,lyr) [unitless]
-          sphericity  =>   col_ws%sphericity    , & ! Input:  [real(r8) (:,:)] snow grain sphericity (col,lyr)
+          sphericity  =>   col_ws%sphericity      & ! Input:  [real(r8) (:,:)] snow grain sphericity (col,lyr)
           )
 
        ! Define constants
