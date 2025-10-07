@@ -2256,6 +2256,13 @@ Toggle to turn on the use of dyanmic snow grain shape.
 If true, the fixed 'snow_shape' prescribed in this namelist will not be used.
 </entry>
 
+<entry id="use_fractional_snow_shape" type="logical" category="elm_physics"
+       group="elm_inparm" valid_values="" value=".false.">
+Toggle to turn on the use of fractional snow shape.
+If true, the snow shape will be represented as a combination of the different shapes
+defined in the 'snow_shape' namelist variable.
+</entry>
+
 <entry id="use_wind_drift" type="logical" category="elm_physics"
        group="elm_inparm" valid_values="" value=".false.">
 Toggle to turn on the use of dynamic wind drift.

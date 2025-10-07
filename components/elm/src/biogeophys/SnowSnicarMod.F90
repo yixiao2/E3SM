@@ -2279,6 +2279,7 @@ end subroutine driftability
      use elm_time_manager , only : get_nstep
      use shr_const_mod    , only : SHR_CONST_PI
      use elm_varctl       , only : use_dynamic_snow_shape, snow_shape, snicar_atm_type, use_dust_snow_internal_mixing, use_finetop_rad
+     use elm_varctl       , only : use_fractional_snow_shape
      !
      ! !ARGUMENTS:
      integer           , intent(in)  :: flg_snw_ice                                        ! flag: =1 when called from CLM, =2 when called from CSIM
@@ -2662,8 +2663,6 @@ end subroutine driftability
 	        snw_shp_lcl(:) = snow_shape_hexagonal_plate
          elseif (trim(snow_shape) == 'koch_snowflake') then
            snw_shp_lcl(:) = snow_shape_koch_snowflake
-         elseif (trim(snow_shape) == 'dynamic') then
-           snw_shp_lcl(:) = 1
          else
 	        write(iulog,*) "snow_shape = ", snow_shape
            call endrun( "snow_shape is unknown" )
@@ -2924,6 +2923,7 @@ end subroutine driftability
                          ! snow optical properties (direct radiation)
                          ss_alb_snw_lcl(i)      = ss_alb_snw_drc(rds_idx,bnd_idx)
                          asm_prm_snw_lcl(i)     = asm_prm_snw_drc(rds_idx,bnd_idx)
+                         asm_prm_snw_lcl_sphere(i)     = asm_prm_snw_drc(rds_idx,bnd_idx) ! for using fractinal snow shape
                          ext_cff_mss_snw_lcl(i) = ext_cff_mss_snw_drc(rds_idx,bnd_idx)
                       enddo
                    elseif (flg_slr_in == 2) then
@@ -2932,6 +2932,7 @@ end subroutine driftability
                          ! snow optical properties (diffuse radiation)
                          ss_alb_snw_lcl(i)      = ss_alb_snw_dfs(rds_idx,bnd_idx)
                          asm_prm_snw_lcl(i)     = asm_prm_snw_dfs(rds_idx,bnd_idx)
+                         asm_prm_snw_lcl_sphere(i)     = asm_prm_snw_dfs(rds_idx,bnd_idx) ! for using fractional snow shape
                          ext_cff_mss_snw_lcl(i) = ext_cff_mss_snw_dfs(rds_idx,bnd_idx)
                       enddo
                    endif
@@ -3012,80 +3013,69 @@ end subroutine driftability
                        asm_prm_snw_lcl(i) = 0.99_r8
                      endif
                      
-                  ! FRACTIONAL SHAPE HERE
-                    if (use_fractional_shape) then
-                     f4k = exp(-15.0_r8 * (dendricity(c_idx,i) - 1.0_r8)**2.0_r8) ! Koch snowflake contribution
-                     f3k = (1.0_r8 - f4k) * exp(-10.0_r8 * sphericity(c_idx,i)**2.0_r8) ! Hex plate contribution
-                     f1k = (1.0_r8 - f4k) * exp(-10.0_r8 * (sphericity(c_idx,i) - 1)**2.0_r8) ! sphere
-                     f2k = 1 - f1k - f3k - f4k ! Spheroid
+                     ! FRACTIONAL SHAPE HERE
+                     if (use_fractional_snow_shape) then
+                        f4k = exp(-15.0_r8 * (dendricity(c_idx,i) - 1.0_r8)**2.0_r8) ! Koch snowflake contribution
+                        f3k = (1.0_r8 - f4k) * exp(-10.0_r8 * sphericity(c_idx,i)**2.0_r8) ! Hex plate contribution
+                        f1k = (1.0_r8 - f4k) * exp(-10.0_r8 * (sphericity(c_idx,i) - 1.0_r8)**2.0_r8) ! sphere
+                        f2k = 1.0_r8 - f1k - f3k - f4k ! Spheroid
 
-                     if (flg_slr_in == 1) then
-                      do i=snl_top,snl_btm,1
-                         asm_prm_snw_lcl_sphere(i)     = asm_prm_snw_drc(rds_idx,bnd_idx)
-                      enddo
-                   elseif (flg_slr_in == 2) then
-                      do i=snl_top,snl_btm,1
-                         asm_prm_snw_lcl_sphere(i)     = asm_prm_snw_dfs(rds_idx,bnd_idx)
-                      enddo
-                   endif
+                        diam_ice = 2._r8*snw_rds_lcl(i)
 
-                     diam_ice = 2._r8*snw_rds_lcl(i)
-
-                     ! Spheroid
+                        ! Spheroid
                         fs_sphd = merge(0.929_r8, snw_fs_lcl(i), snw_fs_lcl(i) == 0._r8)
                         fs_hex = 0.788_r8 
                         AR_tmp = merge(0.5_r8, snw_ar_lcl(i), snw_ar_lcl(i) == 0._r8)
                         g_ice_Cg_spheroid = g_b0 * ((fs_sphd/fs_hex)**g_b1) * (diam_ice**g_b2)
                         gg_ice_F07_spheroid = g_F07_c0 + g_F07_c1 * AR_tmp + g_F07_c2 * (AR_tmp**2)		
 
-                     ! Hexagonal plate
+                        ! Hexagonal plate
                         fs_hex0 = merge(0.788_r8, snw_fs_lcl(i), snw_fs_lcl(i) == 0._r8)
                         fs_hex = 0.788_r8
                         AR_tmp = merge(2.5_r8, snw_ar_lcl(i), snw_ar_lcl(i) == 0._r8)
                         g_ice_Cg_hexagonal = g_b0 * ((fs_hex0/fs_hex)**g_b1) * (diam_ice**g_b2)
                         gg_ice_F07_hexagonal = g_F07_p0 + g_F07_p1 * log(AR_tmp) + g_F07_p2 * ((log(AR_tmp))**2)
 
-                     ! Koch snowflake
-                     diam_ice = 2._r8 * snw_rds_lcl(i) /0.544_r8
+                        ! Koch snowflake
+                        diam_ice = 2._r8 * snw_rds_lcl(i) /0.544_r8
 
                         fs_koch = merge(0.712_r8, snw_fs_lcl(i), snw_fs_lcl(i) == 0._r8)
                         fs_hex = 0.788_r8
                         AR_tmp = merge(2.5_r8, snw_ar_lcl(i), snw_ar_lcl(i) == 0._r8)
                         g_ice_Cg_koch = g_b0 * ((fs_koch/fs_hex)**g_b1) * (diam_ice**g_b2)
                         gg_ice_F07_koch = g_F07_p0 + g_F07_p1 * log(AR_tmp) + g_F07_p2 * ((log(AR_tmp))**2)
-                     
-                     ! Weighted average of asymmetry factors for all shapes based on f1k, f2k, f3k, f4k
-                     g_ice_Cg_tmp = g_ice_Cg_spheroid * f2k + g_ice_Cg_hexagonal * f3k + g_ice_Cg_koch * f4k
-                     gg_ice_F07_tmp = gg_ice_F07_spheroid * f2k + gg_ice_F07_hexagonal * f3k + gg_ice_F07_koch * f4k
 
-                     ! Linear interpolation for calculating the asymetry factor at band_idx.
-                     if(snw_shp_lcl(i) > 1) then
-                       if(bnd_idx == 1) then
-                         g_Cg_intp = (g_ice_Cg_tmp(2)-g_ice_Cg_tmp(1))/(1.055_r8-0.475_r8)*(0.5_r8-0.475_r8)+g_ice_Cg_tmp(1)
-                         gg_F07_intp = (gg_ice_F07_tmp(2)-gg_ice_F07_tmp(1))/(1.055_r8-0.475_r8)*(0.5_r8-0.475_r8)+gg_ice_F07_tmp(1)
-                       elseif(bnd_idx == 2) then 
-                         g_Cg_intp = (g_ice_Cg_tmp(2)-g_ice_Cg_tmp(1))/(1.055_r8-0.475_r8)*(0.85_r8-0.475_r8)+g_ice_Cg_tmp(1)
-                         gg_F07_intp = (gg_ice_F07_tmp(2)-gg_ice_F07_tmp(1))/(1.055_r8-0.475_r8)*(0.85_r8-0.475_r8)+gg_ice_F07_tmp(1)
-                       elseif(bnd_idx == 3) then 
-                         g_Cg_intp = (g_ice_Cg_tmp(3)-g_ice_Cg_tmp(2))/(1.655_r8-1.055_r8)*(1.1_r8-1.055_r8)+g_ice_Cg_tmp(2)
-                         gg_F07_intp = (gg_ice_F07_tmp(3)-gg_ice_F07_tmp(2))/(1.655_r8-1.055_r8)*(1.1_r8-1.055_r8)+gg_ice_F07_tmp(2)
-                       elseif(bnd_idx == 4) then 
-                         g_Cg_intp = (g_ice_Cg_tmp(3)-g_ice_Cg_tmp(2))/(1.655_r8-1.055_r8)*(1.35_r8-1.055_r8)+g_ice_Cg_tmp(2)
-                         gg_F07_intp = (gg_ice_F07_tmp(3)-gg_ice_F07_tmp(2))/(1.655_r8-1.055_r8)*(1.35_r8-1.055_r8)+gg_ice_F07_tmp(2)
-                       elseif(bnd_idx == 5) then
-                         g_Cg_intp = (g_ice_Cg_tmp(6)-g_ice_Cg_tmp(5))/(3.75_r8-3.0_r8)*(3.25_r8-3.0_r8)+g_ice_Cg_tmp(5)
-                         gg_F07_intp = (gg_ice_F07_tmp(6)-gg_ice_F07_tmp(5))/(3.75_r8-3.0_r8)*(3.25_r8-3.0_r8)+gg_ice_F07_tmp(5)
-                       endif
-                       g_ice_F07 = gg_F07_intp + (1._r8 - gg_F07_intp) / ss_alb_snw_lcl(i) / 2._r8
-                       g_ice = g_ice_F07 * g_Cg_intp
-                     endif
+                        ! Weighted average of asymmetry factors for 3 shapes (spheroid, hexagonal, koch) based on f2k, f3k, f4k
+                        g_ice_Cg_tmp = g_ice_Cg_spheroid * f2k + g_ice_Cg_hexagonal * f3k + g_ice_Cg_koch * f4k
+                        gg_ice_F07_tmp = gg_ice_F07_spheroid * f2k + gg_ice_F07_hexagonal * f3k + gg_ice_F07_koch * f4k
 
-                     asm_prm_snw_lcl(i) = g_ice + f1k * asm_prm_snw_lcl_sphere(i)
+                        ! Linear interpolation for calculating the asymetry factor at band_idx.
+                        if(bnd_idx == 1) then
+                          g_Cg_intp = (g_ice_Cg_tmp(2)-g_ice_Cg_tmp(1))/(1.055_r8-0.475_r8)*(0.5_r8-0.475_r8)+g_ice_Cg_tmp(1)
+                          gg_F07_intp = (gg_ice_F07_tmp(2)-gg_ice_F07_tmp(1))/(1.055_r8-0.475_r8)*(0.5_r8-0.475_r8)+gg_ice_F07_tmp(1)
+                        elseif(bnd_idx == 2) then 
+                          g_Cg_intp = (g_ice_Cg_tmp(2)-g_ice_Cg_tmp(1))/(1.055_r8-0.475_r8)*(0.85_r8-0.475_r8)+g_ice_Cg_tmp(1)
+                          gg_F07_intp = (gg_ice_F07_tmp(2)-gg_ice_F07_tmp(1))/(1.055_r8-0.475_r8)*(0.85_r8-0.475_r8)+gg_ice_F07_tmp(1)
+                        elseif(bnd_idx == 3) then 
+                          g_Cg_intp = (g_ice_Cg_tmp(3)-g_ice_Cg_tmp(2))/(1.655_r8-1.055_r8)*(1.1_r8-1.055_r8)+g_ice_Cg_tmp(2)
+                          gg_F07_intp = (gg_ice_F07_tmp(3)-gg_ice_F07_tmp(2))/(1.655_r8-1.055_r8)*(1.1_r8-1.055_r8)+gg_ice_F07_tmp(2)
+                        elseif(bnd_idx == 4) then 
+                          g_Cg_intp = (g_ice_Cg_tmp(3)-g_ice_Cg_tmp(2))/(1.655_r8-1.055_r8)*(1.35_r8-1.055_r8)+g_ice_Cg_tmp(2)
+                          gg_F07_intp = (gg_ice_F07_tmp(3)-gg_ice_F07_tmp(2))/(1.655_r8-1.055_r8)*(1.35_r8-1.055_r8)+gg_ice_F07_tmp(2)
+                        elseif(bnd_idx == 5) then
+                          g_Cg_intp = (g_ice_Cg_tmp(6)-g_ice_Cg_tmp(5))/(3.75_r8-3.0_r8)*(3.25_r8-3.0_r8)+g_ice_Cg_tmp(5)
+                          gg_F07_intp = (gg_ice_F07_tmp(6)-gg_ice_F07_tmp(5))/(3.75_r8-3.0_r8)*(3.25_r8-3.0_r8)+gg_ice_F07_tmp(5)
+                        endif
 
-                     if(asm_prm_snw_lcl(i) > 0.99_r8) then 
-                       asm_prm_snw_lcl(i) = 0.99_r8
-                     endif    
-                    endif ! endif of  use_fractional_shape   
+                        g_ice_F07 = gg_F07_intp + (1._r8 - gg_F07_intp) / ss_alb_snw_lcl(i) / 2._r8
+                        g_ice = g_ice_F07 * g_Cg_intp
+
+                        asm_prm_snw_lcl(i) = g_ice + f1k * asm_prm_snw_lcl_sphere(i) ! weighted average of asymmetry factors for all shapes based on f1k, f2k, f3k, f4k
+
+                        if(asm_prm_snw_lcl(i) > 0.99_r8) then 
+                          asm_prm_snw_lcl(i) = 0.99_r8
+                        endif    
+                     endif ! endif of  use_fractional_shape   
                   enddo ! end do i=snl_top,snl_btm,1
                   !!!-end
 
