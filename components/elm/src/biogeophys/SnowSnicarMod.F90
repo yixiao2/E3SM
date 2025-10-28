@@ -3013,10 +3013,14 @@ end subroutine driftability
                      
                      ! FRACTIONAL SHAPE HERE
                      if (use_fractional_snow_shape) then
-                        f4k = exp(-15.0_r8 * (dendricity(c_idx,i) - 1.0_r8)**2.0_r8) ! Koch snowflake contribution
-                        f3k = (1.0_r8 - f4k) * exp(-10.0_r8 * sphericity(c_idx,i)**2.0_r8) ! Hex plate contribution
-                        f1k = (1.0_r8 - f4k) * exp(-10.0_r8 * (sphericity(c_idx,i) - 1.0_r8)**2.0_r8) ! sphere
-                        f2k = 1.0_r8 - f1k - f3k - f4k ! Spheroid
+                        !f4k = exp(-15.0_r8 * (dendricity(c_idx,i) - 1.0_r8)**2.0_r8) ! Koch snowflake contribution
+                        !f3k = (1.0_r8 - f4k) * exp(-10.0_r8 * sphericity(c_idx,i)**2.0_r8) ! Hex plate contribution
+                        !f1k = (1.0_r8 - f4k) * exp(-10.0_r8 * (sphericity(c_idx,i) - 1.0_r8)**2.0_r8) ! sphere
+                        !f2k = 1.0_r8 - f1k - f3k - f4k ! Spheroid
+                        f4k = 1.0_r8 / (1 + exp(-10.0_r8 * (dendricity(c_idx,i) - 0.5_r8))) ! Koch snowflake contribution
+                        f3k = (1.0_r8 - f4k) * (1.0_r8 - 1.0 / (1 + exp(-10.0_r8 * (sphericity(c_idx,i) - 0.5_r8)))) ! Hex plate contribution
+                        f1k = (1.0_r8 - f4k) * 1.0 / (1 + exp(-10.0_r8 * (sphericity(c_idx,i) - 0.75_r8))) ! Sphere
+                        f2k = (1.0_r8 - f4k) * (1.0_r8 - f1k - f3k) ! spheroid
 
                         diam_ice = 2._r8*snw_rds_lcl(i)
 
