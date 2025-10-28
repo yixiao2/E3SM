@@ -2269,6 +2269,21 @@ Toggle to turn on the use of dynamic wind drift.
 If true, the winddrift effect on dendricity, sphericity, and grain size will be considered.
 </entry>
 
+<entry id="dendricity_threshold" type="real" category="elm_physics"
+       group="elm_inparm" valid_values="" value="0.5">
+Threshold of dendricity above which the snow grains are considered as dendritic.
+</entry>
+
+<entry id="sphericity_high_threshold" type="real" category="elm_physics"
+       group="elm_inparm" valid_values="" value="0.75">
+Threshold of sphericity above which the snow grains are considered as spherical.
+</entry>
+
+<entry id="sphericity_low_threshold" type="real" category="elm_physics"
+       group="elm_inparm" valid_values="" value="0.5">
+Threshold of sphericity below which the snow grains are considered as non-spherical.
+</entry>
+
 <entry id="snicar_atm_type" type="char*256" category="elm_physics"
        group="elm_inparm" valid_values="default,mid-latitude_winter,mid-latitude_summer,sub-Arctic_winter,sub-Arctic_summer,summit_Greenland,high_mountain">
 Atmospheric types: 'default' represents the default mid-latitude winter type

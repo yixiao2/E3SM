@@ -22,6 +22,7 @@ module SnowSnicarMod
   use ColumnType      , only : col_pp
   use ColumnDataType  , only : col_es, col_ws, col_wf
   use TopounitDataType, only : topounit_atmospheric_state
+  use elm_varctl      , only : dendricity_threshold, sphericity_high_threshold, sphericity_low_threshold
   ! use TopounitDataType       , only : top_as, top_af ! atmospheric state and flux variables
   !
   use timeinfoMod
@@ -1921,12 +1922,12 @@ contains
    real(r8), intent(in)     :: dendricity
    real(r8), intent(in)     :: sphericity
    ! #TODO: add thresholds to the namelist
-   if  (dendricity > 0.5_r8) then
+   if  (dendricity > dendricity_threshold) then
       my_dyn_snow_shape = 4 ! Koch snowflake
    else
-      if (sphericity > 0.8_r8) then
+      if (sphericity > sphericity_high_threshold) then
          my_dyn_snow_shape = 1 ! sphere
-      else if (sphericity < 0.2_r8) then
+      else if (sphericity < sphericity_low_threshold) then
          my_dyn_snow_shape = 3 ! hexagonal plate
       else
          my_dyn_snow_shape = 2 ! spheroid
