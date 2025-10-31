@@ -1631,6 +1631,8 @@ contains
          dendricity         => col_ws%dendricity     , & ! Output: [real(r8) (:,:)   ]  dendricity (col, lyr) [unitless]
          sphericity         => col_ws%sphericity     ,  & ! Output: [real(r8) (:,:)   ]  sphericity (col, lyr) [unitless]
          snw_rds_top        => col_ws%snw_rds_top    , & ! Output: [real(r8) (:)   ]  effective grain radius, top layer (col) [microns, m-6]
+         dendricity_top     => col_ws%dendricity_top , & ! Output: [real(r8) (:)   ]  dendricity factor, top layer (col) [unitless]
+         sphericity_top     => col_ws%sphericity_top , & ! Output: [real(r8) (:)   ]  sphericity factor, top layer (col) [unitless]
          sno_liq_top        => col_ws%sno_liq_top    , & ! Output: [real(r8) (:)   ]  liquid water fraction (mass) in top snow layer (col) [frc]
 
          t_soisno           => col_es%t_soisno      , & ! Input:  [real(r8) (:,:) ]  soil and snow temperature (col,lyr) [K]
@@ -1896,6 +1898,8 @@ contains
                snot_top(c_idx)    = t_soisno(c_idx,i)
                dTdz_top(c_idx)    = dTdz(c_idx,i)
                snw_rds_top(c_idx) = snw_rds(c_idx,i)
+               dendricity_top(c_idx) = dendricity(c_idx,i)
+               sphericity_top(c_idx) = sphericity(c_idx,i)
                sno_liq_top(c_idx) = h2osoi_liq(c_idx,i) / (h2osoi_liq(c_idx,i)+h2osoi_ice(c_idx,i))
             endif
 
@@ -3019,8 +3023,8 @@ end subroutine driftability
                         !f1k = (1.0_r8 - f4k) * exp(-10.0_r8 * (sphericity(c_idx,i) - 1.0_r8)**2.0_r8) ! sphere
                         !f2k = 1.0_r8 - f1k - f3k - f4k ! Spheroid
                         f4k = 1.0_r8 / (1 + exp(-10.0_r8 * (dendricity(c_idx,i) - 0.5_r8))) ! Koch snowflake contribution
-                        f3k = (1.0_r8 - f4k) * (1.0_r8 - 1.0 / (1 + exp(-10.0_r8 * (sphericity(c_idx,i) - 0.5_r8)))) ! Hex plate contribution
-                        f1k = (1.0_r8 - f4k) * 1.0 / (1 + exp(-10.0_r8 * (sphericity(c_idx,i) - 0.75_r8))) ! Sphere
+                        f3k = (1.0_r8 - f4k) * (1.0_r8 - 1.0_r8 / (1.0_r8 + exp(-10.0_r8 * (sphericity(c_idx,i) - 0.5_r8)))) ! Hex plate contribution
+                        f1k = (1.0_r8 - f4k) * 1.0_r8 / (1.0_r8 + exp(-10.0_r8 * (sphericity(c_idx,i) - 0.75_r8))) ! Sphere
                         f2k = (1.0_r8 - f4k) * (1.0_r8 - f1k - f3k) ! spheroid
 
                         diam_ice = 2._r8*snw_rds_lcl(i)

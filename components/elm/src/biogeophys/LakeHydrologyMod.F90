@@ -155,6 +155,8 @@ contains
          dendricity           =>  col_ws%dendricity        , & ! Output: [real(r8) (:,:) ]  snow grain dendricity (col,lyr) [unitless]
          sphericity           =>  col_ws%sphericity        , & ! Output: [real(r8) (:,:) ]  snow grain sphericity (col,lyr) [unitless]
          snw_rds_top          =>  col_ws%snw_rds_top       , & ! Output: [real(r8) (:)   ]  effective snow grain size, top layer [microns]
+         dendricity_top       =>  col_ws%dendricity_top    , & ! Output: [real(r8) (:)   ]  dendricity factor, top layer (col) [unitless]
+         sphericity_top       =>  col_ws%sphericity_top    , & ! Output: [real(r8) (:)   ]  sphericity factor, top layer (col) [unitless]
          h2osno_top           =>  col_ws%h2osno_top        , & ! Output: [real(r8) (:)   ]  mass of snow in top layer [kg]
          sno_liq_top          =>  col_ws%sno_liq_top       , & ! Output: [real(r8) (:)   ]  liquid water fraction in top snow layer [frc]
          frac_sno_eff         =>  col_ws%frac_sno_eff      , & ! Output: [real(r8) (:)   ]  needed for snicar code
@@ -770,6 +772,8 @@ contains
          snot_top(c)        = spval
          dTdz_top(c)        = spval
          snw_rds_top(c)     = spval
+         dendricity_top(c)  = spval
+         sphericity_top(c)  = spval
          sno_liq_top(c)     = spval
       end do
 

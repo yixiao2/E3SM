@@ -72,6 +72,8 @@ module WaterstateType
      real(r8), pointer :: dendricity_col         (:,:) ! col snow grain dendricity (col,lyr)   [unitless] 
      real(r8), pointer :: sphericity_col         (:,:) ! col snow grain sphericity (col,lyr)   [unitless] 
      real(r8), pointer :: snw_rds_top_col        (:)   ! col snow grain radius (top layer)  [m^-6, microns]
+     real(r8), pointer :: dendricity_top_col     (:)   ! col snow grain dendricity (top layer) [unitless]
+     real(r8), pointer :: sphericity_top_col     (:)   ! col snow grain sphericity (top layer) [unitless]
      real(r8), pointer :: h2osno_top_col         (:)   ! col top-layer mass of snow  [kg]
      real(r8), pointer :: sno_liq_top_col        (:)   ! col snow liquid water fraction (mass), top layer  [fraction]
 
@@ -246,6 +248,8 @@ contains
     allocate(this%dendricity_col         (begc:endc,-nlevsno+1:0))        ; this%dendricity_col         (:,:) = nan
     allocate(this%sphericity_col         (begc:endc,-nlevsno+1:0))        ; this%sphericity_col         (:,:) = nan
     allocate(this%snw_rds_top_col        (begc:endc))                     ; this%snw_rds_top_col        (:)   = nan
+    allocate(this%dendricity_top_col     (begc:endc))                     ; this%dendricity_top_col     (:)   = nan
+    allocate(this%sphericity_top_col     (begc:endc))                     ; this%sphericity_top_col     (:)   = nan
     allocate(this%h2osno_top_col         (begc:endc))                     ; this%h2osno_top_col         (:)   = nan
     allocate(this%sno_liq_top_col        (begc:endc))                     ; this%sno_liq_top_col        (:)   = nan
 
@@ -478,18 +482,23 @@ contains
             this%snw_rds_col(c,snl(c)+1:0)        = snw_rds_min
             this%snw_rds_col(c,-nlevsno+1:snl(c)) = 0._r8
             this%snw_rds_top_col(c)               = snw_rds_min
+            this%dendricity_top_col(c)          = 0.0_r8
+            this%sphericity_top_col(c)          = 1.0_r8
          elseif (this%h2osno_col(c) > 0._r8) then
             this%sphericity_col(c,0)                 = 1.0_r8
             this%dendricity_col(c,0)                 = 0.0_r8
             this%snw_rds_col(c,0)                 = snw_rds_min
             this%snw_rds_col(c,-nlevsno+1:-1)     = 0._r8
             this%snw_rds_top_col(c)               = spval
+            this%dendricity_top_col(c)            = 0.0_r8
+            this%sphericity_top_col(c)            = 1.0_r8
             this%sno_liq_top_col(c)               = spval
          else
             this%sphericity_col(c,:)                 = 1._r8
             this%dendricity_col(c,:)                 = 0._r8
             this%snw_rds_col(c,:)                 = 0._r8
             this%snw_rds_top_col(c)               = spval
+            this%dendricity_top_col(c)            = spval
             this%sno_liq_top_col(c)               = spval
          endif
       end do

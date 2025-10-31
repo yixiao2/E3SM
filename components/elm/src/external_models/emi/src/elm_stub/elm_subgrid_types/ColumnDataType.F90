@@ -106,6 +106,8 @@ module ColumnDataType
     real(r8), pointer :: snowdp             (:)   => null() ! snow height averaged for area with and without snow cover(m)
     real(r8), pointer :: snow_persistence   (:)   => null() ! length of time that ground has had non-zero snow thickness (sec)
     real(r8), pointer :: snw_rds_top        (:)   => null() ! snow grain radius (top layer)  (m^-6, microns)
+    real(r8), pointer :: dendricity_top     (:)   => null() ! snow grain dendricity (top layer) [dimless]
+    real(r8), pointer :: sphericity_top     (:)   => null() ! snow grain sphericity (top layer) [dimless]
     logical , pointer :: do_capsnow         (:)   => null() ! true => do snow capping
     ! Area fractions
     real(r8), pointer :: frac_sno           (:)   => null() ! fraction of ground covered by snow (0 to 1)
@@ -964,6 +966,8 @@ contains
     allocate(this%snowdp             (begc:endc))                     ; this%snowdp             (:)   = nan
     allocate(this%snow_persistence   (begc:endc))                     ; this%snow_persistence   (:)   = nan
     allocate(this%snw_rds_top        (begc:endc))                     ; this%snw_rds_top        (:)   = nan
+    allocate(this%dendricity_top     (begc:endc))                     ; this%dendricity_top     (:)   = nan
+    allocate(this%sphericity_top     (begc:endc))                     ; this%sphericity_top     (:)   = nan
     allocate(this%do_capsnow         (begc:endc))                   
     allocate(this%frac_sno           (begc:endc))                     ; this%frac_sno           (:)   = nan
     allocate(this%frac_sno_eff       (begc:endc))                     ; this%frac_sno_eff       (:)   = nan

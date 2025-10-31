@@ -145,6 +145,8 @@ module ColumnDataType
     real(r8), pointer :: snowdp             (:)   => null() ! snow height averaged for area with and without snow cover(m)
     real(r8), pointer :: snow_persistence   (:)   => null() ! length of time that ground has had non-zero snow thickness (sec)
     real(r8), pointer :: snw_rds_top        (:)   => null() ! snow grain radius (top layer)  (m^-6, microns)
+    real(r8), pointer :: dendricity_top     (:)   => null() ! snow grain dendricity (top layer) [dimless]
+    real(r8), pointer :: sphericity_top     (:)   => null() ! snow grain sphericity (top layer) [dimless]
     logical , pointer :: do_capsnow         (:)   => null() ! true => do snow capping
     real(r8), pointer :: h2osoi_tend_tsl_col(:)   => null() ! col moisture tendency due to vertical movement at topmost layer (m3/m3/s)
     ! Area fractions
@@ -1446,6 +1448,8 @@ contains
        allocate(this%h2osoi_tend_tsl_col(begc:endc))                  ; this%h2osoi_tend_tsl_col(:)   = spval
     end if
     allocate(this%snw_rds_top        (begc:endc))                     ; this%snw_rds_top        (:)   = spval
+    allocate(this%dendricity_top     (begc:endc))                     ; this%dendricity_top     (:)   = spval
+    allocate(this%sphericity_top     (begc:endc))                     ; this%sphericity_top     (:)   = spval
     allocate(this%do_capsnow         (begc:endc))
     allocate(this%frac_sno           (begc:endc))                     ; this%frac_sno           (:)   = spval
     allocate(this%frac_sno_eff       (begc:endc))                     ; this%frac_sno_eff       (:)   = spval
@@ -1580,6 +1584,16 @@ contains
      call hist_addfld1d (fname='SNORDSL', units='m^-6', &
           avgflag='A', long_name='top snow layer effective grain radius', &
            ptr_col=this%snw_rds_top, set_urb=spval, default='inactive')
+   
+    this%dendricity_top(begc:endc) = spval
+     call hist_addfld1d (fname='SNODENFL', units='1', &
+          avgflag='A', long_name='top snow layer dendricity', &
+           ptr_col=this%dendricity_top, set_urb=spval, default='inactive')
+
+    this%sphericity_top(begc:endc) = spval
+     call hist_addfld1d (fname='SNOSPHFL', units='1', &
+          avgflag='A', long_name='top snow layer sphericity', &
+           ptr_col=this%sphericity_top, set_urb=spval, default='inactive')
 
     this%sno_liq_top(begc:endc) = spval
      call hist_addfld1d (fname='SNOLIQFL', units='fraction', &
@@ -1736,18 +1750,24 @@ contains
           this%snw_rds(c,col_pp%snl(c)+1:0)          = snw_rds_min
           this%snw_rds(c,-nlevsno+1:col_pp%snl(c))   = 0._r8
           this%snw_rds_top(c)                        = snw_rds_min
+          this%dendricity_top(c)                     = 0._r8
+          this%sphericity_top(c)                     = 1._r8
        elseif (this%h2osno(c) > 0._r8) then
           this%sphericity(c,0)                = 1._r8
           this%dendricity(c,0)                = 0._r8
           this%snw_rds(c,0)                   = snw_rds_min
           this%snw_rds(c,-nlevsno+1:-1)       = 0._r8
           this%snw_rds_top(c)                 = spval
+          this%dendricity_top(c)              = 0._r8
+          this%sphericity_top(c)              = 1._r8
           this%sno_liq_top(c)                 = spval
-       else
-          this%sphericity(c,:)                = 1._r8
-          this%dendricity(c,:)                = 0._r8
+       else ! this case is no snow so I set it to be spval
+          this%sphericity(c,:)                = 1.0_r8
+          this%dendricity(c,:)                = 0.0_r8
           this%snw_rds(c,:)                   = 0._r8
           this%snw_rds_top(c)                 = spval
+          this%dendricity_top(c)              = spval
+          this%sphericity_top(c)              = spval
           this%sno_liq_top(c)                 = spval
        endif
 
@@ -2028,11 +2048,14 @@ contains
           if (col_pp%snl(c) < 0) then
              this%dendricity(c,col_pp%snl(c)+1:0) = 0._r8
              this%dendricity(c,-nlevsno+1:col_pp%snl(c)) = 0._r8
+             this%dendricity_top(c) = 0._r8
           elseif (this%h2osno(c) > 0._r8) then
              this%dendricity(c,0) = 0._r8
              this%dendricity(c,-nlevsno+1:-1) = 0._r8
+             this%dendricity_top(c) = 0._r8
           else
              this%dendricity(c,:) = 0._r8
+             this%dendricity_top(c) = spval
           endif
        enddo
     end if
@@ -2052,11 +2075,14 @@ contains
           if (col_pp%snl(c) < 0) then
              this%sphericity(c,col_pp%snl(c)+1:0) = 1._r8
              this%sphericity(c,-nlevsno+1:col_pp%snl(c)) = 1._r8
+             this%sphericity_top(c) = 1._r8
           elseif (this%h2osno(c) > 0._r8) then
              this%sphericity(c,0) = 1._r8
              this%sphericity(c,-nlevsno+1:-1) = 1._r8
+             this%sphericity_top(c) = 1._r8
           else
              this%sphericity(c,:) = 1._r8
+             this%sphericity_top(c) = spval
           endif
        enddo
     end if
