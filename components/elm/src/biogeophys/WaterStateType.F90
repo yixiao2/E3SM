@@ -490,8 +490,8 @@ contains
             this%snw_rds_col(c,0)                 = snw_rds_min
             this%snw_rds_col(c,-nlevsno+1:-1)     = 0._r8
             this%snw_rds_top_col(c)               = spval
-            this%dendricity_top_col(c)            = 0.0_r8
-            this%sphericity_top_col(c)            = 1.0_r8
+            this%dendricity_top_col(c)            = spval
+            this%sphericity_top_col(c)            = spval
             this%sno_liq_top_col(c)               = spval
          else
             this%sphericity_col(c,:)                 = 1._r8
@@ -499,6 +499,7 @@ contains
             this%snw_rds_col(c,:)                 = 0._r8
             this%snw_rds_top_col(c)               = spval
             this%dendricity_top_col(c)            = spval
+            this%sphericity_top_col(c)            = spval
             this%sno_liq_top_col(c)               = spval
          endif
       end do

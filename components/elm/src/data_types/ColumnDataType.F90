@@ -1758,8 +1758,8 @@ contains
           this%snw_rds(c,0)                   = snw_rds_min
           this%snw_rds(c,-nlevsno+1:-1)       = 0._r8
           this%snw_rds_top(c)                 = spval
-          this%dendricity_top(c)              = 0._r8
-          this%sphericity_top(c)              = 1._r8
+          this%dendricity_top(c)              = spval
+          this%sphericity_top(c)              = spval
           this%sno_liq_top(c)                 = spval
        else ! this case is no snow so I set it to be spval
           this%sphericity(c,:)                = 1.0_r8
@@ -2052,7 +2052,7 @@ contains
           elseif (this%h2osno(c) > 0._r8) then
              this%dendricity(c,0) = 0._r8
              this%dendricity(c,-nlevsno+1:-1) = 0._r8
-             this%dendricity_top(c) = 0._r8
+             this%dendricity_top(c) = spval
           else
              this%dendricity(c,:) = 0._r8
              this%dendricity_top(c) = spval
@@ -2079,7 +2079,7 @@ contains
           elseif (this%h2osno(c) > 0._r8) then
              this%sphericity(c,0) = 1._r8
              this%sphericity(c,-nlevsno+1:-1) = 1._r8
-             this%sphericity_top(c) = 1._r8
+             this%sphericity_top(c) = spval
           else
              this%sphericity(c,:) = 1._r8
              this%sphericity_top(c) = spval

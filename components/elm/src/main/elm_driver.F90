@@ -50,7 +50,7 @@ module elm_driver
   use LakeHydrologyMod       , only : LakeHydrology
   !
   use AerosolMod             , only : AerosolMasses
-  use SnowSnicarMod          , only : SnowAge_grain, SnowAge_grain_ll
+  use SnowSnicarMod          , only : SnowAge_grain
   use SurfaceAlbedoMod       , only : SurfaceAlbedo
   use UrbanAlbedoMod         , only : UrbanAlbedo
   !
@@ -950,7 +950,7 @@ contains
 
        ! Must be done here because must use a snow filter for lake columns
 
-       call SnowAge_grain_ll(bounds_clump,                         &
+       call SnowAge_grain(bounds_clump,                         &
             filter(nc)%num_lakesnowc, filter(nc)%lakesnowc,     &
             filter(nc)%num_lakenosnowc, filter(nc)%lakenosnowc, top_as)
 
@@ -978,7 +978,7 @@ contains
        ! TODO: move this up
 
        call t_startf('snow_init')
-       call SnowAge_grain_ll(bounds_clump,                 &
+       call SnowAge_grain(bounds_clump,                 &
             filter(nc)%num_snowc, filter(nc)%snowc,     &
             filter(nc)%num_nosnowc, filter(nc)%nosnowc, top_as)
        call t_stopf('snow_init')
