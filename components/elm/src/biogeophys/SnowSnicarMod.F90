@@ -1554,7 +1554,7 @@ contains
     use elm_varpar       , only : nlevsno
     use elm_varcon       , only : spval
     use shr_const_mod    , only : SHR_CONST_RHOICE, SHR_CONST_PI
-    use elm_varctl       , only : use_wind_drift
+    use elm_varctl       , only : use_wind_drift, use_refrozen_snow
     !
     ! !ARGUMENTS:
     type(bounds_type)      , intent(in)    :: bounds
@@ -1880,7 +1880,11 @@ contains
 
 
             ! mass-weighted mean of fresh snow, old snow, and re-frozen snow effective radius
-            snw_rds(c_idx,i) = (snw_rds(c_idx,i) + dr + drds_wind)*frc_oldsnow + snw_rds_min*frc_newsnow + snw_rds_refrz*frc_refrz
+            if (use_refrozen_snow) then
+               snw_rds(c_idx,i) = (snw_rds(c_idx,i) + dr + drds_wind)*frc_oldsnow + snw_rds_min*frc_newsnow + snw_rds_refrz*frc_refrz
+            else
+               snw_rds(c_idx,i) = (snw_rds(c_idx,i) + dr + drds_wind)*(frc_oldsnow + frac_refrz) + snw_rds_min*frc_newsnow
+            endif
             !
             !**********  5. CHECK BOUNDARIES   ***********
             !

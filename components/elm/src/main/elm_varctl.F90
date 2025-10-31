@@ -575,6 +575,7 @@ module elm_varctl
    logical, public :: use_dynamic_snow_shape = .false.
    logical, public :: use_wind_drift = .false.
    logical, public :: use_fractional_snow_shape = .false.
+   logical, public :: use_refrozen_snow = .true.
    real(r8), public :: dendricity_threshold = 0.5_r8
    real(r8), public :: sphericity_high_threshold = 0.75_r8
    real(r8), public :: sphericity_low_threshold  = 0.5_r8

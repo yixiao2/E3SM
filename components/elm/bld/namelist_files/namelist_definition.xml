@@ -2269,6 +2269,11 @@ Toggle to turn on the use of dynamic wind drift.
 If true, the winddrift effect on dendricity, sphericity, and grain size will be considered.
 </entry>
 
+<entry id="use_refrozen_snow" type="logical" category="elm_physics"
+       group="elm_inparm" valid_values="" value=".true.">
+Toggle to turn on the use of refrozen snow radius of 1000 microns.
+</entry>
+
 <entry id="dendricity_threshold" type="real" category="elm_physics"
        group="elm_inparm" valid_values="" value="0.5">
 Threshold of dendricity above which the snow grains are considered as dendritic.

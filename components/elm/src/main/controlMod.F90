@@ -44,7 +44,7 @@ module controlMod
   use elm_varctl              , only: use_lake_wat_storage, lake_evap_cap_method
   use seq_drydep_mod          , only: drydep_method, DD_XLND, n_drydep
   use elm_varctl              , only: onset_gdd_extension
-  use elm_varctl              , only: use_dynamic_snow_shape, use_wind_drift, use_fractional_snow_shape
+  use elm_varctl              , only: use_dynamic_snow_shape, use_wind_drift, use_fractional_snow_shape, use_refrozen_snow
   use elm_varctl              , only: dendricity_threshold, sphericity_high_threshold, sphericity_low_threshold
   use EcosystemBalanceCheckMod, only: bgc_balance_check_tolerance => balance_check_tolerance
   use elm_varpar              , only: elmfates_carbon_only
@@ -391,7 +391,7 @@ contains
          snow_shape, snicar_atm_type, use_dust_snow_internal_mixing
    
     namelist /elm_inparm/ &
-         use_dynamic_snow_shape, use_wind_drift, use_fractional_snow_shape
+         use_dynamic_snow_shape, use_wind_drift, use_fractional_snow_shape, use_refrozen_snow
    
     namelist /elm_inparm/ &
          dendricity_threshold, sphericity_high_threshold, sphericity_low_threshold
@@ -1032,6 +1032,7 @@ contains
     call mpi_bcast (use_dynamic_snow_shape, 1, MPI_LOGICAL, 0, mpicom, ier)
     call mpi_bcast (use_wind_drift, 1, MPI_LOGICAL, 0, mpicom, ier)
     call mpi_bcast (use_fractional_snow_shape, 1, MPI_LOGICAL, 0, mpicom, ier)
+    call mpi_bcast (use_refrozen_snow, 1, MPI_LOGICAL, 0, mpicom, ier)
     call mpi_bcast (dendricity_threshold, 1, MPI_REAL8, 0, mpicom, ier)
     call mpi_bcast (sphericity_high_threshold, 1, MPI_REAL8, 0, mpicom, ier)
     call mpi_bcast (sphericity_low_threshold, 1, MPI_REAL8, 0, mpicom, ier)
@@ -1097,6 +1098,7 @@ contains
     write(iulog,*) '    use_dynamic_snow_shape = ', use_dynamic_snow_shape
     write(iulog,*) '    use_wind_drift = ', use_wind_drift
     write(iulog,*) '    use_fractional_snow_shape = ', use_fractional_snow_shape
+    write(iulog,*) '    use_refrozen_snow = ', use_refrozen_snow
     write(iulog,*) '    dendricity_threshold = ', dendricity_threshold
     write(iulog,*) '    sphericity_high_threshold = ', sphericity_high_threshold
     write(iulog,*) '    sphericity_low_threshold = ', sphericity_low_threshold
