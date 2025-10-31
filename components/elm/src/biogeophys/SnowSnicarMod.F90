@@ -1582,7 +1582,7 @@ contains
             if (use_refrozen_snow) then
                snw_rds(c_idx,i) = (snw_rds(c_idx,i) + dr + drds_wind)*frc_oldsnow + snw_rds_min*frc_newsnow + snw_rds_refrz*frc_refrz
             else
-               snw_rds(c_idx,i) = (snw_rds(c_idx,i) + dr + drds_wind)*(frc_oldsnow + frac_refrz) + snw_rds_min*frc_newsnow
+               snw_rds(c_idx,i) = (snw_rds(c_idx,i) + dr + drds_wind)*(frc_oldsnow + frc_refrz) + snw_rds_min*frc_newsnow
             endif
             !
             !**********  5. CHECK BOUNDARIES   ***********
