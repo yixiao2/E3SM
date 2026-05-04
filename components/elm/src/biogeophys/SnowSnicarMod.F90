@@ -1536,7 +1536,12 @@ contains
                   zi = zi + zpseudo
 
                   gamma_drift = max(0.0_r8, SI * exp(-zi / 0.1_r8))
-                  tau_drift = 48._r8 / gamma_drift
+                  ! tau_drift = 48._r8 / gamma_drift
+                  if (gamma_drift > 1.0e-10_r8) then
+                     tau_drift = 48._r8 / gamma_drift
+                  else
+                     tau_drift = 1.0e30_r8 ! Use a big number to avoid division by zero
+                  endif
                   
                   ! change in sphericity due to wind
                   swind = (1.0_r8 - sphericity(c_idx, i)) / tau_drift * dtime / 3600._r8 ! from Vionnet 2012 Table3
@@ -1665,7 +1670,7 @@ contains
         MO = 0.34_r8*(0.75_r8*dendricity - 0.5_r8*sphericity + 0.5_r8) + 0.66_r8 * Frho
     else
         ! MO = 0.34_r8 * (-0.583_r8*drift_gs - 0.833_r8*drift_sph + 0.833_r8) + 0.66_r8*Frho
-        MO = 0.34_r8 * (-0.583_r8*snw_rds - 0.833_r8*sphericity + 0.833_r8) + 0.66_r8*Frho
+        MO = 0.34_r8 * (-0.583_r8*snw_rds/1E6_r8 - 0.833_r8*sphericity + 0.833_r8) + 0.66_r8*Frho
     end if
 
     SI = -2.868_r8 * exp(-0.085_r8*forc_wind) + 1._r8 + MO
@@ -2719,7 +2724,7 @@ end subroutine driftability
                        asm_prm_snw_lcl(i) = 0.99_r8
                      endif
                      
-                     ! FRACTIONAL SHAPE HERE
+                     ! FRACTIONAL SHAPE HERE by Loc Luong (this is not used in the paper, but the code is here for testing and future use)
                      if (use_fractional_snow_shape) then
                         !f4k = exp(-15.0_r8 * (dendricity(c_idx,i) - 1.0_r8)**2.0_r8) ! Koch snowflake contribution
                         !f3k = (1.0_r8 - f4k) * exp(-10.0_r8 * sphericity(c_idx,i)**2.0_r8) ! Hex plate contribution
@@ -2728,7 +2733,7 @@ end subroutine driftability
                         f4k = 1.0_r8 / (1 + exp(-10.0_r8 * (dendricity(c_idx,i) - 0.5_r8))) ! Koch snowflake contribution
                         f3k = (1.0_r8 - f4k) * (1.0_r8 - 1.0_r8 / (1.0_r8 + exp(-10.0_r8 * (sphericity(c_idx,i) - 0.5_r8)))) ! Hex plate contribution
                         f1k = (1.0_r8 - f4k) * 1.0_r8 / (1.0_r8 + exp(-10.0_r8 * (sphericity(c_idx,i) - 0.75_r8))) ! Sphere
-                        f2k = (1.0_r8 - f4k) * (1.0_r8 - f1k - f3k) ! spheroid
+                        f2k = (1.0_r8 - f1k - f3k - f4k) ! spheroid
 
                         diam_ice = 2._r8*snw_rds_lcl(i)
 
