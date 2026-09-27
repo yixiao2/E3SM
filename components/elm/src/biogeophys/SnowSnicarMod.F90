@@ -1307,6 +1307,7 @@ contains
     real(r8) :: zi ! cumulative pseudo-depth of current layer i, by summing up from the top layer to the current ith layer. [m]
     real(r8) :: SI ! driftability index of current layer i, function of dendricity and sphericity [unitless]
     real(r8) :: zpseudo ! pseudo-depth of current layer i
+    logical  :: drift_stopped ! true below the first non-transportable layer (SI <= 0) of the column
     real(r8) :: gamma_drift ! coeff. in the empirical formula from Vionnet et al. (2012) for calculating driftability index [unitless]
     real(r8) :: tau_drift ! coeff. in the empirical formula from Vionnet et al. (2012) for calculating driftability index [unitless]
     real(r8), parameter :: alpha = 1.0E-4_r8 ! coeff. in Carmagnola 2014 to evolve grain size
@@ -1350,6 +1351,7 @@ contains
          c_idx = filter_snowc(fc)
          t = col_pp%topounit(c_idx)
          zi = 0.0_r8 ! reset zi for each column because I want zi to be local var and cumulative from top layer to current layer i
+         drift_stopped = .false.
          snl_btm = 0
          snl_top = snl(c_idx) + 1
 
@@ -1530,8 +1532,10 @@ contains
                sfall = min( max( 0.08_r8 * forc_wind(t) + 0.38_r8, 0.5_r8), 0.9_r8 )
 
             ! WIND DRIFTING
-               if (use_wind_drift) then
+               if (use_wind_drift .and. .not. drift_stopped) then
                   call driftability(rhos, cdz(i), forc_wind(t), dendricity(c_idx, i), sphericity(c_idx, i), snw_rds(c_idx,i), SI, zpseudo)
+                  ! a non-transportable layer stops drift for all layers below (as in Crocus SNOWDRIFT)
+                  if (SI <= 0.0_r8) drift_stopped = .true.
                   ! print *, ' in snow age grain ll driftability ', c_idx, i, rhos, cdz(i), forc_wind(t), dendricity(c_idx, i), sphericity(c_idx, i), snw_rds(c_idx,i), SI, zpseudo
                   zi = zi + zpseudo
 
@@ -1564,7 +1568,7 @@ contains
                   ! pseudo-depth sum_j dz_j*(3.25-SI_j) of the layers above (as in Crocus SNOWDRIFT)
                   zi = zi + zpseudo
                else
-                  ! if not using wind drift, set dwind and swind to zero
+                  ! if not using wind drift, or below a non-transportable layer, set dwind and swind to zero
                   dwind = 0.0_r8
                   swind = 0.0_r8
                   drds_wind = 0.0_r8
