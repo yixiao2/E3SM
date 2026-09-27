@@ -1556,7 +1556,7 @@ contains
                   else
                      ! non-dendritic case
                      ! only sphericity and snow radius change since it is non-dendritic
-                     ! dwind = 0.0_r8
+                     dwind = 0.0_r8
                      drds_wind =  - 1E6_r8 * dtime / 3600._r8 * alpha * sphericity(c_idx, i) * (1.0_r8 - sphericity(c_idx, i)) / tau_drift ! from Carmagnola 2014 for evoling grain size Eq. 5b
                   end if
                else
