@@ -1672,7 +1672,8 @@ contains
         MO = 0.34_r8*(0.75_r8*dendricity - 0.5_r8*sphericity + 0.5_r8) + 0.66_r8 * Frho
     else
         ! MO = 0.34_r8 * (-0.583_r8*drift_gs - 0.833_r8*drift_sph + 0.833_r8) + 0.66_r8*Frho
-        MO = 0.34_r8 * (-0.583_r8*snw_rds/1E6_r8 - 0.833_r8*sphericity + 0.833_r8) + 0.66_r8*Frho
+        ! grain size as optical diameter in mm (Crocus uses psnowgran2*1000); snw_rds is a radius in microns
+        MO = 0.34_r8 * (-0.583_r8*2.0_r8*snw_rds/1E3_r8 - 0.833_r8*sphericity + 0.833_r8) + 0.66_r8*Frho
     end if
 
     SI = -2.868_r8 * exp(-0.085_r8*forc_wind) + 1._r8 + MO
