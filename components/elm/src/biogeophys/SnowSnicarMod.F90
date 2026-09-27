@@ -1548,7 +1548,9 @@ contains
 
                   if (dendricity(c_idx, i) > epsilon) then
                      ! dendritic case
-                     dwind = dendricity(c_idx, i) / (2.0_r8 * tau_drift) * dtime / 3600._r8 ! from Vionnet 2012 Table3
+                     ! wind drift fragments grains and decreases dendricity (SNOWDRIFT in Crocus snowcro.F90);
+                     ! Table 3 of Vionnet 2012 prints +d/(2tau), but the Crocus code decreases dendricity
+                     dwind = - dendricity(c_idx, i) / (2.0_r8 * tau_drift) * dtime / 3600._r8
                      drds_wind =  1E6_r8 * dtime / 3600._r8 * 0.5_r8 * alpha * (dendricity(c_idx, i) / (2.0_r8 * tau_drift) * (sphericity(c_idx, i) - 3.0_r8) + &
                         (1.0_r8 - sphericity(c_idx, i)) / tau_drift * (dendricity(c_idx, i) - 1.0_r8)) ! from Carmagnola 2014 for evoling grain size Eq. 5a
                   else
