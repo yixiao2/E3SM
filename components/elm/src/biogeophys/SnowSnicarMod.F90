@@ -1559,6 +1559,10 @@ contains
                      dwind = 0.0_r8
                      drds_wind =  - 1E6_r8 * dtime / 3600._r8 * alpha * sphericity(c_idx, i) * (1.0_r8 - sphericity(c_idx, i)) / tau_drift ! from Carmagnola 2014 for evoling grain size Eq. 5b
                   end if
+
+                  ! add the second half of the current layer, so that layers below see the full
+                  ! pseudo-depth sum_j dz_j*(3.25-SI_j) of the layers above (as in Crocus SNOWDRIFT)
+                  zi = zi + zpseudo
                else
                   ! if not using wind drift, set dwind and swind to zero
                   dwind = 0.0_r8
